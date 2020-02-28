@@ -2,8 +2,8 @@ AM_MAKEFLAGS = --no-print-directory
 
 ACLOCAL_AMFLAGS = -I m4
 
-modules_ldadd =
-modules_cflags =
+modules_ldadd = @ELL_LIBS@
+modules_cflags = @ELL_CFLAGS@
 
 AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS)
 AM_LDFLAGS = $(BUILD_LDFLAGS)

@@ -11,6 +11,8 @@ Build:
 - autoconf v2.69
 - libtool v2.4.6-11
 - automake v1.16.1
+- pkg-config v0.29.1
+- ell v0.18
 
 *Other versions might work, but aren't officially supported*
 

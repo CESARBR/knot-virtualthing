@@ -23,7 +23,28 @@
 #include <config.h>
 #endif
 
+#include <signal.h>
+#include <ell/ell.h>
+
+static void signal_handler(uint32_t signo, void *user_data)
+{
+	switch (signo) {
+	case SIGINT:
+	case SIGTERM:
+		l_info("Terminate");
+		l_main_quit();
+		break;
+	}
+}
+
 int main(int argc, char *argv[])
 {
+	if (!l_main_init())
+		return EXIT_FAILURE;
+
+	l_main_run_with_signal(signal_handler, NULL);
+
+	l_main_exit();
+
 	return 0;
 }
