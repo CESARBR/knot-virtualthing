@@ -1,0 +1,31 @@
+AC_PREREQ(2.60)
+AC_INIT([knot-virtual-thing], [0.01], [alla@cesar.org.br])
+
+AC_CONFIG_AUX_DIR([m4])
+AM_INIT_AUTOMAKE([silent-rules foreign subdir-objects])
+
+AC_CONFIG_HEADERS(config.h)
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AM_MAINTAINER_MODE
+
+AC_PREFIX_DEFAULT(/usr/local)
+
+PKG_PROG_PKG_CONFIG
+
+COMPILER_WARNING_CFLAGS
+COMPILER_BUILD_CFLAGS
+
+AC_LANG_C
+
+AC_PROG_CC
+AC_PROG_CC_PIE
+
+m4_define([_LT_AC_TAGCONFIG], [])
+m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
+
+AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+
+AC_OUTPUT(Makefile)
