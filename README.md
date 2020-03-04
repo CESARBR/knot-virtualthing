@@ -13,6 +13,7 @@ Build:
 - automake v1.16.1
 - pkg-config v0.29.1
 - ell v0.18
+- json-c v0.13.1
 
 *Other versions might work, but aren't officially supported*
 
