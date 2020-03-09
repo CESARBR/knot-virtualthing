@@ -34,5 +34,15 @@ MAINTAINERCLEANFILES = Makefile.in \
         aclocal.m4 configure config.h.in config.sub config.guess \
         ltmain.sh depcomp compile missing install-sh
 
+TESTS = tests/sm_tests
+check_PROGRAMS = $(TESTS)
+
+tests_sm_tests_SOURCES = tests/st-machine-test.c \
+			src/sm.c src/sm-pvt.h \
+			tests/mocks/fake-device.c tests/mocks/fake-device.h
+
+tests_sm_tests_CFLAGS = $(modules_cflags) @CHECK_CFLAGS@
+tests_sm_tests_LDADD = $(modules_ldadd) @CHECK_LIBS@ -lm
+
 clean-local:
 	$(RM) -r src/thingd

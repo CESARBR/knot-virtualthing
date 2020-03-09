@@ -18,6 +18,9 @@ Build:
 - knot-protocol 891d01d
 - libmodbus v3.1.4
 
+Test:
+- check v0.10.0
+
 *Other versions might work, but aren't officially supported*
 
 
@@ -103,6 +106,10 @@ Start the daemon with the options to indicate the configuration files path:
 
 `valgrind --leak-check=full --track-fds=yes ./src/thingd -n -c `
 `confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
+
+
+## Automated Testing
+Run `./bootstrap-configure --with-check`, `make` and then `make check`
 
 
 ## How to run on Docker

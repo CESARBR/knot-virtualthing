@@ -31,3 +31,8 @@ m4/
 .vscode
 
 src/thingd
+
+test-suite.log
+tests/sm_tests
+tests/*.log
+tests/*.trs

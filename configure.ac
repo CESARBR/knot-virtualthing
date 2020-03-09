@@ -28,6 +28,10 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
+AC_ARG_WITH([check], AS_HELP_STRING([--with-check], [Enables testing]))
+AS_IF([test "x$with_check" = "xyes"],
+  [PKG_CHECK_MODULES([CHECK], [check >= 0.10.0])])
+
 PKG_CHECK_MODULES(ELL, ell,
   [AC_DEFINE([HAVE_ELL],[1],[Use ELL])],
   [AC_MSG_ERROR("ell missing")])
