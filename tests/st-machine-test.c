@@ -584,6 +584,97 @@ START_TEST(unregister_get_next_event_reg_perm_is_register)
 }
 END_TEST
 
+START_TEST(error_get_next_event_ready_is_error)
+{
+	int next_state = get_next_error(EVT_READY, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_not_ready_is_error)
+{
+	int next_state = get_next_error(EVT_NOT_READY, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_timeout_is_error)
+{
+	int next_state = get_next_error(EVT_TIMEOUT, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_reg_ok_is_error)
+{
+	int next_state = get_next_error(EVT_REG_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_reg_not_ok_is_error)
+{
+	int next_state = get_next_error(EVT_REG_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_auth_ok_is_error)
+{
+	int next_state = get_next_error(EVT_AUTH_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_auth_not_ok_is_error)
+{
+	int next_state = get_next_error(EVT_AUTH_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_schema_ok_is_error)
+{
+	int next_state = get_next_error(EVT_SCH_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_schema_not_ok_is_error)
+{
+	int next_state = get_next_error(EVT_SCH_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_unreg_req_is_error)
+{
+	int next_state = get_next_error(EVT_UNREG_REQ, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_data_update_is_error)
+{
+	int next_state = get_next_error(EVT_DATA_UPDT, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_publish_data_is_error)
+{
+	int next_state = get_next_error(EVT_PUB_DATA, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
+START_TEST(error_get_next_event_reg_perm_is_error)
+{
+	int next_state = get_next_error(EVT_REG_PERM, NULL);
+	ck_assert_int_eq(next_state, ST_ERROR);
+}
+END_TEST
+
 static void add_disconnected_state_test_case(Suite *sm_suite)
 {
 	TCase *tc_disconnected;
@@ -724,6 +815,29 @@ static void add_unregister_state_test_case(Suite *sm_suite)
 	suite_add_tcase(sm_suite, tc_unregister);
 }
 
+static void add_error_state_test_case(Suite *sm_suite)
+{
+	TCase *tc_error;
+
+	/* Error test case */
+	tc_error = tcase_create("Error");
+	tcase_add_test(tc_error, error_get_next_event_ready_is_error);
+	tcase_add_test(tc_error, error_get_next_event_not_ready_is_error);
+	tcase_add_test(tc_error, error_get_next_event_timeout_is_error);
+	tcase_add_test(tc_error, error_get_next_event_reg_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_reg_not_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_auth_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_auth_not_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_schema_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_schema_not_ok_is_error);
+	tcase_add_test(tc_error, error_get_next_event_unreg_req_is_error);
+	tcase_add_test(tc_error, error_get_next_event_data_update_is_error);
+	tcase_add_test(tc_error, error_get_next_event_publish_data_is_error);
+	tcase_add_test(tc_error, error_get_next_event_reg_perm_is_error);
+
+	suite_add_tcase(sm_suite, tc_error);
+}
+
 Suite *state_machine_suite(void)
 {
 	Suite *sm_suite;
@@ -736,6 +850,7 @@ Suite *state_machine_suite(void)
 	add_schema_state_test_case(sm_suite);
 	add_online_state_test_case(sm_suite);
 	add_unregister_state_test_case(sm_suite);
+	add_error_state_test_case(sm_suite);
 
 	return sm_suite;
 }
