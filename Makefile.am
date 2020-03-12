@@ -10,7 +10,7 @@ AM_LDFLAGS = $(BUILD_LDFLAGS)
 
 bin_PROGRAMS = src/thingd
 
-src_thingd_SOURCES = src/main.c
+src_thingd_SOURCES = src/main.c src/sm.c
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)
