@@ -80,13 +80,46 @@ static void enter_disconnected(void)
 /* AUTH */
 enum STATES get_next_auth(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_AUTH;
+	enum STATES next_state;
+
+	switch(event) {
+	case EVT_NOT_READY:
+		next_state = ST_DISCONNECTED;
+		break;
+	case EVT_AUTH_OK:
+		next_state =
+			device_check_schema_change() ? ST_SCHEMA : ST_ONLINE;
+		break;
+	case EVT_AUTH_NOT_OK:
+	case EVT_UNREG_REQ:
+		next_state = ST_UNREGISTER;
+		break;
+	case EVT_READY:
+	case EVT_TIMEOUT:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_REG_PERM:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+		next_state = ST_AUTH;
+		break;
+	default:
+		next_state = ST_ERROR;
+	}
+
+	return next_state;
 }
 
 static void enter_auth(void)
 {
-	//TODO: Implement expected state behavior
+	int rc;
+
+	rc = device_send_auth_request();
+
+	if(rc < 0)
+		l_error("Couldn't send auth message");
 }
 
 /* REGISTER */

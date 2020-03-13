@@ -692,6 +692,17 @@ int device_read_data(int id)
 				&thing.data_item[id].value);
 }
 
+int device_check_schema_change(void)
+{
+	/* TODO: Add schema change verification */
+	return 1;
+}
+
+int device_send_auth_request(void)
+{
+	return cloud_auth_device(thing.id, thing.token);
+}
+
 int device_has_credentials(void)
 {
 	return thing.token[0] != '\0';
