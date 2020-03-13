@@ -241,13 +241,33 @@ static void enter_unregister(void)
 /* ERROR */
 enum STATES get_next_error(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_ERROR;
+	int next_state;
+
+	switch(event) {
+	case EVT_REG_PERM:
+	case EVT_NOT_READY:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+	case EVT_TIMEOUT:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_UNREG_REQ:
+	case EVT_READY:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+	default:
+		next_state = ST_ERROR;
+		break;
+	}
+
+	return next_state;
 }
 
 static void enter_error(void)
 {
-	//TODO: Implement expected state behavior
+	/*  TODO: Add usuability to warn user of error state */
 }
 
 /* STATE INDEPENDENT */
