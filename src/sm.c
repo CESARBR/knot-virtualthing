@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <ell/ell.h>
 
 #include "sm-pvt.h"
 #include "device.h"
@@ -43,7 +44,12 @@ enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_READY:
-		next_state = device_has_credentials() ? ST_AUTH : ST_REGISTER;
+		if(device_has_credentials())
+			next_state = ST_AUTH;
+		else {
+			next_state = ST_REGISTER;
+			device_generate_new_id();
+		}
 		break;
 	case EVT_NOT_READY:
 	case EVT_TIMEOUT:
@@ -86,13 +92,53 @@ static void enter_auth(void)
 /* REGISTER */
 enum STATES get_next_register(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_REGISTER;
+	enum STATES next_state;
+	int rc;
+
+	switch(event) {
+	case EVT_NOT_READY:
+		next_state = ST_DISCONNECTED;
+		break;
+	case EVT_REG_OK:
+		rc = device_store_credentials(user_data);
+		if(rc < 0) {
+			next_state = ST_ERROR;
+			l_error("Failed to write credentials");
+			break;
+		}
+		next_state = ST_AUTH;
+		break;
+	case EVT_REG_NOT_OK:
+		device_generate_new_id();
+		next_state = ST_REGISTER;
+		break;
+	case EVT_UNREG_REQ:
+	case EVT_READY:
+	case EVT_TIMEOUT:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_REG_PERM:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+		next_state = ST_REGISTER;
+		break;
+	default:
+		next_state = ST_ERROR;
+	}
+
+	return next_state;
 }
 
 static void enter_register(void)
 {
-	//TODO: Implement expected state behavior
+	int rc;
+
+	rc = device_send_register_request();
+	if(rc < 0)
+		l_error("Couldn't send register message");
+
 }
 
 /* SCHEMA */

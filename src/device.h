@@ -26,5 +26,8 @@ struct device_settings {
 
 int device_read_data(int id);
 int device_has_credentials(void);
+int device_store_credentials(char *token);
+int device_send_register_request();
+void device_generate_new_id();
 int device_start(struct device_settings *conf_files);
 void device_destroy(void);

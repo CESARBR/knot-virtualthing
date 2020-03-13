@@ -23,6 +23,7 @@
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
 #include <ell/ell.h>
+#include <stdio.h>
 #include <errno.h>
 
 #include "storage.h"
@@ -35,6 +36,7 @@
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
+#define EMPTY_STRING ""
 
 struct knot_thing thing;
 
@@ -629,6 +631,12 @@ static void on_cloud_disconnected(void *user_data)
 	conn_handler(CLOUD, false);
 }
 
+static int erase_thing_token(int cred_fd)
+{
+	return storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+					CREDENTIALS_THING_TOKEN, EMPTY_STRING);
+}
+
 int device_read_data(int id)
 {
 	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
@@ -639,6 +647,53 @@ int device_read_data(int id)
 int device_has_credentials(void)
 {
 	return thing.token[0] != '\0';
+}
+
+int device_store_credentials(char *token)
+{
+	int rc;
+	int cred_fd;
+
+	if(strlen(token) >= KNOT_PROTOCOL_TOKEN_LEN)
+		return -EINVAL;
+
+	cred_fd = storage_open(thing.credentials_path);
+
+	if (cred_fd < 0)
+		return cred_fd;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_TOKEN, token);
+	if(rc < 0)
+		goto error;
+
+	strcpy(thing.token, token);
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_ID, thing.id);
+	if(rc < 0) {
+		erase_thing_token(cred_fd);
+		goto error;
+	}
+
+	storage_close(cred_fd);
+
+	return rc;
+
+error:
+	storage_close(cred_fd);
+
+	return -EINVAL;
+}
+
+void device_generate_new_id()
+{
+	snprintf(thing.id, KNOT_PROTOCOL_UUID_LEN, "%d", rand());
+}
+
+int device_send_register_request()
+{
+	return cloud_register_device(thing.id, thing.name);
 }
 
 int device_start(struct device_settings *conf_files)
