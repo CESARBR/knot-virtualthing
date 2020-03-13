@@ -33,5 +33,7 @@ void device_generate_new_id();
 int device_send_auth_request(void);
 int device_check_schema_change(void);
 int device_clear_credentials(void);
+void device_publish_data_list(struct l_queue *sensor_id_list);
+void device_publish_data_all(void);
 int device_start(struct device_settings *conf_files);
 void device_destroy(void);

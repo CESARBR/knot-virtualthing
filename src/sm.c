@@ -224,13 +224,43 @@ static void enter_schema(void)
 /* ONLINE */
 enum STATES get_next_online(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_ONLINE;
+	int next_state;
+
+	switch(event) {
+	case EVT_NOT_READY:
+		next_state = ST_DISCONNECTED;
+		break;
+	case EVT_PUB_DATA:
+		device_publish_data_list(user_data);
+		next_state = ST_ONLINE;
+		break;
+	case EVT_DATA_UPDT:
+		/* TODO: Write to modbus actuator */
+		next_state = ST_ONLINE;
+		break;
+	case EVT_TIMEOUT:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_UNREG_REQ:
+	case EVT_READY:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+	case EVT_REG_PERM:
+		next_state = ST_ONLINE;
+		break;
+	default:
+		next_state = ST_ERROR;
+		break;
+	}
+
+	return next_state;
 }
 
 static void enter_online(void)
 {
-	//TODO: Implement expected state behavior
+	device_publish_data_all();
 }
 
 /* UNREGISTER */

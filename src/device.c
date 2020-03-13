@@ -710,6 +710,26 @@ static void on_modbus_conn_changed(bool connected)
 	conn_handler(MODBUS, connected);
 }
 
+static void on_publish_data(void *data, void *user_data)
+{
+	struct knot_data_item data_item;
+	int *sensor_id = data;
+	int rc;
+
+	if (*sensor_id >= thing.data_item_count)
+		return;
+
+	data_item = thing.data_item[*sensor_id];
+
+	rc = cloud_publish_data(thing.id, *sensor_id,
+				data_item.schema.value_type,
+				&data_item.value,
+				sizeof(data_item.schema.value_type));
+	if (rc < 0)
+		l_error("Couldn't send data_update for data_item #%d",
+			*sensor_id);
+}
+
 int device_read_data(int id)
 {
 	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
@@ -828,6 +848,19 @@ int device_send_schema()
 	l_queue_destroy(schema_queue, l_free);
 
 	return rc;
+}
+
+void device_publish_data_list(struct l_queue *sensor_id_list)
+{
+	l_queue_foreach(sensor_id_list, on_publish_data, NULL);
+}
+
+void device_publish_data_all(void)
+{
+	int sensor_id;
+
+	for (sensor_id = 0; sensor_id < thing.data_item_count; sensor_id++)
+		on_publish_data(&sensor_id, NULL);
 }
 
 int device_start(struct device_settings *conf_files)
