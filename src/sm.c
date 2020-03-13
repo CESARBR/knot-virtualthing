@@ -177,13 +177,48 @@ static void enter_register(void)
 /* SCHEMA */
 enum STATES get_next_schema(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_SCHEMA;
+	int next_state;
+
+	switch(event) {
+	case EVT_NOT_READY:
+		next_state = ST_DISCONNECTED;
+		break;
+	case EVT_SCH_OK:
+		next_state = ST_ONLINE;
+		break;
+	case EVT_SCH_NOT_OK:
+		next_state = ST_ERROR;
+		break;
+	case EVT_UNREG_REQ:
+		next_state = ST_UNREGISTER;
+		break;
+	case EVT_READY:
+	case EVT_TIMEOUT:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+	case EVT_REG_PERM:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+		next_state = ST_SCHEMA;
+		break;
+	default:
+		next_state = ST_ERROR;
+		break;
+	}
+
+	return next_state;
 }
 
 static void enter_schema(void)
 {
-	//TODO: Implement expected state behavior
+	int rc;
+
+	rc = device_send_schema();
+
+	if(rc < 0)
+		l_error("Failure sending schema");
 }
 
 /* ONLINE */

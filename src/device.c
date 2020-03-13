@@ -72,6 +72,7 @@ struct knot_thing {
 	struct modbus_slave modbus_slave;
 	char *rabbitmq_url;
 	char *credentials_path;
+	int data_item_count;
 	struct knot_data_item *data_item;
 };
 
@@ -459,6 +460,7 @@ static int set_data_items(char *filename)
 	device_fd = storage_open(filename);
 
 	n_of_data_items = get_number_of_data_items(device_fd);
+	thing.data_item_count = n_of_data_items;
 	thing.data_item = malloc(n_of_data_items*sizeof(struct knot_data_item));
 	if (thing.data_item == NULL) {
 		storage_close(device_fd);
@@ -802,6 +804,30 @@ void device_generate_new_id()
 int device_send_register_request()
 {
 	return cloud_register_device(thing.id, thing.name);
+}
+
+int device_send_schema()
+{
+	struct l_queue *schema_queue;
+	knot_msg_schema schema_aux;
+	int size;
+	int rc;
+	int i;
+
+	schema_queue = l_queue_new();
+	size = sizeof(knot_msg_schema);
+
+	for(i = 0; i < thing.data_item_count; i++) {
+		schema_aux.sensor_id = i;
+		schema_aux.values = thing.data_item[i].schema;
+		l_queue_push_head(schema_queue, l_memdup(&schema_aux, size));
+	}
+
+	rc = cloud_update_schema(thing.id, schema_queue);
+
+	l_queue_destroy(schema_queue, l_free);
+
+	return rc;
 }
 
 int device_start(struct device_settings *conf_files)
