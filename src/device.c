@@ -498,6 +498,11 @@ int device_read_data(int id)
 				&thing.data_item[id].value);
 }
 
+int device_has_credentials(void)
+{
+	return thing.token[0] != '\0';
+}
+
 int device_start(struct device_settings *conf_files)
 {
 	int err;

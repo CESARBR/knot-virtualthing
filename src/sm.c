@@ -23,6 +23,7 @@
 #include <errno.h>
 
 #include "sm-pvt.h"
+#include "device.h"
 
 typedef void (*enter_state_t)(void);
 typedef enum STATES (*get_next_t)(enum EVENTS, void *user_data);
@@ -38,13 +39,36 @@ struct state states[N_OF_STATES];
 /* DISCONNECT */
 enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_DISCONNECTED;
+	enum STATES next_state;
+
+	switch(event) {
+	case EVT_READY:
+		next_state = device_has_credentials() ? ST_AUTH : ST_REGISTER;
+		break;
+	case EVT_NOT_READY:
+	case EVT_TIMEOUT:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_UNREG_REQ:
+	case EVT_REG_PERM:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+		next_state = ST_DISCONNECTED;
+		break;
+	default:
+		next_state = ST_ERROR;
+	}
+
+	return next_state;
 }
 
 static void enter_disconnected(void)
 {
-	//TODO: Implement expected state behavior
+	/* No action necessary when entering state disconnected */
 }
 
 /* AUTH */
