@@ -201,13 +201,41 @@ static void enter_online(void)
 /* UNREGISTER */
 enum STATES get_next_unregister(enum EVENTS event, void *user_data)
 {
-	//TODO: Implement transitions
-	return ST_UNREGISTER;
+	int next_state;
+
+	switch(event) {
+	case EVT_REG_PERM:
+		device_generate_new_id();
+		next_state = ST_REGISTER;
+		break;
+	case EVT_NOT_READY:
+	case EVT_PUB_DATA:
+	case EVT_DATA_UPDT:
+	case EVT_TIMEOUT:
+	case EVT_SCH_OK:
+	case EVT_SCH_NOT_OK:
+	case EVT_UNREG_REQ:
+	case EVT_READY:
+	case EVT_AUTH_OK:
+	case EVT_AUTH_NOT_OK:
+	case EVT_REG_OK:
+	case EVT_REG_NOT_OK:
+		next_state = ST_UNREGISTER;
+		break;
+	default:
+		next_state = ST_ERROR;
+	}
+
+	return next_state;
 }
 
 static void enter_unregister(void)
 {
-	//TODO: Implement expected state behavior
+	int rc;
+
+	rc = device_clear_credentials();
+	if(rc < 0)
+		l_error("Something went wrong when cleaning credentials");
 }
 
 /* ERROR */

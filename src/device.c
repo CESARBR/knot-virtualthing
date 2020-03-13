@@ -676,8 +676,31 @@ static void on_cloud_disconnected(void *user_data)
 
 static int erase_thing_token(int cred_fd)
 {
-	return storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
-					CREDENTIALS_THING_TOKEN, EMPTY_STRING);
+	int rc;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_TOKEN, EMPTY_STRING);
+	if (rc < 0)
+		l_error("Failed to erase thing token");
+
+	else
+		thing.token[0] = '\0';
+
+	return rc;
+}
+
+static int erase_thing_id(int cred_fd)
+{
+	int rc;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_ID, EMPTY_STRING);
+	if (rc < 0)
+		l_error("Failed to erase thing id");
+	else
+		thing.id[0] = '\0';
+
+	return rc;
 }
 
 static void on_modbus_conn_changed(bool connected)
@@ -708,6 +731,33 @@ int device_has_credentials(void)
 	return thing.token[0] != '\0';
 }
 
+int device_clear_credentials(void)
+{
+	int rc;
+	int cred_fd;
+
+	cred_fd = storage_open(thing.credentials_path);
+	if (cred_fd < 0)
+		return cred_fd;
+
+	rc = erase_thing_token(cred_fd);
+	if (rc < 0)
+		goto error;
+
+	rc = erase_thing_id(cred_fd);
+	if (rc < 0)
+		goto error;
+
+	storage_close(cred_fd);
+
+	return rc;
+
+error:
+	storage_close(cred_fd);
+
+	return -EINVAL;
+}
+
 int device_store_credentials(char *token)
 {
 	int rc;
@@ -725,7 +775,6 @@ int device_store_credentials(char *token)
 				      CREDENTIALS_THING_TOKEN, token);
 	if(rc < 0)
 		goto error;
-
 	strcpy(thing.token, token);
 
 	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
