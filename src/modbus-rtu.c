@@ -38,7 +38,7 @@
 #include <modbus.h>
 
 #include "options.h"
-#include "driver.h"
+#include "modbus-driver.h"
 
 static modbus_t *create(const char *url)
 {
