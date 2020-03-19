@@ -19,3 +19,11 @@ Build:
 
 ## Building
 Run `./bootstrap-configure` and then `make`
+
+## License
+
+All KNoT VirtualThing files are under LGPL v2.1 license, you can check `COPYING`
+file for details.
+
+The `checkpatch.pl` and `spelling.txt` files, on hooks folder, are under the
+Linux Kernel's GPL v2 license.
