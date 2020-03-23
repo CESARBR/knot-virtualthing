@@ -1,4 +1,4 @@
-/*
+/**
  * This file is part of the KNOT Project
  *
  * Copyright (c) 2019, CESAR. All rights reserved.
@@ -12,11 +12,6 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
 
 /**
@@ -27,8 +22,8 @@
 #include <config.h>
 #endif
 
-#ifndef  _GNU_SOURCE
-#define  _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 
 #include <stdio.h>
@@ -128,11 +123,11 @@ static bool on_receive(struct l_io *io, void *user_data)
 
 	res = amqp_consume_message(mq_ctx.conn, &envelope, &time_out, 0);
 
-	if (AMQP_RESPONSE_NORMAL != res.reply_type)
+	if (res.reply_type != AMQP_RESPONSE_NORMAL)
 		return true;
 
 	hal_log_dbg("Receive %u, exchange %.*s routingkey %.*s\n",
-			(unsigned)envelope.delivery_tag,
+			(unsigned int)envelope.delivery_tag,
 			(int)envelope.exchange.len,
 			(char *)envelope.exchange.bytes,
 			(int)envelope.routing_key.len,
@@ -297,7 +292,7 @@ done:
  * Publishs a persistent message in the exchange and routing key to aqueue bond,
  * so even if there is no consumer listening the message aren't lost.
  *
- * Returns: 0 if successfull and negative integer otherwise.
+ * Returns: 0 if successful and negative integer otherwise.
  */
 int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 				       const char *exchange,
@@ -420,7 +415,7 @@ amqp_bytes_t mq_declare_new_queue(const char *name)
  *
  * Declares a exchange and bind a routing key to a queue to be a consumer.
  *
- * Returns: 0 if successfull and -1 otherwise.
+ * Returns: 0 if successful and -1 otherwise.
  */
 int mq_bind_queue(amqp_bytes_t queue,
 			      const char *exchange,
@@ -457,18 +452,18 @@ int mq_bind_queue(amqp_bytes_t queue,
 /**
  * mq_set_read_cb:
  * @queue: queue that is going to be consume
- * @on_read: callback to be called when receive some amqp message
+ * @read_cb: callback to be called when receive some amqp message
  * @user_data: user data provided to callback
  *
  * Set the callback handler when receive any message from amqp connection.
  *
- * Returns: 0 if successfull and -1 otherwise.
+ * Returns: 0 if successful and -1 otherwise.
  */
-int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t on_read, void *user_data)
+int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data)
 {
 	int err;
 
-	mq_ctx.read_cb = on_read;
+	mq_ctx.read_cb = read_cb;
 
 	if (!mq_ctx.amqp_io) {
 		hal_log_error("Error amqp service not started");
@@ -501,15 +496,15 @@ int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t on_read, void *user_data)
 	return 0;
 }
 
-int mq_start(struct settings *settings, mq_connected_cb_t on_connected,
+int mq_start(struct settings *settings, mq_connected_cb_t connected_cb,
 	     void *user_data)
 {
-	mq_ctx.connected_cb = on_connected;
+	mq_ctx.connected_cb = connected_cb;
 	mq_ctx.connected_data = user_data;
 
 	mq_ctx.conn_retry_timeout = l_timeout_create_ms(1, // start in oneshot
-				start_connection,
-				settings, NULL);
+							start_connection,
+							settings, NULL);
 
 	return 0;
 }
@@ -537,5 +532,5 @@ void mq_stop(void)
 	err = amqp_destroy_connection(mq_ctx.conn);
 	if (err < 0)
 		hal_log_error("amqp_destroy_connection: %s",
-				amqp_error_string2(err));
+			      amqp_error_string2(err));
 }
