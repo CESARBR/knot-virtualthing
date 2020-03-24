@@ -35,6 +35,5 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue, const char *exchange,
 				uint64_t expiration,
 				const char *body);
 int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data);
-int mq_start(struct settings *settings, mq_connected_cb_t connected_cb,
-	     void *user_data);
+int mq_start(char *url, mq_connected_cb_t connected_cb, void *user_data);
 void mq_stop(void);
