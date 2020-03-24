@@ -14,6 +14,7 @@ Build:
 - pkg-config v0.29.1
 - ell v0.18
 - json-c v0.13.1
+- rabbitmq-c v0.10.0
 
 *Other versions might work, but aren't officially supported*
 

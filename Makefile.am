@@ -2,15 +2,17 @@ AM_MAKEFLAGS = --no-print-directory
 
 ACLOCAL_AMFLAGS = -I m4
 
-modules_ldadd = @ELL_LIBS@ @JSON_LIBS@
-modules_cflags = @ELL_CFLAGS@ @JSON_CFLAGS@
+modules_ldadd = @ELL_LIBS@ @JSON_LIBS@ @RABBITMQ_LIBS@
+modules_cflags = @ELL_CFLAGS@ @JSON_CFLAGS@ @RABBITMQ_CFLAGS@
 
 AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS)
 AM_LDFLAGS = $(BUILD_LDFLAGS)
 
 bin_PROGRAMS = src/thingd
 
-src_thingd_SOURCES = src/main.c src/sm.c
+src_thingd_SOURCES = src/main.c \
+			src/sm.c \
+			src/mq.c src/mq.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)
