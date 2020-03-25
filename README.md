@@ -15,6 +15,7 @@ Build:
 - ell v0.18
 - json-c v0.13.1
 - rabbitmq-c v0.10.0
+- knot-protocol v02.01
 
 *Other versions might work, but aren't officially supported*
 
