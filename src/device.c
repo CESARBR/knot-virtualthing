@@ -24,12 +24,21 @@
 #include <ell/ell.h>
 #include <errno.h>
 
-#include "modbus.h"
 #include "storage.h"
 #include "conf-parameters.h"
 #include "device.h"
 
 struct knot_thing thing;
+
+struct modbus_slave {
+	int id;
+	char *url;
+};
+
+struct modbus_source {
+	int reg_addr;
+	int bit_offset;
+};
 
 struct knot_data_item {
 	int sensor_id;
@@ -48,6 +57,40 @@ struct knot_thing {
 	char *rabbitmq_url;
 	struct knot_data_item *data_item;
 };
+
+static int set_modbus_slave_properties(char *filename)
+{
+	int rc;
+	int device_fd;
+	int aux;
+	struct modbus_slave modbus_slave_aux;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	rc = storage_read_key_int(device_fd, THING_GROUP, THING_MODBUS_SLAVE_ID,
+				  &aux);
+	if (!rc)
+		return -EINVAL;
+
+	if (aux < MODBUS_MIN_SLAVE_ID || aux > MODBUS_MAX_SLAVE_ID)
+		return -EINVAL;
+
+	modbus_slave_aux.id = aux;
+
+	modbus_slave_aux.url = storage_read_key_string(device_fd, THING_GROUP,
+						       THING_MODBUS_URL);
+	if (modbus_slave_aux.url == NULL || !strcmp(modbus_slave_aux.url, ""))
+		return -EINVAL;
+	/* TODO: Check if modbus url is in a valid format */
+
+	storage_close(device_fd);
+
+	thing.modbus_slave = modbus_slave_aux;
+
+	return 0;
+}
 
 static int set_rabbit_mq_url(char *filename)
 {
@@ -106,6 +149,10 @@ static int device_set_properties(struct conf_files conf)
 	if (rc == -EINVAL)
 		return rc;
 
+	rc = set_modbus_slave_properties(conf.device);
+	if (rc == -EINVAL)
+		return rc;
+
 	return 0;
 }
 
@@ -126,4 +173,5 @@ int device_start(void)
 void device_destroy(void)
 {
 	l_free(thing.rabbitmq_url);
+	l_free(thing.modbus_slave.url);
 }
