@@ -22,7 +22,6 @@
 #include <stdio.h>
 
 #include <ell/ell.h>
-#include <hal/linux_log.h>
 
 #include <knot/knot_types.h>
 #include <knot/knot_protocol.h>
