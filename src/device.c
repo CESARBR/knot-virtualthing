@@ -177,6 +177,12 @@ static int set_schema(char *filename, char *group_id, int sensor_id)
 		return -EINVAL;
 	schema_aux.type_id = aux;
 
+	rc = knot_schema_is_valid(schema_aux.type_id,
+				  schema_aux.value_type,
+				  schema_aux.unit);
+	if (rc)
+		return -EINVAL;
+
 	storage_close(device_fd);
 
 	thing.data_item[sensor_id].schema = schema_aux;
