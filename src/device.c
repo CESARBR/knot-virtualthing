@@ -251,6 +251,14 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 	if (rc > 0)
 		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
+	rc = knot_config_is_valid(config_aux.event_flags,
+				  thing.data_item[sensor_id].schema.value_type,
+				  config_aux.time_sec,
+				  &config_aux.lower_limit,
+				  &config_aux.upper_limit);
+	if (rc)
+		return -EINVAL;
+
 	storage_close(device_fd);
 
 	thing.data_item[sensor_id].config = config_aux;
