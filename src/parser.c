@@ -12,11 +12,6 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -36,7 +31,7 @@
 
 #include "parser.h"
 
-#define MIN(x,y) ((x)<(y)?(x):(y))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 /*
  * Parsing knot_value_type attribute
@@ -60,7 +55,6 @@ static int parse_json2data(json_object *jobj, knot_value_type *kvalue)
 		olen = sizeof(kvalue->val_f);
 		break;
 	case json_type_int:
-
 		kvalue->val_i = json_object_get_int(jobjkey);
 		olen = sizeof(kvalue->val_i);
 		break;
@@ -264,12 +258,11 @@ json_object *parser_sensorid_to_json(const char *key, struct l_queue *list)
 
 	ajobj = json_object_new_array();
 
-	for (id = l_queue_pop_head(list); id;
-	     id = l_queue_pop_head(list)) {
-			entry = json_object_new_object();
-			json_object_object_add(entry, "sensor_id",
-					       json_object_new_int(*id));
-			json_object_array_add(ajobj, json_object_get(entry));
+	for (id = l_queue_pop_head(list); id; id = l_queue_pop_head(list)) {
+		entry = json_object_new_object();
+		json_object_object_add(entry, "sensor_id",
+				       json_object_new_int(*id));
+		json_object_array_add(ajobj, json_object_get(entry));
 	}
 
 	setdatajobj = json_object_new_object();
