@@ -19,6 +19,7 @@ src_thingd_SOURCES = src/main.c \
 			src/cloud.c src/cloud.h \
 			src/device.c src/device.h \
 			src/storage.c src/storage.h \
+			src/modbus-interface.c src/modbus-interface.h \
 		        src/modbus-tcp.c src/modbus-rtu.c \
 			src/modbus-driver.h
 

@@ -27,6 +27,7 @@
 #include "storage.h"
 #include "conf-parameters.h"
 #include "device.h"
+#include "modbus-interface.h"
 
 struct knot_thing thing;
 
@@ -423,11 +424,15 @@ int device_start(void)
 	if (device_set_properties(conf))
 		return -EINVAL;
 
+	modbus_start(thing.modbus_slave.url);
+
 	return 0;
 }
 
 void device_destroy(void)
 {
+	modbus_stop();
+
 	l_free(thing.rabbitmq_url);
 	l_free(thing.modbus_slave.url);
 
