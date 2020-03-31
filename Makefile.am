@@ -12,7 +12,8 @@ bin_PROGRAMS = src/thingd
 
 src_thingd_SOURCES = src/main.c \
 			src/sm.c \
-			src/mq.c src/mq.h
+			src/mq.c src/mq.h \
+			src/parser.c src/parser.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)
