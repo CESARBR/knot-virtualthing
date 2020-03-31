@@ -31,7 +31,6 @@
 #include <stdint.h>
 #include <ell/ell.h>
 #include <json-c/json.h>
-#include <hal/linux_log.h>
 #include <amqp.h>
 
 #include <knot/knot_protocol.h>
@@ -161,13 +160,13 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->error = NULL;
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
 		msg->list = parser_update_to_list(jso);
 		if (!msg->list) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -176,13 +175,13 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->error = NULL;
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
 		msg->list = parser_request_to_list(jso);
 		if (!msg->list) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -191,13 +190,13 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id ||
 				!parser_is_key_str_or_null(jso, "error")) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
 		msg->token = parser_get_key_str_from_json_obj(jso, "token");
 		if (!msg->token) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -207,7 +206,7 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id ||
 				!parser_is_key_str_or_null(jso, "error")) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -217,7 +216,7 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id ||
 				!parser_is_key_str_or_null(jso, "error")) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -227,7 +226,7 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id ||
 				!parser_is_key_str_or_null(jso, "error")) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
@@ -238,14 +237,14 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->list = parser_queue_from_json_array(jso,
 						cloud_device_array_foreach);
 		if (!msg->list || !parser_is_key_str_or_null(jso, "error")) {
-			hal_log_error("Malformed JSON message");
+			l_error("Malformed JSON message");
 			goto err;
 		}
 
 		msg->error = parser_get_key_str_from_json_obj(jso, "error");
 		break;
 	default:
-		hal_log_error("Unknown event %s", routing_key);
+		l_error("Unknown event %s", routing_key);
 		goto err;
 	}
 
@@ -272,7 +271,7 @@ static bool on_cloud_receive_message(const char *exchange,
 
 	jso = json_tokener_parse(body);
 	if (!jso) {
-		hal_log_error("Error on parse JSON object");
+		l_error("Error on parse JSON object");
 		return false;
 	}
 
@@ -307,7 +306,7 @@ int cloud_register_device(const char *id, const char *name)
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (!queue_cloud.bytes) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -354,7 +353,7 @@ int cloud_unregister_device(const char *id)
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (!queue_cloud.bytes) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -402,7 +401,7 @@ int cloud_auth_device(const char *id, const char *token)
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (queue_cloud.bytes == NULL) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -448,7 +447,7 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (!queue_cloud.bytes) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -494,7 +493,7 @@ int cloud_list_devices(void)
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (!queue_cloud.bytes) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -541,7 +540,7 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 
 	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
 	if (!queue_cloud.bytes) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
@@ -597,14 +596,14 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 
 	queue_fog = mq_declare_new_queue(MQ_QUEUE_FOG);
 	if (queue_fog.bytes == NULL) {
-		hal_log_error("Error on declare a new queue.\n");
+		l_error("Error on declare a new queue");
 		return -1;
 	}
 
 	for (i = 0; fog_events[i] != NULL; i++) {
 		err = mq_bind_queue(queue_fog, MQ_EXCHANGE_FOG, fog_events[i]);
 		if (err) {
-			hal_log_error("Error on set up queue to consume.\n");
+			l_error("Error on set up queue to consume");
 			amqp_bytes_free(queue_fog);
 			return -1;
 		}
@@ -612,7 +611,7 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 
 	err = mq_set_read_cb(queue_fog, on_cloud_receive_message, user_data);
 	if (err) {
-		hal_log_error("Error on set up read callback\n");
+		l_error("Error on set up read callback");
 		return -1;
 	}
 	amqp_bytes_free(queue_fog);
