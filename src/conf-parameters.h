@@ -56,3 +56,6 @@ struct conf_files {
 #define CONFIG_UPPER_THRESHOLD		"ConfigUpperThreshold"
 #define CONFIG_TIME_SEC			"ConfigTimeSec"
 #define CONFIG_CHANGE			"ConfigChange"
+
+#define MODBUS_REG_ADDRESS		"ModbusRegisterAddress"
+#define MODBUS_BIT_OFFSET		"ModbusBitOffset"

@@ -252,6 +252,34 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 	return 0;
 }
 
+static int set_modbus_source_properties(char *filename, char *group_id,
+					int sensor_id)
+{
+	int rc;
+	int device_fd;
+	struct modbus_source modbus_source_aux;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	rc = storage_read_key_int(device_fd, group_id, MODBUS_REG_ADDRESS,
+				  &modbus_source_aux.reg_addr);
+	if (!rc)
+		return -EINVAL;
+
+	rc = storage_read_key_int(device_fd, group_id, MODBUS_BIT_OFFSET,
+				  &modbus_source_aux.bit_offset);
+	if (!rc)
+		return -EINVAL;
+
+	storage_close(device_fd);
+
+	thing.data_item[sensor_id].modbus_source = modbus_source_aux;
+
+	return 0;
+}
+
 static int set_data_items(char *filename)
 {
 	int rc;
@@ -283,7 +311,10 @@ static int set_data_items(char *filename)
 		rc = set_config(filename, data_item_group[i], sensor_id);
 		if (rc < 0)
 			goto error;
-		/* TODO: Set modbus sensor properties */
+		rc = set_modbus_source_properties(filename, data_item_group[i],
+						  sensor_id);
+		if (rc < 0)
+			goto error;
 	}
 
 	l_strfreev(data_item_group);
