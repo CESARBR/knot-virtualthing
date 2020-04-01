@@ -51,3 +51,5 @@ int storage_write_key_int(int fd, const char *group,
 int storage_read_key_int(int fd, const char *group,
 			  const char *key, int *value);
 bool storage_has_unit(int fd, const char *group, const char *key);
+int get_number_of_data_items(int fd);
+char **get_data_item_groups(int fd);

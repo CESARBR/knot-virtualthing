@@ -37,6 +37,8 @@ struct conf_files {
 
 #define DEVICE_FILENAME			"device.conf"
 
+#define DATA_ITEM_GROUP			"DataItem_"
+
 #define THING_GROUP			"KNoTThing"
 #define THING_NAME			"Name"
 #define THING_MODBUS_SLAVE_ID		"ModbusSlaveId"

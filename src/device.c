@@ -114,6 +114,34 @@ static int set_rabbit_mq_url(char *filename)
 	return 0;
 }
 
+static int set_data_items(char *filename)
+{
+	int i;
+	int device_fd;
+	char **data_item_group;
+	int n_of_data_items;
+
+	device_fd = storage_open(filename);
+
+	n_of_data_items = get_number_of_data_items(device_fd);
+	thing.data_item = malloc(n_of_data_items*sizeof(struct knot_data_item));
+	if (thing.data_item == NULL)
+		return -EINVAL;
+
+	data_item_group = get_data_item_groups(device_fd);
+
+	storage_close(device_fd);
+	for (i = 0; data_item_group[i] != NULL ; i++) {
+		/* TODO: Set schema properties */
+		/* TODO: Set config properties */
+		/* TODO: Set modbus sensor properties */
+	}
+
+	l_strfreev(data_item_group);
+
+	return 0;
+}
+
 static int set_thing_name(char *filename)
 {
 	int device_fd;
@@ -153,6 +181,10 @@ static int device_set_properties(struct conf_files conf)
 	if (rc == -EINVAL)
 		return rc;
 
+	rc = set_data_items(conf.device);
+	if (rc == -EINVAL)
+		return rc;
+
 	return 0;
 }
 
@@ -174,4 +206,6 @@ void device_destroy(void)
 {
 	l_free(thing.rabbitmq_url);
 	l_free(thing.modbus_slave.url);
+
+	free(thing.data_item);
 }
