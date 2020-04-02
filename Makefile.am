@@ -14,7 +14,9 @@ src_thingd_SOURCES = src/main.c \
 			src/sm.c \
 			src/mq.c src/mq.h \
 			src/parser.c src/parser.h \
-			src/cloud.c src/cloud.h
+			src/cloud.c src/cloud.h \
+			src/device.c src/device.h \
+			src/storage.c src/storage.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)

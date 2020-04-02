@@ -18,10 +18,18 @@
  *  Device source file
  */
 
+#include <string.h>
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
+#include <ell/ell.h>
+#include <errno.h>
 
 #include "modbus.h"
+#include "storage.h"
+#include "conf-parameters.h"
+#include "device.h"
+
+struct knot_thing thing;
 
 struct knot_data_item {
 	int sensor_id;
@@ -39,3 +47,51 @@ struct knot_thing {
 	struct modbus_slave modbus_slave;
 	struct knot_data_item *data_item;
 };
+
+
+static int set_thing_name(char *filename)
+{
+	int device_fd;
+	char *knot_thing_name;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	knot_thing_name = storage_read_key_string(device_fd, THING_GROUP,
+						  THING_NAME);
+	if (knot_thing_name == NULL || !strcmp(knot_thing_name, "") ||
+	    strlen(knot_thing_name) >= KNOT_PROTOCOL_DEVICE_NAME_LEN)
+		return -EINVAL;
+
+	strcpy(thing.name, knot_thing_name);
+	l_free(knot_thing_name);
+
+	storage_close(device_fd);
+
+	return 0;
+}
+
+static int device_set_properties(struct conf_files conf)
+{
+	int rc;
+
+	rc = set_thing_name(conf.device);
+	if (rc == -EINVAL)
+		return rc;
+
+	return 0;
+}
+
+int device_start(void)
+{
+	struct conf_files conf;
+
+	conf.credentials = CREDENTIALS_FILENAME;
+	conf.device = DEVICE_FILENAME;
+
+	if (device_set_properties(conf))
+		return -EINVAL;
+
+	return 0;
+}

@@ -15,22 +15,7 @@
  */
 
 /**
- *  Configuration files parameters header file
+ *  Device header file
  */
 
-struct conf_files {
-	char *device;
-	char *rabbit;
-	char *credentials;
-};
-
-#define CREDENTIALS_FILENAME		"credentials.conf"
-
-#define CREDENTIALS_GROUP		"Credentials"
-#define CREDENTIALS_THING_ID		"ThingId"
-#define CREDENTIALS_THING_TOKEN		"ThingToken"
-
-#define DEVICE_FILENAME			"device.conf"
-
-#define THING_GROUP			"KNoTThing"
-#define THING_NAME			"Name"
+int device_start(void);
