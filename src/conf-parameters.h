@@ -30,6 +30,11 @@ struct conf_files {
 #define CREDENTIALS_THING_ID		"ThingId"
 #define CREDENTIALS_THING_TOKEN		"ThingToken"
 
+#define RABBIT_MQ_FILENAME		"rabbitmq.conf"
+
+#define RABBIT_MQ_GROUP			"RabbitMQ"
+#define RABBIT_URL			"Url"
+
 #define DEVICE_FILENAME			"device.conf"
 
 #define THING_GROUP			"KNoTThing"

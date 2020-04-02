@@ -45,9 +45,31 @@ struct knot_thing {
 	char name[KNOT_PROTOCOL_DEVICE_NAME_LEN];
 
 	struct modbus_slave modbus_slave;
+	char *rabbitmq_url;
 	struct knot_data_item *data_item;
 };
 
+static int set_rabbit_mq_url(char *filename)
+{
+	int rabbitmq_fd;
+	char *rabbitmq_url_aux;
+
+	rabbitmq_fd = storage_open(filename);
+	if (rabbitmq_fd < 0)
+		return rabbitmq_fd;
+
+	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
+						   RABBIT_URL);
+	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, ""))
+		return -EINVAL;
+	/* TODO: Check if rabbit mq url is in a valid format */
+
+	storage_close(rabbitmq_fd);
+
+	thing.rabbitmq_url = rabbitmq_url_aux;
+
+	return 0;
+}
 
 static int set_thing_name(char *filename)
 {
@@ -80,6 +102,10 @@ static int device_set_properties(struct conf_files conf)
 	if (rc == -EINVAL)
 		return rc;
 
+	rc = set_rabbit_mq_url(conf.rabbit);
+	if (rc == -EINVAL)
+		return rc;
+
 	return 0;
 }
 
@@ -89,9 +115,15 @@ int device_start(void)
 
 	conf.credentials = CREDENTIALS_FILENAME;
 	conf.device = DEVICE_FILENAME;
+	conf.rabbit = RABBIT_MQ_FILENAME;
 
 	if (device_set_properties(conf))
 		return -EINVAL;
 
 	return 0;
+}
+
+void device_destroy(void)
+{
+	l_free(thing.rabbitmq_url);
 }

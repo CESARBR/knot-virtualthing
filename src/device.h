@@ -19,3 +19,4 @@
  */
 
 int device_start(void);
+void device_destroy(void);
