@@ -51,3 +51,8 @@ struct conf_files {
 #define SCHEMA_VALUE_TYPE		"SchemaValueType"
 #define SCHEMA_UNIT			"SchemaUnit"
 #define SCHEMA_TYPE_ID			"SchemaTypeId"
+
+#define CONFIG_LOWER_THRESHOLD		"ConfigLowerThreshold"
+#define CONFIG_UPPER_THRESHOLD		"ConfigUpperThreshold"
+#define CONFIG_TIME_SEC			"ConfigTimeSec"
+#define CONFIG_CHANGE			"ConfigChange"

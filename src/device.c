@@ -184,6 +184,74 @@ static int set_schema(char *filename, char *group_id, int sensor_id)
 	return 0;
 }
 
+static int assign_limit(int value_type, int value, knot_value_type *limit)
+{
+	switch (value_type) {
+	case KNOT_VALUE_TYPE_INT:
+		limit->val_i = value;
+		break;
+	case KNOT_VALUE_TYPE_FLOAT:
+		/* Storage doesn't give support to float numbers */
+		break;
+	case KNOT_VALUE_TYPE_BOOL:
+		limit->val_b = value;
+		break;
+	case KNOT_VALUE_TYPE_RAW:
+		/* Storage doesn't give support to raw numbers */
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int set_config(char *filename, char *group_id, int sensor_id)
+{
+	int rc;
+	int aux;
+	int device_fd;
+	knot_config config_aux;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	config_aux.event_flags = 0;
+
+	rc = storage_read_key_int(device_fd, group_id, CONFIG_LOWER_THRESHOLD,
+				  &aux);
+	if (rc > 0) {
+		config_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
+		assign_limit(thing.data_item[sensor_id].schema.value_type, aux,
+			     &config_aux.lower_limit);
+	}
+
+	rc = storage_read_key_int(device_fd, group_id, CONFIG_UPPER_THRESHOLD,
+				  &aux);
+	if (rc > 0) {
+		config_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
+		assign_limit(thing.data_item[sensor_id].schema.value_type, aux,
+			     &config_aux.upper_limit);
+	}
+
+	rc = storage_read_key_int(device_fd, group_id, CONFIG_TIME_SEC, &aux);
+	if (rc > 0) {
+		config_aux.event_flags |= KNOT_EVT_FLAG_TIME;
+		config_aux.time_sec = aux;
+	}
+
+	rc = storage_read_key_int(device_fd, group_id, CONFIG_CHANGE, &aux);
+	if (rc > 0)
+		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
+
+	storage_close(device_fd);
+
+	thing.data_item[sensor_id].config = config_aux;
+
+	return 0;
+}
+
 static int set_data_items(char *filename)
 {
 	int rc;
@@ -212,7 +280,9 @@ static int set_data_items(char *filename)
 		rc = set_schema(filename, data_item_group[i], sensor_id);
 		if (rc < 0)
 			goto error;
-		/* TODO: Set config properties */
+		rc = set_config(filename, data_item_group[i], sensor_id);
+		if (rc < 0)
+			goto error;
 		/* TODO: Set modbus sensor properties */
 	}
 
