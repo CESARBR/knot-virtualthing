@@ -114,12 +114,42 @@ static int set_rabbit_mq_url(char *filename)
 	return 0;
 }
 
+static int get_sensor_id(char *filename, char *group_id)
+{
+	int device_fd;
+	int rc;
+	int sensor_id;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	rc = storage_read_key_int(device_fd, group_id, SCHEMA_SENSOR_ID,
+				  &sensor_id);
+	if (!rc)
+		return -EINVAL;
+
+	storage_close(device_fd);
+
+	return sensor_id;
+}
+
+static int valid_sensor_id(int sensor_id, int n_of_data_items)
+{
+	if (sensor_id >= n_of_data_items)
+		return -EINVAL;
+
+	return 0;
+}
+
 static int set_data_items(char *filename)
 {
+	int rc;
 	int i;
 	int device_fd;
 	char **data_item_group;
 	int n_of_data_items;
+	int sensor_id;
 
 	device_fd = storage_open(filename);
 
@@ -132,6 +162,11 @@ static int set_data_items(char *filename)
 
 	storage_close(device_fd);
 	for (i = 0; data_item_group[i] != NULL ; i++) {
+		sensor_id = get_sensor_id(filename, data_item_group[i]);
+		rc = valid_sensor_id(sensor_id, n_of_data_items);
+		if (rc < 0)
+			goto error;
+		thing.data_item[sensor_id].sensor_id = sensor_id;
 		/* TODO: Set schema properties */
 		/* TODO: Set config properties */
 		/* TODO: Set modbus sensor properties */
@@ -140,6 +175,11 @@ static int set_data_items(char *filename)
 	l_strfreev(data_item_group);
 
 	return 0;
+
+error:
+	l_strfreev(data_item_group);
+
+	return -EINVAL;
 }
 
 static int set_thing_name(char *filename)

@@ -45,3 +45,5 @@ struct conf_files {
 #define THING_MODBUS_URL		"ModbusURL"
 #define MODBUS_MIN_SLAVE_ID		0
 #define MODBUS_MAX_SLAVE_ID		255
+
+#define SCHEMA_SENSOR_ID		"SchemaSensorId"
