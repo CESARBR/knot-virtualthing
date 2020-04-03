@@ -47,3 +47,7 @@ struct conf_files {
 #define MODBUS_MAX_SLAVE_ID		255
 
 #define SCHEMA_SENSOR_ID		"SchemaSensorId"
+#define SCHEMA_SENSOR_NAME		"SchemaSensorName"
+#define SCHEMA_VALUE_TYPE		"SchemaValueType"
+#define SCHEMA_UNIT			"SchemaUnit"
+#define SCHEMA_TYPE_ID			"SchemaTypeId"

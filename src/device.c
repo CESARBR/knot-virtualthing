@@ -142,6 +142,48 @@ static int valid_sensor_id(int sensor_id, int n_of_data_items)
 	return 0;
 }
 
+static int set_schema(char *filename, char *group_id, int sensor_id)
+{
+	char *name;
+	int rc;
+	int aux;
+	int device_fd;
+	knot_schema schema_aux;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	name = storage_read_key_string(device_fd, group_id, SCHEMA_SENSOR_NAME);
+	if (name == NULL || !strcmp(name, "") ||
+			strlen(name) >= KNOT_PROTOCOL_DATA_NAME_LEN)
+		return -EINVAL;
+
+	strcpy(schema_aux.name, name);
+	l_free(name);
+
+	rc = storage_read_key_int(device_fd, group_id, SCHEMA_VALUE_TYPE, &aux);
+	if (!rc)
+		return -EINVAL;
+	schema_aux.value_type = aux;
+
+	rc = storage_read_key_int(device_fd, group_id, SCHEMA_UNIT, &aux);
+	if (!rc)
+		return -EINVAL;
+	schema_aux.unit = aux;
+
+	rc = storage_read_key_int(device_fd, group_id, SCHEMA_TYPE_ID, &aux);
+	if (!rc)
+		return -EINVAL;
+	schema_aux.type_id = aux;
+
+	storage_close(device_fd);
+
+	thing.data_item[sensor_id].schema = schema_aux;
+
+	return 0;
+}
+
 static int set_data_items(char *filename)
 {
 	int rc;
@@ -167,7 +209,9 @@ static int set_data_items(char *filename)
 		if (rc < 0)
 			goto error;
 		thing.data_item[sensor_id].sensor_id = sensor_id;
-		/* TODO: Set schema properties */
+		rc = set_schema(filename, data_item_group[i], sensor_id);
+		if (rc < 0)
+			goto error;
 		/* TODO: Set config properties */
 		/* TODO: Set modbus sensor properties */
 	}
