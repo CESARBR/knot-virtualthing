@@ -16,6 +16,7 @@ Build:
 - json-c v0.13.1
 - rabbitmq-c v0.10.0
 - knot-protocol v02.01
+- libmodbus v3.1.4
 
 *Other versions might work, but aren't officially supported*
 
@@ -65,6 +66,16 @@ To install KNoT Protocol, you have to follow the instructions below:
 2. `git checkout KNOT-v02.01` to checkout to version 02.01
 3. Follow instructions on `README` file
 
+### Install libmodbus
+libmodbus is a free software library to send/receive data according to the
+Modbus protocol. To install libmodbus, you must follow the instructions:
+
+1. Grab the release package for version 3.1.4 from libmodus website
+	`https://libmodbus.org/releases/libmodbus-3.1.4.tar.gz`
+2. Extract it with `tar -xzvf libmodbus-3.1.4.tar.gz`
+3. Change into the extracted folder with `cd libmodbus-3.1.4`
+4. Finally, build and install libmodbus with
+	`./configure && make && sudo make install`
 
 ## Building
 

@@ -37,8 +37,13 @@
 
 #include <modbus.h>
 
-#include "options.h"
 #include "modbus-driver.h"
+
+/* Hardcoded serial config */
+#define SERIAL_BAUDRATE 115200
+#define SERIAL_PARITY 'N'
+#define SERIAL_DATA_BIT 8
+#define SERIAL_STOP_BIT 1
 
 static modbus_t *create(const char *url)
 {
@@ -49,7 +54,7 @@ static modbus_t *create(const char *url)
 
 	/*
 	 * FIXME: Parse serial configuration encoded at url
-	 * serial://dev/ttyUSB0:115200,'N',8,1
+	 * serial://dev/ttyUSB0:115200,N,8,1
 	 */
 
 	/* Ignoring "serial:/" */
@@ -70,8 +75,8 @@ static modbus_t *create(const char *url)
 
 	close(fd);
 
-	ctx = modbus_new_rtu(&url[8], serial_opts.baud, serial_opts.parity,
-				serial_opts.data_bit, serial_opts.stop_bit);
+	ctx = modbus_new_rtu(&url[8], SERIAL_BAUDRATE, SERIAL_PARITY,
+				SERIAL_DATA_BIT, SERIAL_STOP_BIT);
 
 	if (!ctx)
 		return NULL;
