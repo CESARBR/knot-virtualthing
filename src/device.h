@@ -18,5 +18,6 @@
  *  Device header file
  */
 
+int device_read_data(int id);
 int device_start(void);
 void device_destroy(void);

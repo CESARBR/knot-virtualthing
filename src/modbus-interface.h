@@ -17,5 +17,6 @@
 extern struct modbus_driver tcp;
 extern struct modbus_driver rtu;
 
+int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out);
 int modbus_start(const char *url);
 void modbus_stop(void);

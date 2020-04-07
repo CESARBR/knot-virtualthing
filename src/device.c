@@ -413,6 +413,13 @@ static int device_set_properties(struct conf_files conf)
 	return 0;
 }
 
+int device_read_data(int id)
+{
+	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
+				thing.data_item[id].modbus_source.bit_offset,
+				&thing.data_item[id].value);
+}
+
 int device_start(void)
 {
 	struct conf_files conf;
