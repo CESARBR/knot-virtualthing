@@ -19,6 +19,7 @@
  */
 
 #include <string.h>
+#include <stdbool.h>
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
 #include <ell/ell.h>
@@ -30,8 +31,17 @@
 #include "device.h"
 #include "modbus-interface.h"
 #include "cloud.h"
+#include "sm.h"
+
+#define CONNECTED_MASK		0xFF
+#define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
 
 struct knot_thing thing;
+
+enum CONN_TYPE {
+	MODBUS = 0x0F,
+	CLOUD = 0xF0
+};
 
 struct modbus_slave {
 	int id;
@@ -455,22 +465,30 @@ static int device_set_properties(struct device_settings *conf_files)
 	return 0;
 }
 
+static void conn_handler(enum CONN_TYPE conn, bool is_up)
+{
+	static uint8_t conn_mask;
+
+	conn_mask = set_conn_bitmask(is_up, conn_mask, conn);
+
+	if(conn_mask != CONNECTED_MASK) {
+		sm_input_event(EVT_NOT_READY, NULL);
+		return;
+	}
+
+	sm_input_event(EVT_READY, NULL);
+}
+
 static void on_cloud_connected(void *user_data)
 {
 	/* TODO: Set read callback function to handle incoming messages */
 
-	/**
-	 * TODO: Call function to inform the state machine the success
-	 * connection with the cloud
-	 */
+	conn_handler(CLOUD, true);
 }
 
 static void on_cloud_disconnected(void *user_data)
 {
-	/**
-	 * TODO: Call function to inform the state machine the disconnection
-	 * with the cloud
-	 */
+	conn_handler(CLOUD, false);
 }
 
 int device_read_data(int id)
