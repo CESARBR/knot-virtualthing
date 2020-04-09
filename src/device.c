@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include "storage.h"
+#include "settings.h"
 #include "conf-parameters.h"
 #include "device.h"
 #include "modbus-interface.h"
@@ -448,13 +449,13 @@ int device_read_data(int id)
 				&thing.data_item[id].value);
 }
 
-int device_start(void)
+int device_start(struct settings *settings)
 {
 	struct conf_files conf;
 
-	conf.credentials = CREDENTIALS_FILENAME;
-	conf.device = DEVICE_FILENAME;
-	conf.rabbit = RABBIT_MQ_FILENAME;
+	conf.credentials = settings->credentials_path;
+	conf.device = settings->device_path;
+	conf.rabbit = settings->rabbitmq_path;
 
 	if (device_set_properties(conf))
 		return -EINVAL;

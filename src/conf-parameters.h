@@ -24,18 +24,12 @@ struct conf_files {
 	char *credentials;
 };
 
-#define CREDENTIALS_FILENAME		"credentials.conf"
-
 #define CREDENTIALS_GROUP		"Credentials"
 #define CREDENTIALS_THING_ID		"ThingId"
 #define CREDENTIALS_THING_TOKEN		"ThingToken"
 
-#define RABBIT_MQ_FILENAME		"rabbitmq.conf"
-
 #define RABBIT_MQ_GROUP			"RabbitMQ"
 #define RABBIT_URL			"Url"
-
-#define DEVICE_FILENAME			"device.conf"
 
 #define DATA_ITEM_GROUP			"DataItem_"
 

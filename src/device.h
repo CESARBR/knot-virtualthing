@@ -19,5 +19,5 @@
  */
 
 int device_read_data(int id);
-int device_start(void);
+int device_start(struct settings *settings);
 void device_destroy(void);
