@@ -29,6 +29,7 @@
 #include <ell/ell.h>
 
 #include "settings.h"
+#include "device.h"
 
 static void signal_handler(uint32_t signo, void *user_data)
 {
@@ -64,6 +65,15 @@ int main(int argc, char *argv[])
 	}
 
 	if (!l_main_init()) {
+		settings_free(settings);
+		return EXIT_FAILURE;
+	}
+
+	err = device_start(settings);
+	if (err) {
+		l_error("Failed to start the device: %s (%d). Exiting...",
+			strerror(-err), -err);
+		l_main_exit();
 		settings_free(settings);
 		return EXIT_FAILURE;
 	}
