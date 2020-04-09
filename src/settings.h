@@ -12,23 +12,14 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
 
 struct settings {
-	const char *config_path;
-	int configfd;
-
-	char *token;
-	char *rabbitmq_url;
-
-	bool help;
+	char *credentials_path;
+	char *device_path;
+	char *rabbitmq_path;
 	bool detach;
-	bool run_as_root;
+	bool help;
 };
 
 struct settings *settings_load(int argc, char *argv[]);

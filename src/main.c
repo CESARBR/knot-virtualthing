@@ -24,7 +24,11 @@
 #endif
 
 #include <signal.h>
+#include <unistd.h>
+#include <errno.h>
 #include <ell/ell.h>
+
+#include "settings.h"
 
 static void signal_handler(uint32_t signo, void *user_data)
 {
@@ -37,14 +41,49 @@ static void signal_handler(uint32_t signo, void *user_data)
 	}
 }
 
+static int detach_daemon(void)
+{
+	if (daemon(0, 0))
+		return -errno;
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	if (!l_main_init())
+	struct settings *settings;
+	int err;
+
+	settings = settings_load(argc, argv);
+	if (settings == NULL)
 		return EXIT_FAILURE;
+
+	if (settings->help) {
+		settings_free(settings);
+		return EXIT_SUCCESS;
+	}
+
+	if (!l_main_init()) {
+		settings_free(settings);
+		return EXIT_FAILURE;
+	}
+
+	if (settings->detach) {
+		err = detach_daemon();
+		if (err) {
+			l_error("Failed to detach. %s (%d). Exiting...",
+				strerror(-err), -err);
+			settings_free(settings);
+			l_main_exit();
+			return EXIT_FAILURE;
+		}
+	}
 
 	l_main_run_with_signal(signal_handler, NULL);
 
 	l_main_exit();
 
-	return 0;
+	settings_free(settings);
+
+	return EXIT_SUCCESS;
 }

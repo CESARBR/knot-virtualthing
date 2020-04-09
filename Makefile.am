@@ -21,7 +21,8 @@ src_thingd_SOURCES = src/main.c \
 			src/storage.c src/storage.h \
 			src/modbus-interface.c src/modbus-interface.h \
 		        src/modbus-tcp.c src/modbus-rtu.c \
-			src/modbus-driver.h
+			src/modbus-driver.h \
+			src/settings.c src/settings.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)
