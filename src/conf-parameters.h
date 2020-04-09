@@ -41,6 +41,7 @@ struct conf_files {
 
 #define THING_GROUP			"KNoTThing"
 #define THING_NAME			"Name"
+#define THING_USER_TOKEN		"UserToken"
 #define THING_MODBUS_SLAVE_ID		"ModbusSlaveId"
 #define THING_MODBUS_URL		"ModbusURL"
 #define MODBUS_MIN_SLAVE_ID		0

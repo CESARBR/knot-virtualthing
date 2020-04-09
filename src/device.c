@@ -52,6 +52,7 @@ struct knot_thing {
 	char token[KNOT_PROTOCOL_TOKEN_LEN];
 	char id[KNOT_PROTOCOL_UUID_LEN];
 	char name[KNOT_PROTOCOL_DEVICE_NAME_LEN];
+	char *user_token;
 
 	struct modbus_slave modbus_slave;
 	char *rabbitmq_url;
@@ -364,6 +365,26 @@ static int set_thing_name(char *filename)
 	return 0;
 }
 
+static int set_thing_user_token(char *filename)
+{
+	int device_fd;
+	char *user_token;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	user_token = storage_read_key_string(device_fd, THING_GROUP,
+					     THING_USER_TOKEN);
+	if (user_token == NULL || !strcmp(user_token, ""))
+		return -EINVAL;
+	thing.user_token = user_token;
+
+	storage_close(device_fd);
+
+	return 0;
+}
+
 static int device_set_properties(struct conf_files conf)
 {
 	int rc;
@@ -373,6 +394,10 @@ static int device_set_properties(struct conf_files conf)
 		return rc;
 
 	rc = set_rabbit_mq_url(conf.rabbit);
+	if (rc == -EINVAL)
+		return rc;
+
+	rc = set_thing_user_token(conf.device);
 	if (rc == -EINVAL)
 		return rc;
 
