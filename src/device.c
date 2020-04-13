@@ -33,6 +33,7 @@
 #include "modbus-interface.h"
 #include "cloud.h"
 #include "sm.h"
+#include "knot-config.h"
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
@@ -732,9 +733,17 @@ static void on_publish_data(void *data, void *user_data)
 
 int device_read_data(int id)
 {
-	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
-				thing.data_item[id].modbus_source.bit_offset,
-				&thing.data_item[id].value);
+	int rc;
+
+	rc = modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
+			      thing.data_item[id].modbus_source.bit_offset,
+			      &thing.data_item[id].value);
+	if (config_check_value(thing.data_item[id].config,
+			       thing.data_item[id].value,
+			       thing.data_item[id].schema.value_type))
+		sm_input_event(EVT_PUB_DATA, &id);
+
+	return rc;
 }
 
 int device_check_schema_change(void)
