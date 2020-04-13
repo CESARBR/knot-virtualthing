@@ -74,17 +74,17 @@ static int set_modbus_slave_properties(char *filename)
 	rc = storage_read_key_int(device_fd, THING_GROUP, THING_MODBUS_SLAVE_ID,
 				  &aux);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 
 	if (aux < MODBUS_MIN_SLAVE_ID || aux > MODBUS_MAX_SLAVE_ID)
-		return -EINVAL;
+		goto error;
 
 	modbus_slave_aux.id = aux;
 
 	modbus_slave_aux.url = storage_read_key_string(device_fd, THING_GROUP,
 						       THING_MODBUS_URL);
 	if (modbus_slave_aux.url == NULL || !strcmp(modbus_slave_aux.url, ""))
-		return -EINVAL;
+		goto error;
 	/* TODO: Check if modbus url is in a valid format */
 
 	storage_close(device_fd);
@@ -92,6 +92,11 @@ static int set_modbus_slave_properties(char *filename)
 	thing.modbus_slave = modbus_slave_aux;
 
 	return 0;
+
+error:
+	storage_close(device_fd);
+
+	return -EINVAL;
 }
 
 static int set_rabbit_mq_url(char *filename)
@@ -105,8 +110,10 @@ static int set_rabbit_mq_url(char *filename)
 
 	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
 						   RABBIT_URL);
-	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, ""))
+	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, "")) {
+		storage_close(rabbitmq_fd);
 		return -EINVAL;
+	}
 	/* TODO: Check if rabbit mq url is in a valid format */
 
 	storage_close(rabbitmq_fd);
@@ -128,8 +135,10 @@ static int get_sensor_id(char *filename, char *group_id)
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_SENSOR_ID,
 				  &sensor_id);
-	if (!rc)
+	if (!rc) {
+		storage_close(device_fd);
 		return -EINVAL;
+	}
 
 	storage_close(device_fd);
 
@@ -159,37 +168,42 @@ static int set_schema(char *filename, char *group_id, int sensor_id)
 	name = storage_read_key_string(device_fd, group_id, SCHEMA_SENSOR_NAME);
 	if (name == NULL || !strcmp(name, "") ||
 			strlen(name) >= KNOT_PROTOCOL_DATA_NAME_LEN)
-		return -EINVAL;
+		goto error;
 
 	strcpy(schema_aux.name, name);
 	l_free(name);
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_VALUE_TYPE, &aux);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 	schema_aux.value_type = aux;
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_UNIT, &aux);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 	schema_aux.unit = aux;
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_TYPE_ID, &aux);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 	schema_aux.type_id = aux;
 
 	rc = knot_schema_is_valid(schema_aux.type_id,
 				  schema_aux.value_type,
 				  schema_aux.unit);
 	if (rc)
-		return -EINVAL;
+		goto error;
 
 	storage_close(device_fd);
 
 	thing.data_item[sensor_id].schema = schema_aux;
 
 	return 0;
+
+error:
+	storage_close(device_fd);
+
+	return -EINVAL;
 }
 
 static int assign_limit(int value_type, int value, knot_value_type *limit)
@@ -258,8 +272,10 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 				  config_aux.time_sec,
 				  &config_aux.lower_limit,
 				  &config_aux.upper_limit);
-	if (rc)
+	if (rc) {
+		storage_close(device_fd);
 		return -EINVAL;
+	}
 
 	storage_close(device_fd);
 
@@ -282,18 +298,23 @@ static int set_modbus_source_properties(char *filename, char *group_id,
 	rc = storage_read_key_int(device_fd, group_id, MODBUS_REG_ADDRESS,
 				  &modbus_source_aux.reg_addr);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 
 	rc = storage_read_key_int(device_fd, group_id, MODBUS_BIT_OFFSET,
 				  &modbus_source_aux.bit_offset);
 	if (!rc)
-		return -EINVAL;
+		goto error;
 
 	storage_close(device_fd);
 
 	thing.data_item[sensor_id].modbus_source = modbus_source_aux;
 
 	return 0;
+
+error:
+	storage_close(device_fd);
+
+	return -EINVAL;
 }
 
 static int set_data_items(char *filename)
@@ -309,8 +330,10 @@ static int set_data_items(char *filename)
 
 	n_of_data_items = get_number_of_data_items(device_fd);
 	thing.data_item = malloc(n_of_data_items*sizeof(struct knot_data_item));
-	if (thing.data_item == NULL)
+	if (thing.data_item == NULL) {
+		storage_close(device_fd);
 		return -EINVAL;
+	}
 
 	data_item_group = get_data_item_groups(device_fd);
 
@@ -355,8 +378,11 @@ static int set_thing_name(char *filename)
 	knot_thing_name = storage_read_key_string(device_fd, THING_GROUP,
 						  THING_NAME);
 	if (knot_thing_name == NULL || !strcmp(knot_thing_name, "") ||
-	    strlen(knot_thing_name) >= KNOT_PROTOCOL_DEVICE_NAME_LEN)
+	    strlen(knot_thing_name) >= KNOT_PROTOCOL_DEVICE_NAME_LEN) {
+		l_free(knot_thing_name);
+		storage_close(device_fd);
 		return -EINVAL;
+	}
 
 	strcpy(thing.name, knot_thing_name);
 	l_free(knot_thing_name);
@@ -377,8 +403,10 @@ static int set_thing_user_token(char *filename)
 
 	user_token = storage_read_key_string(device_fd, THING_GROUP,
 					     THING_USER_TOKEN);
-	if (user_token == NULL || !strcmp(user_token, ""))
+	if (user_token == NULL || !strcmp(user_token, "")) {
+		storage_close(device_fd);
 		return -EINVAL;
+	}
 	thing.user_token = user_token;
 
 	storage_close(device_fd);
