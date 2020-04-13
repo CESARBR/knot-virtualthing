@@ -77,9 +77,32 @@ Modbus protocol. To install libmodbus, you must follow the instructions:
 4. Finally, build and install libmodbus with
 	`./configure && make && sudo make install`
 
+
 ## Building
 
 Run `./bootstrap-configure` and then `make`
+
+
+## Running the VirtualThing
+
+Start the daemon:
+
+`./src/thingd`
+
+To see the daemon options:
+
+`./src/thingd --help`
+
+### How to test locally
+
+Start the daemon with the options to indicate the configuration files path:
+
+`./src/thingd -n -c confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
+
+### How to check for memory leaks and open file descriptors
+
+`valgrind --leak-check=full --track-fds=yes ./src/thingd -n -c `
+`confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
 
 
 ## License
