@@ -51,6 +51,7 @@ union modbus_types {
 
 struct modbus_driver connection_interface;
 modbus_t *modbus_ctx;
+modbus_conn_cb_t conn_changed_cb;
 
 static int parse_url(const char *url)
 {
@@ -95,11 +96,13 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 	if (rc > 0)
 		/* FIXME: Add support for modbus types on a knot_value_type */
 		memcpy(out, &tmp, sizeof(tmp));
+	else
+		conn_changed_cb(false);
 
 	return rc;
 }
 
-int modbus_start(const char *url)
+int modbus_start(const char *url, modbus_conn_cb_t conn_change_cb)
 {
 	switch (parse_url(url)) {
 	case TCP:
@@ -115,6 +118,9 @@ int modbus_start(const char *url)
 	modbus_ctx = connection_interface.create(url);
 	if (!modbus_ctx)
 		return -errno;
+
+	conn_changed_cb = conn_change_cb;
+	conn_changed_cb(true);
 
 	return 0;
 }

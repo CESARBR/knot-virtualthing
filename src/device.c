@@ -680,6 +680,11 @@ static int erase_thing_token(int cred_fd)
 					CREDENTIALS_THING_TOKEN, EMPTY_STRING);
 }
 
+static void on_modbus_conn_changed(bool connected)
+{
+	conn_handler(MODBUS, connected);
+}
+
 int device_read_data(int id)
 {
 	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
@@ -746,7 +751,7 @@ int device_start(struct device_settings *conf_files)
 	if (device_set_properties(conf_files))
 		return -EINVAL;
 
-	err = modbus_start(thing.modbus_slave.url);
+	err = modbus_start(thing.modbus_slave.url, on_modbus_conn_changed);
 	if (err < 0) {
 		knot_thing_destroy(&thing);
 		return err;
