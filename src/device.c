@@ -73,7 +73,7 @@ static int set_modbus_slave_properties(char *filename)
 
 	rc = storage_read_key_int(device_fd, THING_GROUP, THING_MODBUS_SLAVE_ID,
 				  &aux);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 
 	if (aux < MODBUS_MIN_SLAVE_ID || aux > MODBUS_MAX_SLAVE_ID)
@@ -135,7 +135,7 @@ static int get_sensor_id(char *filename, char *group_id)
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_SENSOR_ID,
 				  &sensor_id);
-	if (!rc) {
+	if (rc <= 0) {
 		storage_close(device_fd);
 		return -EINVAL;
 	}
@@ -174,17 +174,17 @@ static int set_schema(char *filename, char *group_id, int sensor_id)
 	l_free(name);
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_VALUE_TYPE, &aux);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 	schema_aux.value_type = aux;
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_UNIT, &aux);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 	schema_aux.unit = aux;
 
 	rc = storage_read_key_int(device_fd, group_id, SCHEMA_TYPE_ID, &aux);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 	schema_aux.type_id = aux;
 
@@ -297,12 +297,12 @@ static int set_modbus_source_properties(char *filename, char *group_id,
 
 	rc = storage_read_key_int(device_fd, group_id, MODBUS_REG_ADDRESS,
 				  &modbus_source_aux.reg_addr);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 
 	rc = storage_read_key_int(device_fd, group_id, MODBUS_BIT_OFFSET,
 				  &modbus_source_aux.bit_offset);
-	if (!rc)
+	if (rc <= 0)
 		goto error;
 
 	storage_close(device_fd);
@@ -419,23 +419,23 @@ static int device_set_properties(struct conf_files conf)
 	int rc;
 
 	rc = set_thing_name(conf.device);
-	if (rc == -EINVAL)
+	if (rc < 0)
 		return rc;
 
 	rc = set_rabbit_mq_url(conf.rabbit);
-	if (rc == -EINVAL)
+	if (rc < 0)
 		return rc;
 
 	rc = set_thing_user_token(conf.device);
-	if (rc == -EINVAL)
+	if (rc < 0)
 		return rc;
 
 	rc = set_modbus_slave_properties(conf.device);
-	if (rc == -EINVAL)
+	if (rc < 0)
 		return rc;
 
 	rc = set_data_items(conf.device);
-	if (rc == -EINVAL)
+	if (rc < 0)
 		return rc;
 
 	return 0;
