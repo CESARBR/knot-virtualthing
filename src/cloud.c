@@ -58,7 +58,6 @@
 #define MQ_EVENT_DEVICE_UNREGISTERED "device.unregistered"
 #define MQ_EVENT_DEVICE_AUTH "device.auth"
 #define MQ_EVENT_SCHEMA_UPDATED "schema.updated"
-#define MQ_EVENT_DEVICE_LIST "device.list"
 
  /* Northbound traffic (control, measurements) */
 #define MQ_CMD_DATA_PUBLISH "data.publish"
@@ -66,31 +65,14 @@
 #define MQ_CMD_DEVICE_UNREGISTER "device.unregister"
 #define MQ_CMD_DEVICE_AUTH "device.cmd.auth"
 #define MQ_CMD_SCHEMA_UPDATE "schema.update"
-#define MQ_CMD_DEVICE_LIST "device.cmd.list"
 
 cloud_cb_t cloud_cb;
 char *user_auth_token;
 amqp_table_entry_t headers[1];
 
-static void cloud_device_free(void *data)
-{
-	struct cloud_device *mydevice = data;
-
-	if (unlikely(!mydevice))
-		return;
-
-	l_queue_destroy(mydevice->schema, l_free);
-	l_free(mydevice->id);
-	l_free(mydevice->uuid);
-	l_free(mydevice->name);
-	l_free(mydevice);
-}
-
 static void cloud_msg_destroy(struct cloud_msg *msg)
 {
-	if (msg->type == LIST_MSG)
-		l_queue_destroy(msg->list, cloud_device_free);
-	else if (msg->type == UPDATE_MSG || msg->type == REQUEST_MSG)
+	if (msg->type == UPDATE_MSG || msg->type == REQUEST_MSG)
 		l_queue_destroy(msg->list, l_free);
 
 	l_free(msg);
@@ -110,43 +92,7 @@ static int map_routing_key_to_msg_type(const char *routing_key)
 		return AUTH_MSG;
 	else if (!strcmp(routing_key, MQ_EVENT_SCHEMA_UPDATED))
 		return SCHEMA_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_DEVICE_LIST))
-		return LIST_MSG;
 	return -1;
-}
-
-static void *cloud_device_array_foreach(json_object *array_item)
-{
-	json_object *jobjkey;
-	struct cloud_device *mydevice;
-	struct l_queue *schema;
-	const char *id, *name;
-
-	/* Getting 'Id': Mandatory field for registered device */
-	id = parser_get_key_str_from_json_obj(array_item, "id");
-	if (!id)
-		return NULL;
-
-	/* Getting 'schema': Mandatory field for registered device */
-	if (!json_object_object_get_ex(array_item, "schema", &jobjkey))
-		return NULL;
-
-	schema = parser_schema_to_list(json_object_to_json_string(jobjkey));
-	if (!schema)
-		return NULL;
-
-	/* Getting 'Name' */
-	name = parser_get_key_str_from_json_obj(array_item, "name");
-	if (!name)
-		return NULL;
-
-	mydevice = l_new(struct cloud_device, 1);
-	mydevice->id = l_strdup(id);
-	mydevice->name = l_strdup(name);
-	mydevice->uuid = l_strdup(id);
-	mydevice->schema = schema;
-
-	return mydevice;
 }
 
 static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
@@ -226,17 +172,6 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 		msg->device_id = parser_get_key_str_from_json_obj(jso, "id");
 		if (!msg->device_id ||
 				!parser_is_key_str_or_null(jso, "error")) {
-			l_error("Malformed JSON message");
-			goto err;
-		}
-
-		msg->error = parser_get_key_str_from_json_obj(jso, "error");
-		break;
-	case LIST_MSG:
-		msg->device_id = NULL;
-		msg->list = parser_queue_from_json_array(jso,
-						cloud_device_array_foreach);
-		if (!msg->list || !parser_is_key_str_or_null(jso, "error")) {
 			l_error("Malformed JSON message");
 			goto err;
 		}
@@ -476,48 +411,6 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 }
 
 /**
- * cloud_list_devices:
- *
- * Requests cloud to list the devices from the gateway.
- * The confirmation that the cloud received the message comes from a callback
- * set in function cloud_set_read_handler with message type LIST_MSG.
- *
- * Returns: 0 if successful and a KNoT error otherwise.
- */
-int cloud_list_devices(void)
-{
-	amqp_bytes_t queue_cloud;
-	json_object *jobj_empty;
-	const char *json_str;
-	int result;
-
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
-	if (!queue_cloud.bytes) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
-	jobj_empty = json_object_new_object();
-	json_str = json_object_to_json_string(jobj_empty);
-
-	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
-
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
-					       MQ_CMD_DEVICE_LIST,
-					       headers, 1,
-					       0, // Set no expiration time
-					       json_str);
-	if (result < 0)
-		result = KNOT_ERR_CLOUD_FAILURE;
-
-	json_object_put(jobj_empty);
-	amqp_bytes_free(queue_cloud);
-
-	return result;
-}
-
-/**
  * cloud_publish_data:
  * @id: device id
  * @sensor_id: schema sensor id
@@ -586,7 +479,6 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 		MQ_EVENT_DEVICE_UNREGISTERED,
 		MQ_EVENT_DEVICE_AUTH,
 		MQ_EVENT_SCHEMA_UPDATED,
-		MQ_EVENT_DEVICE_LIST,
 		NULL
 	};
 	amqp_bytes_t queue_fog;

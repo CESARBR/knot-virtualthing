@@ -28,22 +28,12 @@ struct cloud_msg {
 		REGISTER_MSG,
 		UNREGISTER_MSG,
 		AUTH_MSG,
-		SCHEMA_MSG,
-		LIST_MSG
+		SCHEMA_MSG
 	} type;
 	union {
 		const char *token; // used when type is REGISTER
 		struct l_queue *list; // used when type is UPDATE/REQUEST/LIST
 	};
-};
-
-struct cloud_device {
-	char *id;
-	char *uuid;
-	char *name;
-	bool online;
-	struct l_queue *schema;
-	struct l_timeout *unreg_timeout;
 };
 
 typedef bool (*cloud_cb_t) (const struct cloud_msg *msg, void *user_data);
@@ -61,4 +51,3 @@ int cloud_register_device(const char *id, const char *name);
 int cloud_unregister_device(const char *id);
 int cloud_auth_device(const char *id, const char *token);
 int cloud_update_schema(const char *id, struct l_queue *schema_list);
-int cloud_list_devices(void);
