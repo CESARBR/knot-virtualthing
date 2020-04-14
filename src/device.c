@@ -29,6 +29,7 @@
 #include "conf-parameters.h"
 #include "device.h"
 #include "modbus-interface.h"
+#include "cloud.h"
 
 struct knot_thing thing;
 
@@ -442,6 +443,24 @@ static int device_set_properties(struct conf_files conf)
 	return 0;
 }
 
+static void on_cloud_connected(void *user_data)
+{
+	/* TODO: Set read callback function to handle incoming messages */
+
+	/**
+	 * TODO: Call function to inform the state machine the success
+	 * connection with the cloud
+	 */
+}
+
+static void on_cloud_disconnected(void *user_data)
+{
+	/**
+	 * TODO: Call function to inform the state machine the disconnection
+	 * with the cloud
+	 */
+}
+
 int device_read_data(int id)
 {
 	return modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
@@ -452,6 +471,7 @@ int device_read_data(int id)
 int device_start(struct settings *settings)
 {
 	struct conf_files conf;
+	int err;
 
 	conf.credentials = settings->credentials_path;
 	conf.device = settings->device_path;
@@ -461,6 +481,11 @@ int device_start(struct settings *settings)
 		return -EINVAL;
 
 	modbus_start(thing.modbus_slave.url);
+
+	err = cloud_start(thing.rabbitmq_url, thing.user_token,
+			  on_cloud_connected, on_cloud_disconnected, NULL);
+	if (err < 0)
+		return err;
 
 	return 0;
 }
