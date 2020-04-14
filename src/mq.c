@@ -45,7 +45,8 @@ struct mq_context {
 	struct l_io *amqp_io;
 	struct l_timeout *conn_retry_timeout;
 	mq_connected_cb_t connected_cb;
-	void *connected_data;
+	mq_disconnected_cb_t disconnected_cb;
+	void *connection_data;
 	mq_read_cb_t read_cb;
 };
 
@@ -183,6 +184,7 @@ static void on_disconnect(struct l_io *io, void *user_data)
 	l_io_destroy(mq_ctx.amqp_io);
 	mq_ctx.conn = NULL;
 	mq_ctx.amqp_io = NULL;
+	mq_ctx.disconnected_cb(mq_ctx.connection_data);
 
 	l_timeout_modify_ms(mq_ctx.conn_retry_timeout,
 			    MQ_CONNECTION_RETRY_TIMEOUT_MS);
@@ -252,7 +254,7 @@ static void start_connection(struct l_timeout *ltimeout, void *user_data)
 		goto io_destroy;
 	}
 
-	mq_ctx.connected_cb(mq_ctx.connected_data);
+	mq_ctx.connected_cb(mq_ctx.connection_data);
 	goto done;
 
 io_destroy:
@@ -491,10 +493,12 @@ int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data)
 	return 0;
 }
 
-int mq_start(char *url, mq_connected_cb_t connected_cb, void *user_data)
+int mq_start(char *url, mq_connected_cb_t connected_cb,
+	     mq_disconnected_cb_t disconnected_cb, void *user_data)
 {
 	mq_ctx.connected_cb = connected_cb;
-	mq_ctx.connected_data = user_data;
+	mq_ctx.disconnected_cb = disconnected_cb;
+	mq_ctx.connection_data = user_data;
 
 	mq_ctx.conn_retry_timeout = l_timeout_create_ms(1, // start in oneshot
 							start_connection,

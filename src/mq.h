@@ -23,6 +23,7 @@ typedef bool (*mq_read_cb_t) (const char *exchange,
 				const char *body,
 				void *user_data);
 typedef void (*mq_connected_cb_t) (void *user_data);
+typedef void (*mq_disconnected_cb_t) (void *user_data);
 
 int mq_bind_queue(amqp_bytes_t queue,
 				const char *exchange,
@@ -35,5 +36,6 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue, const char *exchange,
 				uint64_t expiration,
 				const char *body);
 int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data);
-int mq_start(char *url, mq_connected_cb_t connected_cb, void *user_data);
+int mq_start(char *url, mq_connected_cb_t connected_cb,
+	     mq_disconnected_cb_t disconnected_cb, void *user_data);
 void mq_stop(void);

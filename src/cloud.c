@@ -512,14 +512,14 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 }
 
 int cloud_start(char *url, char *user_token, cloud_connected_cb_t connected_cb,
-		void *user_data)
+		cloud_disconnected_cb_t disconnected_cb, void *user_data)
 {
 	user_auth_token = l_strdup(user_token);
 	headers[0].key = amqp_cstring_bytes(MQ_AUTHORIZATION_HEADER);
 	headers[0].value.kind = AMQP_FIELD_KIND_UTF8;
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_token);
 
-	return mq_start(url, connected_cb, user_data);
+	return mq_start(url, connected_cb, disconnected_cb, user_data);
 }
 
 void cloud_stop(void)
