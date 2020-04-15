@@ -479,9 +479,19 @@ static void conn_handler(enum CONN_TYPE conn, bool is_up)
 	sm_input_event(EVT_READY, NULL);
 }
 
+static bool on_cloud_receive(const struct cloud_msg *msg, void *user_data)
+{
+	//TODO: Implement logic to handle KNoT messages
+	return true;
+}
+
 static void on_cloud_connected(void *user_data)
 {
-	/* TODO: Set read callback function to handle incoming messages */
+	int err;
+
+	err = cloud_set_read_handler(on_cloud_receive, NULL);
+	if (err < 0)
+		return;
 
 	conn_handler(CLOUD, true);
 }
