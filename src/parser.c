@@ -377,6 +377,30 @@ static char *knot_value_as_raw(const knot_value_type *data,
 	return encoded;
 }
 
+/*
+ * TODO: consider moving this to knot-protocol
+ */
+static int64_t knot_value_as_int64(const knot_value_type *data)
+{
+	return data->val_i64;
+}
+
+/*
+ * TODO: consider moving this to knot-protocol
+ */
+static uint32_t knot_value_as_uint(const knot_value_type *data)
+{
+	return data->val_u;
+}
+
+/*
+ * TODO: consider moving this to knot-protocol
+ */
+static uint64_t knot_value_as_uint64(const knot_value_type *data)
+{
+	return data->val_u64;
+}
+
 json_object *parser_data_create_object(const char *device_id, uint8_t sensor_id,
 				       uint8_t value_type,
 				       const knot_value_type *value,
@@ -418,6 +442,18 @@ json_object *parser_data_create_object(const char *device_id, uint8_t sensor_id,
 
 		json_object_object_add(data, "value",
 			json_object_new_string_len(encoded, encoded_len));
+		break;
+	case KNOT_VALUE_TYPE_INT64:
+		json_object_object_add(data, "value",
+			json_object_new_int64(knot_value_as_int64(value)));
+		break;
+	case KNOT_VALUE_TYPE_UINT:
+		json_object_object_add(data, "value",
+			json_object_new_uint64(knot_value_as_uint(value)));
+		break;
+	case KNOT_VALUE_TYPE_UINT64:
+		json_object_object_add(data, "value",
+			json_object_new_uint64(knot_value_as_uint64(value)));
 		break;
 	default:
 		goto fail;

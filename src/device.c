@@ -223,6 +223,15 @@ static int assign_limit(int value_type, int value, knot_value_type *limit)
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw numbers */
 		break;
+	case KNOT_VALUE_TYPE_INT64:
+		/* Storage doesn't give support to int64 values */
+		break;
+	case KNOT_VALUE_TYPE_UINT:
+		/* Storage doesn't give support to uint values */
+		break;
+	case KNOT_VALUE_TYPE_UINT64:
+		/* Storage doesn't give support to uint64 values */
+		break;
 	default:
 		return -EINVAL;
 	}
