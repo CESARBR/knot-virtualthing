@@ -105,6 +105,35 @@ Start the daemon with the options to indicate the configuration files path:
 `confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
 
 
+## How to run on Docker
+
+You can run the KNoT Virtual Thing on Docker using the configuration files
+located under the confs/ folder.
+
+### Building
+
+To build:
+
+`docker build -t thingd .`
+
+You can also use the options --build-arg ENV=value to install other dependencies
+versions.
+
+The build arguments available are:
+
+- LIBELL_VERSION (Default: v0.18)
+- JSONC_VERSION (Default: 7fb8d56)
+- RABBITMQC_VERSION (Default: v0.10.0)
+- KNOT_PROTOCOL_VERSION (Default: 891d01d)
+- LIBMODBUS_VERSION (Default: v3.1.4)
+
+### Running
+
+To run the container:
+
+`docker run -it thingd`
+
+
 ## License
 
 All KNoT VirtualThing files are under LGPL v2.1 license, you can check `COPYING`
