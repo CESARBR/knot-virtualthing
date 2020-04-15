@@ -15,7 +15,7 @@ Build:
 - ell v0.18
 - json-c 7fb8d56
 - rabbitmq-c v0.10.0
-- knot-protocol v02.01
+- knot-protocol 891d01d
 - libmodbus v3.1.4
 
 *Other versions might work, but aren't officially supported*
@@ -63,7 +63,7 @@ KNoT Gateway and KNoT Apps.
 To install KNoT Protocol, you have to follow the instructions below:
 
 1. `git clone git@github.com:CESARBR/knot-protocol-source.git`
-2. `git checkout KNOT-v02.01` to checkout to version 02.01
+2. `git checkout 891d01d ` to checkout to a hash on devel branch.
 3. Follow instructions on `README` file
 
 ### Install libmodbus
