@@ -13,7 +13,7 @@ Build:
 - automake v1.16.1
 - pkg-config v0.29.1
 - ell v0.18
-- json-c v0.13.1
+- json-c 7fb8d56
 - rabbitmq-c v0.10.0
 - knot-protocol v02.01
 - libmodbus v3.1.4
@@ -40,8 +40,8 @@ To install libell, you have to follow the instructions below:
 json-c provides helpers functions to manipulate JSON datas.
 To install json-c lib, you have to follow the instructions below:
 
-1. `git clone https://github.com/json-c/json-c/releases/tag/json-c-0.13.1-20180305`
-2. `git checkout json-c-0.13.1-20180305` to checkout to version 0.13.1
+1. `git clone https://github.com/json-c/json-c.git && cd json-c`
+2. `git checkout 7fb8d56 && cd ..`
 3. Follow instructions on `README.md` file
 
 ### Install rabbitmq-c
