@@ -50,6 +50,16 @@ int storage_write_key_int(int fd, const char *group,
 			  const char *key, int value);
 int storage_read_key_int(int fd, const char *group,
 			  const char *key, int *value);
+int storage_read_key_float(int fd, const char *group, const char *key,
+			   float *value);
+int storage_read_key_bool(int fd, const char *group, const char *key,
+			  bool *value);
+int storage_read_key_int64(int fd, const char *group, const char *key,
+			   int64_t *value);
+int storage_read_key_uint(int fd, const char *group, const char *key,
+			  uint32_t *value);
+int storage_read_key_uint64(int fd, const char *group, const char *key,
+			    uint64_t *value);
 bool storage_has_unit(int fd, const char *group, const char *key);
 int get_number_of_data_items(int fd);
 char **get_data_item_groups(int fd);
