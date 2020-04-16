@@ -219,30 +219,78 @@ error:
 	return -EINVAL;
 }
 
-static int assign_limit(int value_type, int value, knot_value_type *limit)
+static int get_lower_limit(int fd, char *group_id, int value_type,
+			   knot_value_type *temp)
+{
+	int rc;
+
+	switch (value_type) {
+	case KNOT_VALUE_TYPE_INT:
+		rc = storage_read_key_int(fd, group_id, CONFIG_LOWER_THRESHOLD,
+					  &temp->val_i);
+		break;
+	/* TODO: Read values of the following value types from storage */
+	case KNOT_VALUE_TYPE_FLOAT:
+	case KNOT_VALUE_TYPE_BOOL:
+	case KNOT_VALUE_TYPE_INT64:
+	case KNOT_VALUE_TYPE_UINT:
+	case KNOT_VALUE_TYPE_UINT64:
+	case KNOT_VALUE_TYPE_RAW:
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+static int get_upper_limit(int fd, char *group_id, int value_type,
+			   knot_value_type *temp)
+{
+	int rc;
+
+	switch (value_type) {
+	case KNOT_VALUE_TYPE_INT:
+		rc = storage_read_key_int(fd, group_id, CONFIG_UPPER_THRESHOLD,
+					  &temp->val_i);
+		break;
+	/* TODO: Read values of the following value types from storage */
+	case KNOT_VALUE_TYPE_FLOAT:
+	case KNOT_VALUE_TYPE_BOOL:
+	case KNOT_VALUE_TYPE_INT64:
+	case KNOT_VALUE_TYPE_UINT:
+	case KNOT_VALUE_TYPE_UINT64:
+	case KNOT_VALUE_TYPE_RAW:
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+static int assign_limit(int value_type, knot_value_type value,
+			knot_value_type *limit)
 {
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
-		limit->val_i = value;
+		limit->val_i = value.val_i;
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
-		/* Storage doesn't give support to float numbers */
+		limit->val_f = value.val_f;
 		break;
 	case KNOT_VALUE_TYPE_BOOL:
-		limit->val_b = value;
+		limit->val_b = value.val_b;
+		break;
+	case KNOT_VALUE_TYPE_INT64:
+		limit->val_i64 = value.val_i64;
+		break;
+	case KNOT_VALUE_TYPE_UINT:
+		limit->val_u = value.val_u;
+		break;
+	case KNOT_VALUE_TYPE_UINT64:
+		limit->val_u64 = value.val_u64;
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw numbers */
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		/* Storage doesn't give support to int64 values */
-		break;
-	case KNOT_VALUE_TYPE_UINT:
-		/* Storage doesn't give support to uint values */
-		break;
-	case KNOT_VALUE_TYPE_UINT64:
-		/* Storage doesn't give support to uint64 values */
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -255,6 +303,8 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 	int rc;
 	int aux;
 	int device_fd;
+	int value_type_aux;
+	knot_value_type tmp_value_type;
 	knot_config config_aux;
 
 	device_fd = storage_open(filename);
@@ -263,19 +313,23 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 
 	config_aux.event_flags = 0;
 
-	rc = storage_read_key_int(device_fd, group_id, CONFIG_LOWER_THRESHOLD,
-				  &aux);
+	value_type_aux = thing.data_item[sensor_id].schema.value_type;
+
+	rc = get_lower_limit(device_fd, group_id, value_type_aux,
+			     &tmp_value_type);
+
 	if (rc > 0) {
 		config_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
-		assign_limit(thing.data_item[sensor_id].schema.value_type, aux,
+		assign_limit(value_type_aux, tmp_value_type,
 			     &config_aux.lower_limit);
 	}
 
-	rc = storage_read_key_int(device_fd, group_id, CONFIG_UPPER_THRESHOLD,
-				  &aux);
+	rc = get_upper_limit(device_fd, group_id, value_type_aux,
+			     &tmp_value_type);
+
 	if (rc > 0) {
 		config_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
-		assign_limit(thing.data_item[sensor_id].schema.value_type, aux,
+		assign_limit(value_type_aux, tmp_value_type,
 			     &config_aux.upper_limit);
 	}
 
