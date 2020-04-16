@@ -24,6 +24,7 @@ struct device_settings {
 	char *rabbitmq_path;
 };
 
+int device_start_config(void);
 int device_read_data(int id);
 int device_send_schema();
 int device_has_credentials(void);

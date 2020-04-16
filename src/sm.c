@@ -260,7 +260,12 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 
 static void enter_online(void)
 {
+	int err;
+
 	device_publish_data_all();
+	err = device_start_config();
+	if (err < 0)
+		l_error("Couldn't start config");
 }
 
 /* UNREGISTER */

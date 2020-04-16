@@ -73,6 +73,7 @@ struct knot_thing {
 	struct modbus_slave modbus_slave;
 	char *rabbitmq_url;
 	char *credentials_path;
+
 	int data_item_count;
 	struct knot_data_item *data_item;
 };
@@ -731,6 +732,26 @@ static void on_publish_data(void *data, void *user_data)
 			*sensor_id);
 }
 
+static void on_config_timeout(int id)
+{
+	sm_input_event(EVT_PUB_DATA, &id);
+}
+
+int device_start_config(void)
+{
+	int rc;
+	int i;
+
+	rc = config_start(on_config_timeout);
+	if (rc < 0)
+		return rc;
+
+	for (i = 0; i < thing.data_item_count; i++)
+		config_add_sensor(i, thing.data_item[i].config);
+
+	return 0;
+}
+
 int device_read_data(int id)
 {
 	int rc;
@@ -740,7 +761,7 @@ int device_read_data(int id)
 			      &thing.data_item[id].value);
 	if (config_check_value(thing.data_item[id].config,
 			       thing.data_item[id].value,
-			       thing.data_item[id].schema.value_type))
+			       thing.data_item[id].schema.value_type) > 0)
 		sm_input_event(EVT_PUB_DATA, &id);
 
 	return rc;
@@ -898,6 +919,8 @@ int device_start(struct device_settings *conf_files)
 
 void device_destroy(void)
 {
+	config_stop();
+
 	cloud_stop();
 	modbus_stop();
 

@@ -19,12 +19,19 @@
 #include <errno.h>
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
+#include <ell/util.h>
+#include <ell/queue.h>
+#include <ell/timeout.h>
 
 #include "knot-config.h"
 
+#define is_timeout_flag_set(a) ((a) & KNOT_EVT_FLAG_TIME)
 #define is_change_flag_set(a) ((a) & KNOT_EVT_FLAG_CHANGE)
 #define is_lower_flag_set(a) ((a) & KNOT_EVT_FLAG_LOWER_THRESHOLD)
 #define is_upper_flag_set(a) ((a) & KNOT_EVT_FLAG_UPPER_THRESHOLD)
+
+struct l_queue *sensor_timeouts;
+timeout_cb_t timeout_cb;
 
 static int compare_int(int val1, int val2)
 {
@@ -108,6 +115,21 @@ static bool is_higher_than_threshold(knot_value_type value,
 	return compare_knot_value(value, threshold, value_type) > 0;
 }
 
+static void on_sensor_to(struct l_timeout *to, void *data)
+{
+	int id = *(int *) data;
+
+	timeout_cb(id);
+	l_timeout_modify(to, 0);
+}
+
+static void timeout_destroy(void *data)
+{
+	struct l_timeout *to = data;
+
+	l_timeout_remove(to);
+}
+
 int config_check_value(knot_config config, knot_value_type value,
 		       int value_type)
 {
@@ -135,4 +157,34 @@ int config_check_value(knot_config config, knot_value_type value,
 	last_value = value;
 
 	return rc;
+}
+
+void config_add_sensor(int id, knot_config config)
+{
+	int *data = l_new(int, 1);
+	*data = id;
+
+	if (is_timeout_flag_set(config.event_flags)) {
+		struct l_timeout *to = l_timeout_create(config.time_sec,
+				on_sensor_to, data, l_free);
+		l_queue_push_head(sensor_timeouts, to);
+	}
+}
+
+int config_start(timeout_cb_t cb)
+{
+	sensor_timeouts = l_queue_new();
+	if (!sensor_timeouts)
+		return -ENOMSG;
+	timeout_cb = cb;
+
+	return 0;
+}
+
+void config_stop(void)
+{
+	if (sensor_timeouts) {
+		l_queue_destroy(sensor_timeouts, timeout_destroy);
+		sensor_timeouts = NULL;
+	}
 }
