@@ -481,7 +481,41 @@ static void conn_handler(enum CONN_TYPE conn, bool is_up)
 
 static bool on_cloud_receive(const struct cloud_msg *msg, void *user_data)
 {
-	//TODO: Implement logic to handle KNoT messages
+	switch (msg->type) {
+	case UPDATE_MSG:
+		if (!msg->error)
+			sm_input_event(EVT_DATA_UPDT, msg->list);
+		break;
+	case REQUEST_MSG:
+		if (!msg->error)
+			sm_input_event(EVT_PUB_DATA, msg->list);
+		break;
+	case REGISTER_MSG:
+		if (msg->error)
+			sm_input_event(EVT_REG_NOT_OK, NULL);
+		else
+			sm_input_event(EVT_REG_OK, (char *) msg->token);
+		break;
+	case UNREGISTER_MSG:
+		if (!msg->error)
+			sm_input_event(EVT_UNREG_REQ, NULL);
+		break;
+	case AUTH_MSG:
+		if (msg->error)
+			sm_input_event(EVT_AUTH_NOT_OK, NULL);
+		else
+			sm_input_event(EVT_AUTH_OK, NULL);
+		break;
+	case SCHEMA_MSG:
+		if (msg->error)
+			sm_input_event(EVT_SCH_NOT_OK, NULL);
+		else
+			sm_input_event(EVT_SCH_OK, NULL);
+		break;
+	default:
+		return true;
+	}
+
 	return true;
 }
 
