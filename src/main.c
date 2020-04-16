@@ -50,9 +50,26 @@ static int detach_daemon(void)
 	return 0;
 }
 
+static void set_device_settings(struct device_settings *conf_files,
+				struct settings *settings)
+{
+	conf_files->credentials_path = l_strdup(settings->credentials_path);
+	conf_files->device_path = l_strdup(settings->device_path);
+	conf_files->rabbitmq_path = l_strdup(settings->rabbitmq_path);
+}
+
+static void free_device_settings(struct device_settings *conf_files)
+{
+	l_free(conf_files->credentials_path);
+	l_free(conf_files->device_path);
+	l_free(conf_files->rabbitmq_path);
+	l_free(conf_files);
+}
+
 int main(int argc, char *argv[])
 {
 	struct settings *settings;
+	struct device_settings *conf_files;
 	int err;
 
 	settings = settings_load(argc, argv);
@@ -69,14 +86,19 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	err = device_start(settings);
+	conf_files = l_new(struct device_settings, 1);
+	set_device_settings(conf_files, settings);
+
+	err = device_start(conf_files);
 	if (err) {
 		l_error("Failed to start the device: %s (%d). Exiting...",
 			strerror(-err), -err);
 		l_main_exit();
 		settings_free(settings);
+		free_device_settings(conf_files);
 		return EXIT_FAILURE;
 	}
+	free_device_settings(conf_files);
 
 	if (settings->detach) {
 		err = detach_daemon();
@@ -89,11 +111,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	settings_free(settings);
+
 	l_main_run_with_signal(signal_handler, NULL);
 
 	l_main_exit();
-
-	settings_free(settings);
 
 	return EXIT_SUCCESS;
 }

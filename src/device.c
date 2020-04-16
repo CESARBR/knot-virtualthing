@@ -59,6 +59,7 @@ struct knot_thing {
 
 	struct modbus_slave modbus_slave;
 	char *rabbitmq_url;
+	char *credentials_path;
 	struct knot_data_item *data_item;
 };
 
@@ -425,29 +426,31 @@ static int set_thing_user_token(char *filename)
 	return 0;
 }
 
-static int device_set_properties(struct conf_files conf)
+static int device_set_properties(struct device_settings *conf_files)
 {
 	int rc;
 
-	rc = set_thing_name(conf.device);
+	rc = set_thing_name(conf_files->device_path);
 	if (rc < 0)
 		return rc;
 
-	rc = set_rabbit_mq_url(conf.rabbit);
+	rc = set_rabbit_mq_url(conf_files->rabbitmq_path);
 	if (rc < 0)
 		return rc;
 
-	rc = set_thing_user_token(conf.device);
+	rc = set_thing_user_token(conf_files->device_path);
 	if (rc < 0)
 		return rc;
 
-	rc = set_modbus_slave_properties(conf.device);
+	rc = set_modbus_slave_properties(conf_files->device_path);
 	if (rc < 0)
 		return rc;
 
-	rc = set_data_items(conf.device);
+	rc = set_data_items(conf_files->device_path);
 	if (rc < 0)
 		return rc;
+
+	thing.credentials_path = l_strdup(conf_files->credentials_path);
 
 	return 0;
 }
@@ -477,16 +480,11 @@ int device_read_data(int id)
 				&thing.data_item[id].value);
 }
 
-int device_start(struct settings *settings)
+int device_start(struct device_settings *conf_files)
 {
-	struct conf_files conf;
 	int err;
 
-	conf.credentials = settings->credentials_path;
-	conf.device = settings->device_path;
-	conf.rabbit = settings->rabbitmq_path;
-
-	if (device_set_properties(conf))
+	if (device_set_properties(conf_files))
 		return -EINVAL;
 
 	modbus_start(thing.modbus_slave.url);
@@ -505,6 +503,7 @@ void device_destroy(void)
 
 	l_free(thing.rabbitmq_url);
 	l_free(thing.modbus_slave.url);
+	l_free(thing.credentials_path);
 
 	free(thing.data_item);
 }

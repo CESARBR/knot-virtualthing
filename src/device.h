@@ -18,6 +18,12 @@
  *  Device header file
  */
 
+struct device_settings {
+	char *credentials_path;
+	char *device_path;
+	char *rabbitmq_path;
+};
+
 int device_read_data(int id);
-int device_start(struct settings *settings);
+int device_start(struct device_settings *conf_files);
 void device_destroy(void);

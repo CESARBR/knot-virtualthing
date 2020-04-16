@@ -18,12 +18,6 @@
  *  Configuration files parameters header file
  */
 
-struct conf_files {
-	char *device;
-	char *rabbit;
-	char *credentials;
-};
-
 #define CREDENTIALS_GROUP		"Credentials"
 #define CREDENTIALS_THING_ID		"ThingId"
 #define CREDENTIALS_THING_TOKEN		"ThingToken"
