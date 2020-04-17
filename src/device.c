@@ -109,6 +109,7 @@ static int set_modbus_slave_properties(char *filename)
 	return 0;
 
 error:
+	l_free(modbus_slave_aux.url);
 	storage_close(device_fd);
 
 	return -EINVAL;
