@@ -535,6 +535,32 @@ static int set_thing_user_token(char *filename)
 	return 0;
 }
 
+static int set_thing_credentials(char *filename)
+{
+	int cred_fd;
+	char *thingid;
+	char *thingtoken;
+
+	cred_fd = storage_open(filename);
+	if (cred_fd < 0)
+		return cred_fd;
+
+	thingid = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
+					  CREDENTIALS_THING_ID);
+
+	thingtoken = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
+					     CREDENTIALS_THING_TOKEN);
+
+	strncpy(thing.id, thingid, KNOT_PROTOCOL_UUID_LEN - 1);
+	strncpy(thing.token, thingtoken, KNOT_PROTOCOL_TOKEN_LEN - 1);
+	l_free(thingid);
+	l_free(thingtoken);
+
+	storage_close(cred_fd);
+
+	return 0;
+}
+
 static int device_set_properties(struct device_settings *conf_files)
 {
 	int rc;
@@ -556,6 +582,10 @@ static int device_set_properties(struct device_settings *conf_files)
 		return rc;
 
 	rc = set_data_items(conf_files->device_path);
+	if (rc < 0)
+		return rc;
+
+	rc = set_thing_credentials(conf_files->credentials_path);
 	if (rc < 0)
 		return rc;
 
