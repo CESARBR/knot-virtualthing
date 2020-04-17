@@ -127,6 +127,7 @@ static int set_rabbit_mq_url(char *filename)
 	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
 						   RABBIT_URL);
 	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, "")) {
+		l_free(rabbitmq_url_aux);
 		storage_close(rabbitmq_fd);
 		return -EINVAL;
 	}
