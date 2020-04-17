@@ -75,6 +75,16 @@ struct knot_thing {
 	struct knot_data_item *data_item;
 };
 
+static void knot_thing_destroy(struct knot_thing *thing)
+{
+	l_free(thing->user_token);
+	l_free(thing->rabbitmq_url);
+	l_free(thing->modbus_slave.url);
+	l_free(thing->credentials_path);
+
+	free(thing->data_item);
+}
+
 static int set_modbus_slave_properties(char *filename)
 {
 	int rc;
@@ -736,24 +746,27 @@ int device_start(struct device_settings *conf_files)
 	if (device_set_properties(conf_files))
 		return -EINVAL;
 
-	modbus_start(thing.modbus_slave.url);
+	err = modbus_start(thing.modbus_slave.url);
+	if (err < 0) {
+		knot_thing_destroy(&thing);
+		return err;
+	}
 
 	err = cloud_start(thing.rabbitmq_url, thing.user_token,
 			  on_cloud_connected, on_cloud_disconnected, NULL);
-	if (err < 0)
+	if (err < 0) {
+		modbus_stop();
+		knot_thing_destroy(&thing);
 		return err;
+	}
 
 	return 0;
 }
 
 void device_destroy(void)
 {
+	cloud_stop();
 	modbus_stop();
 
-	l_free(thing.user_token);
-	l_free(thing.rabbitmq_url);
-	l_free(thing.modbus_slave.url);
-	l_free(thing.credentials_path);
-
-	free(thing.data_item);
+	knot_thing_destroy(&thing);
 }

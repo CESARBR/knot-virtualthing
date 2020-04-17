@@ -115,6 +115,8 @@ int main(int argc, char *argv[])
 
 	l_main_run_with_signal(signal_handler, NULL);
 
+	device_destroy();
+
 	l_main_exit();
 
 	return EXIT_SUCCESS;

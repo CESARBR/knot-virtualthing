@@ -121,5 +121,6 @@ int modbus_start(const char *url)
 
 void modbus_stop(void)
 {
-	connection_interface.destroy(modbus_ctx);
+	if (modbus_ctx)
+		connection_interface.destroy(modbus_ctx);
 }
