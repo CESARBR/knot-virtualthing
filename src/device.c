@@ -522,6 +522,7 @@ static int set_thing_user_token(char *filename)
 	user_token = storage_read_key_string(device_fd, THING_GROUP,
 					     THING_USER_TOKEN);
 	if (user_token == NULL || !strcmp(user_token, "")) {
+		l_free(user_token);
 		storage_close(device_fd);
 		return -EINVAL;
 	}
@@ -717,6 +718,7 @@ void device_destroy(void)
 {
 	modbus_stop();
 
+	l_free(thing.user_token);
 	l_free(thing.rabbitmq_url);
 	l_free(thing.modbus_slave.url);
 	l_free(thing.credentials_path);
