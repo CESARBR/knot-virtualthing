@@ -23,7 +23,8 @@ src_thingd_SOURCES = src/main.c \
 		        src/modbus-tcp.c src/modbus-rtu.c \
 			src/modbus-driver.h \
 			src/settings.c src/settings.h \
-			src/knot-config.c src/knot-config.h
+			src/knot-config.c src/knot-config.h \
+			src/poll.c src/poll.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
 src_thingd_LDFLAGS = $(AM_LDFLAGS)

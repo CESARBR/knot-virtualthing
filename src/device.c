@@ -34,10 +34,12 @@
 #include "cloud.h"
 #include "sm.h"
 #include "knot-config.h"
+#include "poll.h"
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
 #define EMPTY_STRING ""
+#define DEFAULT_POLLING_INTERVAL 1
 
 struct knot_thing thing;
 
@@ -752,6 +754,23 @@ int device_start_config(void)
 	return 0;
 }
 
+static int start_data_item_polling(void)
+{
+	int i;
+	int rc;
+
+	for (i = 0; i < thing.data_item_count; i++) {
+		rc = poll_start(DEFAULT_POLLING_INTERVAL, i,
+				device_read_data);
+		if (rc < 0) {
+			poll_stop();
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
 int device_read_data(int id)
 {
 	int rc;
@@ -906,9 +925,17 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
+	err = start_data_item_polling();
+	if (err < 0) {
+		modbus_stop();
+		knot_thing_destroy(&thing);
+		return err;
+	}
+
 	err = cloud_start(thing.rabbitmq_url, thing.user_token,
 			  on_cloud_connected, on_cloud_disconnected, NULL);
 	if (err < 0) {
+		poll_stop();
 		modbus_stop();
 		knot_thing_destroy(&thing);
 		return err;
@@ -921,6 +948,7 @@ void device_destroy(void)
 {
 	config_stop();
 
+	poll_stop();
 	cloud_stop();
 	modbus_stop();
 
