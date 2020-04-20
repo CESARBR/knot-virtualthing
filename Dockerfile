@@ -2,7 +2,7 @@ FROM alpine:3.10.3 AS builder
 
 # Build arguments
 ARG LIBELL_VERSION=0.18
-ARG JSONC_VERSION=7fb8d56
+ARG JSONC_VERSION=0.14-20200419
 ARG RABBITMQC_VERSION=v0.10.0
 ARG KNOT_PROTOCOL_VERSION=891d01d
 ARG LIBMODBUS_VERSION=3.1.4
@@ -19,9 +19,8 @@ RUN cd ell && ./configure --prefix=/usr && make install
 
 # Install json-c dependency
 RUN mkdir -p /usr/local/json-c
-RUN git clone https://github.com/json-c/json-c.git /usr/local/json-c
-RUN cd /usr/local/json-c && git checkout $JSONC_VERSION
-RUN mkdir -p /usr/local/json-c/build && cd /usr/local/json-c/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make && make install
+RUN wget -q -O- https://github.com/json-c/json-c/archive/json-c-0.14-20200419.tar.gz | tar xz -C /usr/local/json-c --strip-components=1
+RUN mkdir -p json-c/build && cd json-c/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make && make install
 
 # Install librabbitmq-c
 RUN mkdir -p /usr/local/rabbitmq-c

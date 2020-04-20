@@ -13,7 +13,7 @@ Build:
 - automake v1.16.1
 - pkg-config v0.29.1
 - ell v0.18
-- json-c 7fb8d56
+- json-c v0.14-20200419
 - rabbitmq-c v0.10.0
 - knot-protocol 891d01d
 - libmodbus v3.1.4
@@ -41,7 +41,7 @@ json-c provides helpers functions to manipulate JSON datas.
 To install json-c lib, you have to follow the instructions below:
 
 1. `git clone https://github.com/json-c/json-c.git && cd json-c`
-2. `git checkout 7fb8d56 && cd ..`
+2. `git checkout json-c-0.14-20200419 && cd ..`
 3. Follow instructions on `README.md` file
 
 ### Install rabbitmq-c
@@ -122,7 +122,7 @@ versions.
 The build arguments available are:
 
 - LIBELL_VERSION (Default: v0.18)
-- JSONC_VERSION (Default: 7fb8d56)
+- JSONC_VERSION (Default: 0.14-20200419)
 - RABBITMQC_VERSION (Default: v0.10.0)
 - KNOT_PROTOCOL_VERSION (Default: 891d01d)
 - LIBMODBUS_VERSION (Default: v3.1.4)
