@@ -35,5 +35,5 @@ enum EVENTS {
 	EVT_DATA_UPDT
 };
 
-int sm_start(void);
+void sm_start(void);
 void sm_input_event(enum EVENTS, void *user_data);

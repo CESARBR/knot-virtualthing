@@ -363,7 +363,7 @@ void sm_input_event(enum EVENTS event, void *user_data)
 	}
 }
 
-int sm_start(void)
+void sm_start(void)
 {
 	states[ST_DISCONNECTED] = sm_create_state(enter_disconnected,
 						  get_next_disconnected);
@@ -376,6 +376,4 @@ int sm_start(void)
 						get_next_unregister);
 	states[ST_ERROR] = sm_create_state(enter_error, get_next_error);
 	current_state = states[ST_DISCONNECTED];
-
-	return 0;
 }
