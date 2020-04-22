@@ -921,7 +921,8 @@ int device_start(struct device_settings *conf_files)
 
 	sm_start();
 
-	err = modbus_start(thing.modbus_slave.url, on_modbus_conn_changed);
+	err = modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
+			   on_modbus_conn_changed);
 	if (err < 0) {
 		knot_thing_destroy(&thing);
 		return err;

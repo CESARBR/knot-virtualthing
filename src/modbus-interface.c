@@ -102,7 +102,8 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 	return rc;
 }
 
-int modbus_start(const char *url, modbus_conn_cb_t conn_change_cb)
+int modbus_start(const char *url, int slave_id,
+		 modbus_conn_cb_t conn_change_cb)
 {
 	switch (parse_url(url)) {
 	case TCP:
@@ -117,6 +118,12 @@ int modbus_start(const char *url, modbus_conn_cb_t conn_change_cb)
 
 	modbus_ctx = connection_interface.create(url);
 	if (!modbus_ctx)
+		return -errno;
+
+	if (modbus_set_slave(modbus_ctx, slave_id) < 0)
+		return -errno;
+
+	if (modbus_connect(modbus_ctx) < 0)
 		return -errno;
 
 	conn_changed_cb = conn_change_cb;
