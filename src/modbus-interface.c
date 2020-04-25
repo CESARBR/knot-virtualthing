@@ -105,7 +105,8 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 
 	if (rc < 0) {
 		rc = -errno;
-		conn_changed_cb(false);
+		if (conn_changed_cb)
+			conn_changed_cb(false);
 	}
 	else {
 		memcpy(out, &tmp, sizeof(tmp));
@@ -139,7 +140,8 @@ int modbus_start(const char *url, int slave_id,
 		return -errno;
 
 	conn_changed_cb = conn_change_cb;
-	conn_changed_cb(true);
+	if (conn_changed_cb)
+		conn_changed_cb(true);
 
 	return 0;
 }
