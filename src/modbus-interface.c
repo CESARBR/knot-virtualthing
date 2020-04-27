@@ -103,10 +103,13 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 		rc = -EINVAL;
 	}
 
-	if (rc > 0)
-		memcpy(out, &tmp, sizeof(tmp));
-	else
+	if (rc < 0) {
+		rc = -errno;
 		conn_changed_cb(false);
+	}
+	else {
+		memcpy(out, &tmp, sizeof(tmp));
+	}
 
 	return rc;
 }
