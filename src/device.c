@@ -67,8 +67,8 @@ struct knot_data_item {
 };
 
 struct knot_thing {
-	char token[KNOT_PROTOCOL_TOKEN_LEN];
-	char id[KNOT_PROTOCOL_UUID_LEN];
+	char token[KNOT_PROTOCOL_TOKEN_LEN + 1];
+	char id[KNOT_PROTOCOL_UUID_LEN + 1];
 	char name[KNOT_PROTOCOL_DEVICE_NAME_LEN];
 	char *user_token;
 
@@ -567,8 +567,8 @@ static int set_thing_credentials(char *filename)
 	thingtoken = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
 					     CREDENTIALS_THING_TOKEN);
 
-	strncpy(thing.id, thingid, KNOT_PROTOCOL_UUID_LEN - 1);
-	strncpy(thing.token, thingtoken, KNOT_PROTOCOL_TOKEN_LEN - 1);
+	strncpy(thing.id, thingid, KNOT_PROTOCOL_UUID_LEN);
+	strncpy(thing.token, thingtoken, KNOT_PROTOCOL_TOKEN_LEN);
 	l_free(thingid);
 	l_free(thingtoken);
 
@@ -834,7 +834,7 @@ int device_store_credentials(char *token)
 	int rc;
 	int cred_fd;
 
-	if(strlen(token) >= KNOT_PROTOCOL_TOKEN_LEN)
+	if (strlen(token) > KNOT_PROTOCOL_TOKEN_LEN)
 		return -EINVAL;
 
 	cred_fd = storage_open(thing.credentials_path);
@@ -846,7 +846,8 @@ int device_store_credentials(char *token)
 				      CREDENTIALS_THING_TOKEN, token);
 	if(rc < 0)
 		goto error;
-	strcpy(thing.token, token);
+
+	strncpy(thing.token, token, KNOT_PROTOCOL_TOKEN_LEN);
 
 	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
 				      CREDENTIALS_THING_ID, thing.id);
