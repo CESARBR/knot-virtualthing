@@ -94,7 +94,6 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 	}
 
 	if (rc > 0)
-		/* FIXME: Add support for modbus types on a knot_value_type */
 		memcpy(out, &tmp, sizeof(tmp));
 	else
 		conn_changed_cb(false);
