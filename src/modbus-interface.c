@@ -67,6 +67,10 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 {
 	int rc;
 	union modbus_types tmp;
+	uint8_t byte_tmp[8];
+	uint8_t i;
+
+	memset(&tmp, 0, sizeof(tmp));
 
 	switch (bit_offset) {
 	case TYPE_BOOL:
@@ -75,7 +79,13 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 		break;
 	case TYPE_BYTE:
 		rc = connection_interface.read_byte(modbus_ctx, reg_addr,
-						    &tmp.val_byte);
+						    byte_tmp);
+		/**
+		 * Store in tmp.val_byte the value read from a Modbus Slave
+		 * where each position of byte_tmp corresponds to a bit.
+		*/
+		for (i = 0; i < sizeof(byte_tmp); i++)
+			tmp.val_byte |= byte_tmp[i] << i;
 		break;
 	case TYPE_U16:
 		rc = connection_interface.read_u16(modbus_ctx, reg_addr,
