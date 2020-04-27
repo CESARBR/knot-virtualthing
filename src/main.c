@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	l_log_set_stderr();
+
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);
 
