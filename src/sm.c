@@ -34,7 +34,7 @@ struct state {
 	get_next_t get_next;
 };
 
-static struct state current_state;
+static struct state *current_state;
 struct state states[N_OF_STATES];
 
 /* DISCONNECT */
@@ -353,12 +353,12 @@ static struct state sm_create_state(enter_state_t enter, get_next_t next)
 
 void sm_input_event(enum EVENTS event, void *user_data)
 {
+	enum STATES id = current_state->get_next(event, user_data);
+	struct state *next = &states[id];
 
-	enum STATES id = current_state.get_next(event, user_data);
-	struct state next = states[id];
-	if (&next != &current_state) {
-		if (next.enter)
-			next.enter();
+	if (next != current_state) {
+		if (next->enter)
+			next->enter();
 		current_state = next;
 	}
 }
@@ -375,5 +375,5 @@ void sm_start(void)
 	states[ST_UNREGISTER] = sm_create_state(enter_unregister,
 						get_next_unregister);
 	states[ST_ERROR] = sm_create_state(enter_error, get_next_error);
-	current_state = states[ST_DISCONNECTED];
+	current_state = &states[ST_DISCONNECTED];
 }
