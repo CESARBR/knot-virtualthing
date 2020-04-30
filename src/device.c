@@ -883,7 +883,10 @@ error:
 
 void device_generate_new_id()
 {
-	snprintf(thing.id, KNOT_PROTOCOL_UUID_LEN, "%d", rand());
+	uint64_t id; /* knot id uses 16 characters which fits inside a uint64 */
+
+	l_getrandom(&id, sizeof(id));
+	sprintf(thing.id, "%"PRIx64, id); /* PRIx64 formats the string as hex */
 }
 
 int device_send_register_request()
