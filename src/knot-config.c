@@ -30,6 +30,11 @@
 #define is_lower_flag_set(a) ((a) & KNOT_EVT_FLAG_LOWER_THRESHOLD)
 #define is_upper_flag_set(a) ((a) & KNOT_EVT_FLAG_UPPER_THRESHOLD)
 
+struct data_item_timeout {
+	int id;
+	unsigned int timeout_sec;
+};
+
 struct l_queue *sensor_timeouts;
 timeout_cb_t timeout_cb;
 
@@ -117,10 +122,10 @@ static bool is_higher_than_threshold(knot_value_type value,
 
 static void on_sensor_to(struct l_timeout *to, void *data)
 {
-	int id = *(int *) data;
+	struct data_item_timeout *data_item_to_info = data;
 
-	timeout_cb(id);
-	l_timeout_modify(to, 0);
+	timeout_cb(data_item_to_info->id);
+	l_timeout_modify(to, data_item_to_info->timeout_sec);
 }
 
 static void timeout_destroy(void *data)
@@ -161,12 +166,16 @@ int config_check_value(knot_config config, knot_value_type value,
 
 void config_add_data_item(int id, knot_config config)
 {
-	int *data = l_new(int, 1);
-	*data = id;
+	struct data_item_timeout *data = l_new(struct data_item_timeout, 1);
+
+	data->id = id;
+	data->timeout_sec = config.time_sec;
 
 	if (is_timeout_flag_set(config.event_flags)) {
 		struct l_timeout *to = l_timeout_create(config.time_sec,
-				on_sensor_to, data, l_free);
+							on_sensor_to,
+							data,
+							l_free);
 		l_queue_push_head(sensor_timeouts, to);
 	}
 }
