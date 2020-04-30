@@ -39,25 +39,25 @@
 
 #include "modbus-driver.h"
 
-/* Hardcoded serial config */
-#define SERIAL_BAUDRATE 115200
-#define SERIAL_PARITY 'N'
-#define SERIAL_DATA_BIT 8
-#define SERIAL_STOP_BIT 1
-
 static modbus_t *create(const char *url)
 {
 	struct serial_rs485 rs485conf;
 	modbus_t *ctx;
 	int mode = MODBUS_RTU_RS232;
 	int fd;
-
-	/*
-	 * FIXME: Parse serial configuration encoded at url
-	 * serial://dev/ttyUSB0:115200,N,8,1
-	 */
+	int baud_rate;
+	int data_bit;
+	int stop_bit;
+	char parity;
+	char port[256];
 
 	/* Ignoring "serial://" */
+	if (sscanf(&url[8], "%255[^:]:%d , %c , %d , %d", port, &baud_rate,
+		   &parity, &data_bit, &stop_bit) != 5) {
+		l_error("Address (%s) not supported: Invalid format", url);
+		return NULL;
+	}
+
 	l_info("RTU: %s", url);
 
 	fd = open(&url[8], O_RDWR);
@@ -75,8 +75,7 @@ static modbus_t *create(const char *url)
 
 	close(fd);
 
-	ctx = modbus_new_rtu(&url[8], SERIAL_BAUDRATE, SERIAL_PARITY,
-				SERIAL_DATA_BIT, SERIAL_STOP_BIT);
+	ctx = modbus_new_rtu(port, baud_rate, parity, data_bit, stop_bit);
 
 	if (!ctx)
 		return NULL;
