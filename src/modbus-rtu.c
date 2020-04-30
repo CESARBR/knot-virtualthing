@@ -57,7 +57,7 @@ static modbus_t *create(const char *url)
 	 * serial://dev/ttyUSB0:115200,N,8,1
 	 */
 
-	/* Ignoring "serial:/" */
+	/* Ignoring "serial://" */
 	l_info("RTU: %s", url);
 
 	fd = open(&url[8], O_RDWR);
