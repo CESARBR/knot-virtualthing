@@ -736,7 +736,14 @@ static void on_publish_data(void *data, void *user_data)
 
 static void on_config_timeout(int id)
 {
-	sm_input_event(EVT_PUB_DATA, &id);
+	struct l_queue *list;
+
+	list = l_queue_new();
+	l_queue_push_head(list, &id);
+
+	sm_input_event(EVT_PUB_DATA, list);
+
+	l_queue_destroy(list, NULL);
 }
 
 int device_start_config(void)
@@ -773,6 +780,7 @@ static int start_data_item_polling(void)
 
 int device_read_data(int id)
 {
+	struct l_queue *list;
 	int rc;
 
 	rc = modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
@@ -780,8 +788,14 @@ int device_read_data(int id)
 			      &thing.data_item[id].value);
 	if (config_check_value(thing.data_item[id].config,
 			       thing.data_item[id].value,
-			       thing.data_item[id].schema.value_type) > 0)
-		sm_input_event(EVT_PUB_DATA, &id);
+			       thing.data_item[id].schema.value_type) > 0) {
+		list = l_queue_new();
+		l_queue_push_head(list, &id);
+
+		sm_input_event(EVT_PUB_DATA, list);
+
+		l_queue_destroy(list, NULL);
+	}
 
 	return rc;
 }
