@@ -402,6 +402,97 @@ START_TEST(schema_get_next_event_reg_perm_is_schema)
 }
 END_TEST
 
+START_TEST(online_get_next_event_ready_is_online)
+{
+	int next_state = get_next_online(EVT_READY, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_not_ready_is_disconnected)
+{
+	int next_state = get_next_online(EVT_NOT_READY, NULL);
+	ck_assert_int_eq(next_state, ST_DISCONNECTED);
+}
+END_TEST
+
+START_TEST(online_get_next_event_timeout_is_online)
+{
+	int next_state = get_next_online(EVT_TIMEOUT, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_reg_ok_is_online)
+{
+	int next_state = get_next_online(EVT_REG_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_reg_not_ok_is_online)
+{
+	int next_state = get_next_online(EVT_REG_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_auth_ok_is_online)
+{
+	int next_state = get_next_online(EVT_AUTH_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_auth_not_ok_is_online)
+{
+	int next_state = get_next_online(EVT_AUTH_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_schema_ok_is_online)
+{
+	int next_state = get_next_online(EVT_SCH_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_schema_not_ok_is_online)
+{
+	int next_state = get_next_online(EVT_SCH_NOT_OK, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_unreg_req_is_unregister)
+{
+	int next_state = get_next_online(EVT_UNREG_REQ, NULL);
+	ck_assert_int_eq(next_state, ST_UNREGISTER);
+}
+END_TEST
+
+START_TEST(online_get_next_event_data_update_is_online)
+{
+	int next_state = get_next_online(EVT_DATA_UPDT, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_publish_data_is_online)
+{
+	int next_state = get_next_online(EVT_PUB_DATA, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
+START_TEST(online_get_next_event_reg_perm_is_online)
+{
+	int next_state = get_next_online(EVT_REG_PERM, NULL);
+	ck_assert_int_eq(next_state, ST_ONLINE);
+}
+END_TEST
+
 static void add_disconnected_state_test_case(Suite *sm_suite)
 {
 	TCase *tc_disconnected;
@@ -495,6 +586,30 @@ static void add_schema_state_test_case(Suite *sm_suite)
 	suite_add_tcase(sm_suite, tc_schema);
 }
 
+
+static void add_online_state_test_case(Suite *sm_suite)
+{
+	TCase *tc_online;
+
+	/* Online test case */
+	tc_online = tcase_create("Online");
+	tcase_add_test(tc_online, online_get_next_event_ready_is_online);
+	tcase_add_test(tc_online, online_get_next_event_not_ready_is_disconnected);
+	tcase_add_test(tc_online, online_get_next_event_timeout_is_online);
+	tcase_add_test(tc_online, online_get_next_event_reg_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_reg_not_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_auth_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_auth_not_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_schema_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_schema_not_ok_is_online);
+	tcase_add_test(tc_online, online_get_next_event_unreg_req_is_unregister);
+	tcase_add_test(tc_online, online_get_next_event_data_update_is_online);
+	tcase_add_test(tc_online, online_get_next_event_publish_data_is_online);
+	tcase_add_test(tc_online, online_get_next_event_reg_perm_is_online);
+
+	suite_add_tcase(sm_suite, tc_online);
+}
+
 Suite *state_machine_suite(void)
 {
 	Suite *sm_suite;
@@ -505,6 +620,7 @@ Suite *state_machine_suite(void)
 	add_register_state_test_case(sm_suite);
 	add_auth_state_test_case(sm_suite);
 	add_schema_state_test_case(sm_suite);
+	add_online_state_test_case(sm_suite);
 
 	return sm_suite;
 }
