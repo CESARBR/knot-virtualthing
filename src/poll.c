@@ -22,6 +22,7 @@
 
 struct poll_data {
 	int id;
+	int interval;
 	poll_read_cb_t read_cb;
 };
 
@@ -34,7 +35,7 @@ static void on_poll_timeout(struct l_timeout *to, void *user_data)
 	data = (struct poll_data *) user_data;
 	data->read_cb(data->id);
 
-	l_timeout_modify(to, 0);
+	l_timeout_modify(to, data->interval);
 }
 
 static void timeout_destroy(void *user_data)
@@ -53,8 +54,9 @@ int poll_start(int interval, int id, poll_read_cb_t read_cb)
 	data = l_new(struct poll_data, 1);
 	data->id = id;
 	data->read_cb = read_cb;
+	data->interval = interval;
 
-	to = l_timeout_create(interval, on_poll_timeout, data, l_free);
+	to = l_timeout_create(data->interval, on_poll_timeout, data, l_free);
 	if (!to)
 		return -ENOMSG;
 
