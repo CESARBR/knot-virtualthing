@@ -239,10 +239,12 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 		/* TODO: Write to modbus actuator */
 		next_state = ST_ONLINE;
 		break;
+	case EVT_UNREG_REQ:
+		next_state = ST_UNREGISTER;
+		break;
 	case EVT_TIMEOUT:
 	case EVT_SCH_OK:
 	case EVT_SCH_NOT_OK:
-	case EVT_UNREG_REQ:
 	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
