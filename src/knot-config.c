@@ -159,7 +159,7 @@ int config_check_value(knot_config config, knot_value_type value,
 	return rc;
 }
 
-void config_add_sensor(int id, knot_config config)
+void config_add_data_item(int id, knot_config config)
 {
 	int *data = l_new(int, 1);
 	*data = id;
