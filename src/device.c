@@ -756,7 +756,8 @@ int device_start_config(void)
 		return rc;
 
 	for (i = 0; i < thing.data_item_count; i++)
-		config_add_data_item(i, thing.data_item[i].config);
+		config_add_data_item(thing.data_item[i].sensor_id,
+				     thing.data_item[i].config);
 
 	return 0;
 }
