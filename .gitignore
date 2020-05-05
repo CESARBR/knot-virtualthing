@@ -34,5 +34,6 @@ src/thingd
 
 test-suite.log
 tests/sm_tests
+tests/device_tests
 tests/*.log
 tests/*.trs

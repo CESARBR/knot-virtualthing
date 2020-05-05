@@ -30,6 +30,7 @@
 #include "settings.h"
 #include "conf-parameters.h"
 #include "device.h"
+#include "device-pvt.h"
 #include "modbus-interface.h"
 #include "cloud.h"
 #include "sm.h"
@@ -896,6 +897,11 @@ error:
 	storage_close(cred_fd);
 
 	return -EINVAL;
+}
+
+char *device_get_id(void)
+{
+	return thing.id;
 }
 
 void device_generate_new_id()
