@@ -37,6 +37,9 @@
 
 #include "mq.h"
 
+#define AMQP_EXCHANGE_TYPE_DIRECT "direct"
+#define AMQP_EXCHANGE_TYPE_FANOUT "fanout"
+
 #define MQ_CONNECTION_TIMEOUT_US 10000
 #define MQ_CONNECTION_RETRY_TIMEOUT_MS 1000
 
@@ -274,44 +277,27 @@ done:
 	l_free(tmp_url);
 }
 
-/**
- * mq_publish_direct_persistent_msg_rpc:
- * @queue: queue declared previously
- * @exchange: exchange name
- * @routing_key: routing key name
- * @headers: array of table entry with headers
- * @num_headers: headers length
- * @expiration_ms: expiration property in miliseconds or 0 if no expiration time
- * @reply_to: queue that will process the reply
- * @correlation_id: id to identify the message on rpc
- * @body: the message to be sent
- *
- * Publish a persistent message in the exchange and routing key to a queue bond,
- * so the message is not lost even if there is no consumer listening.
- * This function uses a Remote Procedure Call (RPC) pattern to relate a message
- * sent to your reply.
- *
- * Returns: 0 if successful and negative integer otherwise.
- */
-int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
-					    const char *exchange,
-					    const char *routing_key,
-					    amqp_table_entry_t *headers,
-					    size_t num_headers,
-					    uint64_t expiration_ms,
-					    amqp_bytes_t reply_to,
-					    const char *correlation_id,
-					    const char *body)
+static int mq_publish_message(amqp_bytes_t queue,
+			      const char *exchange,
+			      const char *type,
+			      const char *routing_key,
+			      amqp_table_entry_t *headers,
+			      size_t num_headers,
+			      uint64_t expiration_ms,
+			      amqp_bytes_t reply_to,
+			      const char *correlation_id,
+			      const char *body)
 {
 	amqp_basic_properties_t props;
 	amqp_rpc_reply_t resp;
+	amqp_bytes_t routing_key_bytes;
 	char *expiration_str;
 	int8_t rc; // Return Code
 
 	/* Declare the exchange as durable */
 	amqp_exchange_declare(mq_ctx.conn, 1,
 			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes("topic"),
+			amqp_cstring_bytes(type),
 			0 /* passive*/,
 			1 /* durable */,
 			0 /* auto_delete*/,
@@ -373,6 +359,11 @@ int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
 	props.content_type = amqp_cstring_bytes("text/plain");
 	props.delivery_mode = AMQP_DELIVERY_PERSISTENT;
 
+	if (routing_key)
+		routing_key_bytes = amqp_cstring_bytes(routing_key);
+	else
+		routing_key_bytes = amqp_empty_bytes;
+
 	l_debug("Publish -> exchange: %s, routingkey: %s\nBody: %s\n",
 		exchange,
 		routing_key,
@@ -380,7 +371,7 @@ int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
 
 	rc = amqp_basic_publish(mq_ctx.conn, 1,
 			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes(routing_key),
+			routing_key_bytes,
 			0 /* mandatory */,
 			0 /* immediate */,
 			&props, amqp_cstring_bytes(body));
@@ -395,6 +386,42 @@ int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
 		amqp_bytes_free(props.reply_to);
 
 	return rc;
+}
+
+/**
+ * mq_publish_direct_persistent_msg_rpc:
+ * @queue: queue declared previously
+ * @exchange: exchange name
+ * @routing_key: routing key name
+ * @headers: array of table entry with headers
+ * @num_headers: headers length
+ * @expiration_ms: expiration property in miliseconds or 0 if no expiration time
+ * @reply_to: queue that will process the reply
+ * @correlation_id: id to identify the message on rpc
+ * @body: the message to be sent
+ *
+ * Publish a persistent message in the exchange and routing key to a queue bond,
+ * so the message is not lost even if there is no consumer listening.
+ * This function uses a Remote Procedure Call (RPC) pattern to relate a message
+ * sent to your reply.
+ *
+ * Returns: 0 if successful and negative integer otherwise.
+ */
+int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
+					    const char *exchange,
+					    const char *routing_key,
+					    amqp_table_entry_t *headers,
+					    size_t num_headers,
+					    uint64_t expiration_ms,
+					    amqp_bytes_t reply_to,
+					    const char *correlation_id,
+					    const char *body)
+{
+	return mq_publish_message(queue, exchange,
+				  AMQP_EXCHANGE_TYPE_DIRECT,
+				  routing_key, headers,
+				  num_headers, expiration_ms,
+				  reply_to, correlation_id, body);
 }
 
 /**
@@ -420,11 +447,39 @@ int8_t mq_publish_direct_persistent_msg(amqp_bytes_t queue,
 					uint64_t expiration_ms,
 					const char *body)
 {
-	return mq_publish_direct_persistent_msg_rpc(queue, exchange,
-						    routing_key, headers,
-						    num_headers, expiration_ms,
-						    amqp_empty_bytes,
-						    NULL, body);
+	return mq_publish_message(queue, exchange,
+				  AMQP_EXCHANGE_TYPE_DIRECT,
+				  routing_key, headers,
+				  num_headers, expiration_ms,
+				  amqp_empty_bytes, NULL, body);
+}
+
+/**
+ * mq_publish_fanout_persistent_msg:
+ * @queue: queue declared previously
+ * @exchange: exchange name
+ * @headers: array of table entry with headers
+ * @num_headers: headers length
+ * @expiration_ms: expiration property in miliseconds or 0 if no expiration time
+ * @body: the message to be sent
+ *
+ * Publish a persistent message with exchange type Fanout to a queue bond,
+ * so the message is not lost even if there is no consumer listening.
+ *
+ * Returns: 0 if successful and negative integer otherwise.
+ */
+int8_t mq_publish_fanout_persistent_msg(amqp_bytes_t queue,
+					const char *exchange,
+					amqp_table_entry_t *headers,
+					size_t num_headers,
+					uint64_t expiration_ms,
+					const char *body)
+{
+	return mq_publish_message(queue, exchange,
+				  AMQP_EXCHANGE_TYPE_FANOUT,
+				  NULL, headers,
+				  num_headers, expiration_ms,
+				  amqp_empty_bytes, NULL, body);
 }
 
 /**

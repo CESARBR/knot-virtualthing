@@ -45,6 +45,12 @@ int8_t mq_publish_direct_persistent_msg(amqp_bytes_t queue,
 					size_t num_headers,
 					uint64_t expiration_ms,
 					const char *body);
+int8_t mq_publish_fanout_persistent_msg(amqp_bytes_t queue,
+					const char *exchange,
+					amqp_table_entry_t *headers,
+					size_t num_headers,
+					uint64_t expiration_ms,
+					const char *body);
 int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data);
 int mq_start(char *url, mq_connected_cb_t connected_cb,
 	     mq_disconnected_cb_t disconnected_cb, void *user_data);
