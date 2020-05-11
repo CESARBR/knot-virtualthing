@@ -275,27 +275,33 @@ done:
 }
 
 /**
- * mq_publish_persistent_message:
+ * mq_publish_direct_persistent_msg_rpc:
  * @queue: queue declared previously
  * @exchange: exchange name
- * @routing_keys: routing key name
+ * @routing_key: routing key name
  * @headers: array of table entry with headers
  * @num_headers: headers length
  * @expiration_ms: expiration property in miliseconds or 0 if no expiration time
+ * @reply_to: queue that will process the reply
+ * @correlation_id: id to identify the message on rpc
  * @body: the message to be sent
  *
- * Publishs a persistent message in the exchange and routing key to aqueue bond,
- * so even if there is no consumer listening the message aren't lost.
+ * Publish a persistent message in the exchange and routing key to a queue bond,
+ * so the message is not lost even if there is no consumer listening.
+ * This function uses a Remote Procedure Call (RPC) pattern to relate a message
+ * sent to your reply.
  *
  * Returns: 0 if successful and negative integer otherwise.
  */
-int8_t mq_publish_persistent_message(amqp_bytes_t queue,
-				       const char *exchange,
-				       const char *routing_keys,
-				       amqp_table_entry_t *headers,
-				       size_t num_headers,
-				       uint64_t expiration_ms,
-				       const char *body)
+int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
+					    const char *exchange,
+					    const char *routing_key,
+					    amqp_table_entry_t *headers,
+					    size_t num_headers,
+					    uint64_t expiration_ms,
+					    amqp_bytes_t reply_to,
+					    const char *correlation_id,
+					    const char *body)
 {
 	amqp_basic_properties_t props;
 	amqp_rpc_reply_t resp;
@@ -321,7 +327,7 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 	/* Bind exchange to keep messages */
 	amqp_queue_bind(mq_ctx.conn, 1, queue,
 			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes(routing_keys),
+			amqp_cstring_bytes(routing_key),
 			amqp_empty_table);
 
 	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
@@ -332,6 +338,26 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 
 	props._flags =	AMQP_BASIC_CONTENT_TYPE_FLAG	|
 			AMQP_BASIC_DELIVERY_MODE_FLAG;
+
+	if (reply_to.bytes) {
+		if (correlation_id)
+			props.correlation_id =
+					amqp_cstring_bytes(correlation_id);
+		else
+			return -1;
+
+		props._flags |= AMQP_BASIC_REPLY_TO_FLAG |
+				AMQP_BASIC_CORRELATION_ID_FLAG;
+
+		props.reply_to = amqp_bytes_malloc_dup(reply_to);
+		if (!props.reply_to.bytes) {
+			l_error("Out of memory while copying queue name");
+			return -1;
+		}
+	} else {
+		props.reply_to = amqp_empty_bytes;
+	}
+
 	if (expiration_ms) {
 		props._flags |= AMQP_BASIC_EXPIRATION_FLAG;
 		expiration_str = l_strdup_printf("%"PRIu64, expiration_ms);
@@ -349,12 +375,12 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 
 	l_debug("Publish -> exchange: %s, routingkey: %s\nBody: %s\n",
 		exchange,
-		routing_keys,
+		routing_key,
 		body);
 
 	rc = amqp_basic_publish(mq_ctx.conn, 1,
 			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes(routing_keys),
+			amqp_cstring_bytes(routing_key),
 			0 /* mandatory */,
 			0 /* immediate */,
 			&props, amqp_cstring_bytes(body));
@@ -365,7 +391,40 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 	if (expiration_ms)
 		l_free(expiration_str);
 
+	if (props.reply_to.bytes)
+		amqp_bytes_free(props.reply_to);
+
 	return rc;
+}
+
+/**
+ * mq_publish_direct_persistent_msg:
+ * @queue: queue declared previously
+ * @exchange: exchange name
+ * @routing_key: routing key name
+ * @headers: array of table entry with headers
+ * @num_headers: headers length
+ * @expiration_ms: expiration property in miliseconds or 0 if no expiration time
+ * @body: the message to be sent
+ *
+ * Publish a persistent message in the exchange and routing key to a queue bond,
+ * so the message is not lost even if there is no consumer listening.
+ *
+ * Returns: 0 if successful and negative integer otherwise.
+ */
+int8_t mq_publish_direct_persistent_msg(amqp_bytes_t queue,
+					const char *exchange,
+					const char *routing_key,
+					amqp_table_entry_t *headers,
+					size_t num_headers,
+					uint64_t expiration_ms,
+					const char *body)
+{
+	return mq_publish_direct_persistent_msg_rpc(queue, exchange,
+						    routing_key, headers,
+						    num_headers, expiration_ms,
+						    amqp_empty_bytes,
+						    NULL, body);
 }
 
 /**
