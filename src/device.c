@@ -462,6 +462,8 @@ static int set_data_items(char *filename)
 	int sensor_id;
 
 	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
 
 	n_of_data_items = get_number_of_data_items(device_fd);
 	thing.data_item_count = n_of_data_items;
