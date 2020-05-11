@@ -254,12 +254,12 @@ int cloud_register_device(const char *id, const char *name)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_FOG_IN,
-					       MQ_CMD_DEVICE_REGISTER,
-					       headers, 1,
-					       MQ_MSG_EXPIRATION_TIME_MS,
-					       json_str);
+	result = mq_publish_direct_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_FOG_IN,
+						  MQ_CMD_DEVICE_REGISTER,
+						  headers, 1,
+						  MQ_MSG_EXPIRATION_TIME_MS,
+						  json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
@@ -301,12 +301,12 @@ int cloud_unregister_device(const char *id)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_FOG_IN,
-					       MQ_CMD_DEVICE_UNREGISTER,
-					       headers, 1,
-					       MQ_MSG_EXPIRATION_TIME_MS,
-					       json_str);
+	result = mq_publish_direct_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_FOG_IN,
+						  MQ_CMD_DEVICE_UNREGISTER,
+						  headers, 1,
+						  MQ_MSG_EXPIRATION_TIME_MS,
+						  json_str);
 	if (result < 0)
 		return KNOT_ERR_CLOUD_FAILURE;
 
@@ -349,12 +349,12 @@ int cloud_auth_device(const char *id, const char *token)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_FOG_IN,
-					       MQ_CMD_DEVICE_AUTH,
-					       headers, 1,
-					       MQ_MSG_EXPIRATION_TIME_MS,
-					       json_str);
+	result = mq_publish_direct_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_FOG_IN,
+						  MQ_CMD_DEVICE_AUTH,
+						  headers, 1,
+						  MQ_MSG_EXPIRATION_TIME_MS,
+						  json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
@@ -395,12 +395,12 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_FOG_IN,
-					       MQ_CMD_SCHEMA_UPDATE,
-					       headers, 1,
-					       MQ_MSG_EXPIRATION_TIME_MS,
-					       json_str);
+	result = mq_publish_direct_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_FOG_IN,
+						  MQ_CMD_SCHEMA_UPDATE,
+						  headers, 1,
+						  MQ_MSG_EXPIRATION_TIME_MS,
+						  json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
@@ -447,12 +447,12 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_FOG_IN,
-					       MQ_CMD_DATA_PUBLISH,
-					       headers, 1,
-					       MQ_MSG_EXPIRATION_TIME_MS,
-					       json_str);
+	result = mq_publish_direct_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_FOG_IN,
+						  MQ_CMD_DATA_PUBLISH,
+						  headers, 1,
+						  MQ_MSG_EXPIRATION_TIME_MS,
+						  json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
