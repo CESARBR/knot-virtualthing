@@ -146,7 +146,7 @@ int config_check_value(knot_config config, knot_value_type value,
 		return -EINVAL;
 
 	if (is_change_flag_set(config.event_flags) &&
-			is_value_equal(value, last_value, value_type))
+			!is_value_equal(value, last_value, value_type))
 		rc = 1;
 	else if (is_lower_flag_set(config.event_flags) &&
 			is_lower_than_threshold(value,
