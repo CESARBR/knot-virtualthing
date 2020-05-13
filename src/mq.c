@@ -565,16 +565,43 @@ int mq_bind_queue(amqp_bytes_t queue,
 }
 
 /**
- * mq_set_read_cb:
+ * mq_consumer_queue:
  * @queue: queue that is going to be consume
- * @read_cb: callback to be called when receive some amqp message
- * @user_data: user data provided to callback
  *
- * Set the callback handler when receive any message from amqp connection.
+ * Start a queue consumer.
  *
  * Returns: 0 if successful and -1 otherwise.
  */
-int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data)
+int mq_consumer_queue(amqp_bytes_t queue)
+{
+	/* Start a queue consumer */
+	amqp_basic_consume(mq_ctx.conn, 1,
+			queue,
+			amqp_empty_bytes,
+			0, /* no_local */
+			1, /* no_ack */
+			0, /* exclusive */
+			amqp_empty_table);
+
+	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
+							AMQP_RESPONSE_NORMAL) {
+		l_error("Error while starting consumer");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * mq_set_read_cb:
+ * @read_cb: callback to be called when receive some amqp message
+ * @user_data: user data provided to callback
+ *
+ * Set the callback to handle received messages from amqp connection.
+ *
+ * Returns: 0 if successful and -1 otherwise.
+ */
+int mq_set_read_cb(mq_read_cb_t read_cb, void *user_data)
 {
 	int err;
 
@@ -590,21 +617,6 @@ int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data)
 	if (!err) {
 		l_io_destroy(mq_ctx.amqp_io);
 		l_error("Error on set up read handler on AMQP io");
-		return -1;
-	}
-
-	/* Start a queue consumer */
-	amqp_basic_consume(mq_ctx.conn, 1,
-			queue,
-			amqp_empty_bytes,
-			0, /* no_local */
-			1, /* no_ack */
-			0, /* exclusive */
-			amqp_empty_table);
-
-	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
-							AMQP_RESPONSE_NORMAL) {
-		l_error("Error while starting consumer");
 		return -1;
 	}
 

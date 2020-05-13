@@ -49,8 +49,9 @@ int8_t mq_publish_fanout_persistent_msg(amqp_bytes_t queue,
 amqp_bytes_t mq_declare_new_queue(const char *name);
 int mq_bind_queue(amqp_bytes_t queue, const char *exchange,
 		  const char *routing_key);
+int mq_consumer_queue(amqp_bytes_t queue);
 
-int mq_set_read_cb(amqp_bytes_t queue, mq_read_cb_t read_cb, void *user_data);
+int mq_set_read_cb(mq_read_cb_t read_cb, void *user_data);
 
 int mq_start(char *url, mq_connected_cb_t connected_cb,
 	     mq_disconnected_cb_t disconnected_cb, void *user_data);
