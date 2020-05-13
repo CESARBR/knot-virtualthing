@@ -135,7 +135,7 @@ static void timeout_destroy(void *data)
 	l_timeout_remove(to);
 }
 
-int config_check_value(knot_config config, knot_value_type value,
+int config_check_value(knot_config config, knot_value_type current_val,
 		       knot_value_type sent_val, int value_type)
 {
 	int rc;
@@ -145,14 +145,14 @@ int config_check_value(knot_config config, knot_value_type value,
 		return -EINVAL;
 
 	if (is_change_flag_set(config.event_flags) &&
-			!is_value_equal(value, sent_val, value_type))
+			!is_value_equal(current_val, sent_val, value_type))
 		rc = 1;
 	else if (is_lower_flag_set(config.event_flags) &&
-			is_lower_than_threshold(value,
+			is_lower_than_threshold(current_val,
 				config.lower_limit, value_type))
 		rc = 1;
 	else if (is_upper_flag_set(config.event_flags) &&
-			is_higher_than_threshold(value,
+			is_higher_than_threshold(current_val,
 				config.upper_limit, value_type))
 		rc = 1;
 	else

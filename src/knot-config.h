@@ -16,7 +16,7 @@
 
 typedef void (*timeout_cb_t)(int);
 
-int config_check_value(knot_config config, knot_value_type value,
+int config_check_value(knot_config config, knot_value_type current_val,
 		       knot_value_type sent_val, int value_type);
 int config_start(timeout_cb_t cb);
 void config_add_data_item(int id, knot_config config);

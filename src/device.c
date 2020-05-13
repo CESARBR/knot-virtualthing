@@ -62,7 +62,7 @@ struct knot_data_item {
 	int sensor_id;
 	knot_config config;
 	knot_schema schema;
-	knot_value_type value;
+	knot_value_type current_val;
 	knot_value_type sent_val;
 	struct modbus_source modbus_source;
 };
@@ -730,7 +730,7 @@ static void on_publish_data(void *data, void *user_data)
 
 	rc = cloud_publish_data(thing.id, *sensor_id,
 				data_item.schema.value_type,
-				&data_item.value,
+				&data_item.current_val,
 				sizeof(data_item.schema.value_type));
 	if (rc < 0)
 		l_error("Couldn't send data_update for data_item #%d",
@@ -789,12 +789,12 @@ int device_read_data(int id)
 
 	rc = modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
 			      thing.data_item[id].modbus_source.bit_offset,
-			      &thing.data_item[id].value);
+			      &thing.data_item[id].current_val);
 	if (config_check_value(thing.data_item[id].config,
-			       thing.data_item[id].value,
+			       thing.data_item[id].current_val,
 			       thing.data_item[id].sent_val,
 			       thing.data_item[id].schema.value_type) > 0) {
-		thing.data_item[id].sent_val = thing.data_item[id].value;
+		thing.data_item[id].sent_val = thing.data_item[id].current_val;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
 
