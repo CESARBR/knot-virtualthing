@@ -63,6 +63,7 @@ struct knot_data_item {
 	knot_config config;
 	knot_schema schema;
 	knot_value_type value;
+	knot_value_type sent_val;
 	struct modbus_source modbus_source;
 };
 
@@ -791,7 +792,9 @@ int device_read_data(int id)
 			      &thing.data_item[id].value);
 	if (config_check_value(thing.data_item[id].config,
 			       thing.data_item[id].value,
+			       thing.data_item[id].sent_val,
 			       thing.data_item[id].schema.value_type) > 0) {
+		thing.data_item[id].sent_val = thing.data_item[id].value;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
 

@@ -136,9 +136,8 @@ static void timeout_destroy(void *data)
 }
 
 int config_check_value(knot_config config, knot_value_type value,
-		       int value_type)
+		       knot_value_type sent_val, int value_type)
 {
-	static knot_value_type last_value;
 	int rc;
 
 	if (value_type < KNOT_VALUE_TYPE_MIN ||
@@ -146,7 +145,7 @@ int config_check_value(knot_config config, knot_value_type value,
 		return -EINVAL;
 
 	if (is_change_flag_set(config.event_flags) &&
-			!is_value_equal(value, last_value, value_type))
+			!is_value_equal(value, sent_val, value_type))
 		rc = 1;
 	else if (is_lower_flag_set(config.event_flags) &&
 			is_lower_than_threshold(value,
@@ -158,8 +157,6 @@ int config_check_value(knot_config config, knot_value_type value,
 		rc = 1;
 	else
 		rc = 0;
-
-	last_value = value;
 
 	return rc;
 }
