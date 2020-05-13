@@ -366,11 +366,11 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 	knot_value_type tmp_value_type;
 	knot_config config_aux;
 
+	memset(&config_aux, 0, sizeof(knot_config));
+
 	device_fd = storage_open(filename);
 	if (device_fd < 0)
 		return device_fd;
-
-	config_aux.event_flags = 0;
 
 	value_type_aux = thing.data_item[sensor_id].schema.value_type;
 
