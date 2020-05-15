@@ -395,6 +395,7 @@ amqp_bytes_t mq_declare_new_queue(const char *name)
 			       AMQP_RESPONSE_NORMAL) {
 		l_error("Error declaring queue name");
 		queue.bytes = NULL;
+		return queue;
 	}
 
 	queue = amqp_bytes_malloc_dup(r->queue);
