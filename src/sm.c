@@ -228,6 +228,7 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_NOT_READY:
+		device_stop_config();
 		next_state = ST_DISCONNECTED;
 		break;
 	case EVT_PUB_DATA:

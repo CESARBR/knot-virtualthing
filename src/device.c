@@ -765,6 +765,11 @@ int device_start_config(void)
 	return 0;
 }
 
+void device_stop_config(void)
+{
+	config_stop();
+}
+
 static int start_data_item_polling(void)
 {
 	int i;

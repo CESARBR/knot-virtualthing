@@ -25,6 +25,7 @@ struct device_settings {
 };
 
 int device_start_config(void);
+void device_stop_config(void);
 int device_read_data(int id);
 int device_send_schema();
 int device_has_credentials(void);
