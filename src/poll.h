@@ -16,5 +16,5 @@
 
 typedef int (*poll_read_cb_t)(int);
 
-int poll_start(int interval, int id, poll_read_cb_t read_cb);
-void poll_stop(void);
+int poll_create(int interval, int id, poll_read_cb_t read_cb);
+void poll_destroy(void);

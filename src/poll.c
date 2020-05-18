@@ -46,7 +46,7 @@ static void timeout_destroy(void *user_data)
 	l_timeout_remove(to);
 }
 
-int poll_start(int interval, int id, poll_read_cb_t read_cb)
+int poll_create(int interval, int id, poll_read_cb_t read_cb)
 {
 	struct poll_data *data;
 	struct l_timeout *to;
@@ -67,7 +67,7 @@ int poll_start(int interval, int id, poll_read_cb_t read_cb)
 	return 0;
 }
 
-void poll_stop(void)
+void poll_destroy(void)
 {
 	if (poll_timeouts)
 		l_queue_destroy(poll_timeouts, timeout_destroy);

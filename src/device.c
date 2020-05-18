@@ -749,6 +749,23 @@ static void on_config_timeout(int id)
 	l_queue_destroy(list, NULL);
 }
 
+static int create_data_item_polling(void)
+{
+	int i;
+	int rc;
+
+	for (i = 0; i < thing.data_item_count; i++) {
+		rc = poll_create(DEFAULT_POLLING_INTERVAL, i,
+				 device_read_data);
+		if (rc < 0) {
+			poll_destroy();
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
 int device_start_config(void)
 {
 	int rc;
@@ -768,23 +785,6 @@ int device_start_config(void)
 void device_stop_config(void)
 {
 	config_stop();
-}
-
-static int start_data_item_polling(void)
-{
-	int i;
-	int rc;
-
-	for (i = 0; i < thing.data_item_count; i++) {
-		rc = poll_start(DEFAULT_POLLING_INTERVAL, i,
-				device_read_data);
-		if (rc < 0) {
-			poll_stop();
-			return rc;
-		}
-	}
-
-	return 0;
 }
 
 int device_read_data(int id)
@@ -957,7 +957,7 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
-	err = start_data_item_polling();
+	err = create_data_item_polling();
 	if (err < 0) {
 		modbus_stop();
 		knot_thing_destroy(&thing);
@@ -967,7 +967,7 @@ int device_start(struct device_settings *conf_files)
 	err = cloud_start(thing.rabbitmq_url, thing.user_token,
 			  on_cloud_connected, on_cloud_disconnected, NULL);
 	if (err < 0) {
-		poll_stop();
+		poll_destroy();
 		modbus_stop();
 		knot_thing_destroy(&thing);
 		return err;
@@ -980,7 +980,7 @@ void device_destroy(void)
 {
 	config_stop();
 
-	poll_stop();
+	poll_destroy();
 	cloud_stop();
 	modbus_stop();
 
