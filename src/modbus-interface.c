@@ -53,6 +53,7 @@ union modbus_types {
 
 struct modbus_driver connection_interface;
 struct l_timeout *connect_to;
+struct l_io *modbus_io;
 modbus_t *modbus_ctx;
 modbus_conn_cb_t conn_changed_cb;
 
@@ -66,22 +67,31 @@ static int parse_url(const char *url)
 		return -EINVAL;
 }
 
-static void connection_retry(void)
+static void on_disconnected(struct l_io *io, void *user_data)
 {
 	modbus_close(modbus_ctx);
 
 	if (conn_changed_cb)
 		conn_changed_cb(false);
 
-	if (connect_to)
-		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
+	l_io_destroy(modbus_io);
+	modbus_io = NULL;
+	l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
 }
 
 static void attempt_connect(struct l_timeout *to, void *user_data)
 {
-	if (modbus_connect(modbus_ctx) < 0)
+	if (modbus_connect(modbus_ctx) < 0) {
 		l_timeout_modify(to, RECONNECT_TIMEOUT);
-	else if (conn_changed_cb)
+		return;
+	}
+
+	modbus_io = l_io_new(modbus_get_socket(modbus_ctx));
+	if (!l_io_set_disconnect_handler(modbus_io, on_disconnected, NULL,
+					 NULL))
+		l_error("Couldn't set Modbus disconnect handler");
+
+	if (conn_changed_cb)
 		conn_changed_cb(true);
 }
 
@@ -125,12 +135,10 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 		rc = -EINVAL;
 	}
 
-	if (rc < 0) {
+	if (rc < 0)
 		rc = -errno;
-		connection_retry();
-	} else {
+	else
 		memcpy(out, &tmp, sizeof(tmp));
-	}
 
 	return rc;
 }
@@ -167,6 +175,9 @@ void modbus_stop(void)
 {
 	if (likely(connect_to))
 		l_timeout_remove(connect_to);
+
+	if (modbus_io)
+		l_io_destroy(modbus_io);
 
 	if (modbus_ctx)
 		connection_interface.destroy(modbus_ctx);
