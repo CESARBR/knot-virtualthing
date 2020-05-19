@@ -19,6 +19,7 @@
 #include <modbus.h>
 #include <string.h>
 #include <knot/knot_protocol.h>
+#include <ell/ell.h>
 
 #include "modbus-interface.h"
 #include "modbus-driver.h"
@@ -27,6 +28,7 @@
 #define TCP_PREFIX_SIZE 6
 #define RTU_PREFIX "serial://"
 #define RTU_PREFIX_SIZE 9
+#define RECONNECT_TIMEOUT 5
 
 enum driver_type {
 	TCP,
@@ -50,6 +52,7 @@ union modbus_types {
 };
 
 struct modbus_driver connection_interface;
+struct l_timeout *connect_to;
 modbus_t *modbus_ctx;
 modbus_conn_cb_t conn_changed_cb;
 
@@ -61,6 +64,25 @@ static int parse_url(const char *url)
 		return RTU;
 	else
 		return -EINVAL;
+}
+
+static void connection_retry(void)
+{
+	modbus_close(modbus_ctx);
+
+	if (conn_changed_cb)
+		conn_changed_cb(false);
+
+	if (connect_to)
+		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
+}
+
+static void attempt_connect(struct l_timeout *to, void *user_data)
+{
+	if (modbus_connect(modbus_ctx) < 0)
+		l_timeout_modify(to, RECONNECT_TIMEOUT);
+	else if (conn_changed_cb)
+		conn_changed_cb(true);
 }
 
 int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
@@ -105,10 +127,8 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 
 	if (rc < 0) {
 		rc = -errno;
-		if (conn_changed_cb)
-			conn_changed_cb(false);
-	}
-	else {
+		connection_retry();
+	} else {
 		memcpy(out, &tmp, sizeof(tmp));
 	}
 
@@ -136,18 +156,18 @@ int modbus_start(const char *url, int slave_id,
 	if (modbus_set_slave(modbus_ctx, slave_id) < 0)
 		return -errno;
 
-	if (modbus_connect(modbus_ctx) < 0)
-		return -errno;
-
 	conn_changed_cb = conn_change_cb;
-	if (conn_changed_cb)
-		conn_changed_cb(true);
+
+	connect_to = l_timeout_create_ms(1, attempt_connect, NULL, NULL);
 
 	return 0;
 }
 
 void modbus_stop(void)
 {
+	if (likely(connect_to))
+		l_timeout_remove(connect_to);
+
 	if (modbus_ctx)
 		connection_interface.destroy(modbus_ctx);
 }
