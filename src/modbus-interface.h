@@ -17,9 +17,12 @@
 extern struct modbus_driver tcp;
 extern struct modbus_driver rtu;
 
-typedef void (*modbus_conn_cb_t) (bool);
+typedef void (*modbus_connected_cb_t) (void *user_data);
+typedef void (*modbus_disconnected_cb_t) (void *user_data);
 
 int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out);
 int modbus_start(const char *url, int slave_id,
-		 modbus_conn_cb_t conn_change_cb);
+		 modbus_connected_cb_t connected_cb,
+		 modbus_disconnected_cb_t disconnected_cb,
+		 void *user_data);
 void modbus_stop(void);

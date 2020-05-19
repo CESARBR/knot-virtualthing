@@ -712,14 +712,16 @@ static int erase_thing_id(int cred_fd)
 	return rc;
 }
 
-static void on_modbus_conn_changed(bool connected)
+static void on_modbus_connected(void *user_data)
 {
-	if (connected)
-		poll_start();
-	else
-		poll_stop();
+	poll_start();
+	conn_handler(MODBUS, true);
+}
 
-	conn_handler(MODBUS, connected);
+static void on_modbus_disconnected(void *user_data)
+{
+	poll_stop();
+	conn_handler(MODBUS, false);
 }
 
 static void on_publish_data(void *data, void *user_data)
@@ -962,7 +964,7 @@ int device_start(struct device_settings *conf_files)
 	}
 
 	err = modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
-			   on_modbus_conn_changed);
+			   on_modbus_connected, on_modbus_disconnected, NULL);
 	if (err < 0) {
 		poll_destroy();
 		knot_thing_destroy(&thing);

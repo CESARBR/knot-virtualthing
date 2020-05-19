@@ -55,7 +55,8 @@ struct modbus_driver connection_interface;
 struct l_timeout *connect_to;
 struct l_io *modbus_io;
 modbus_t *modbus_ctx;
-modbus_conn_cb_t conn_changed_cb;
+modbus_connected_cb_t conn_cb;
+modbus_disconnected_cb_t disconn_cb;
 
 static int parse_url(const char *url)
 {
@@ -71,8 +72,8 @@ static void on_disconnected(struct l_io *io, void *user_data)
 {
 	modbus_close(modbus_ctx);
 
-	if (conn_changed_cb)
-		conn_changed_cb(false);
+	if (disconn_cb)
+		disconn_cb(user_data);
 
 	l_io_destroy(modbus_io);
 	modbus_io = NULL;
@@ -91,8 +92,8 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 					 NULL))
 		l_error("Couldn't set Modbus disconnect handler");
 
-	if (conn_changed_cb)
-		conn_changed_cb(true);
+	if (conn_cb)
+		conn_cb(user_data);
 }
 
 int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
@@ -144,7 +145,9 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 }
 
 int modbus_start(const char *url, int slave_id,
-		 modbus_conn_cb_t conn_change_cb)
+		 modbus_connected_cb_t connected_cb,
+		 modbus_disconnected_cb_t disconnected_cb,
+		 void *user_data)
 {
 	switch (parse_url(url)) {
 	case TCP:
@@ -164,7 +167,8 @@ int modbus_start(const char *url, int slave_id,
 	if (modbus_set_slave(modbus_ctx, slave_id) < 0)
 		return -errno;
 
-	conn_changed_cb = conn_change_cb;
+	conn_cb = connected_cb;
+	disconn_cb = disconnected_cb;
 
 	connect_to = l_timeout_create_ms(1, attempt_connect, NULL, NULL);
 
