@@ -20,7 +20,7 @@ src_thingd_SOURCES = src/main.c \
 			src/device.c src/device.h \
 			src/storage.c src/storage.h \
 			src/modbus-interface.c src/modbus-interface.h \
-		        src/modbus-tcp.c src/modbus-rtu.c \
+			src/modbus-tcp.c src/modbus-rtu.c \
 			src/modbus-driver.h \
 			src/settings.c src/settings.h \
 			src/knot-config.c src/knot-config.h \
@@ -31,8 +31,8 @@ src_thingd_LDFLAGS = $(AM_LDFLAGS)
 src_thingd_CFLAGS = $(AM_CFLAGS) $(modules_cflags)
 
 MAINTAINERCLEANFILES = Makefile.in \
-        aclocal.m4 configure config.h.in config.sub config.guess \
-        ltmain.sh depcomp compile missing install-sh
+	aclocal.m4 configure config.h.in config.sub config.guess \
+	ltmain.sh depcomp compile missing install-sh
 
 TESTS = tests/sm_tests tests/device_tests
 check_PROGRAMS = $(TESTS)
