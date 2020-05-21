@@ -25,11 +25,14 @@
 
 #include <signal.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <errno.h>
 #include <ell/ell.h>
 
 #include "settings.h"
 #include "device.h"
+
+static int log_priority;
 
 static void signal_handler(uint32_t signo, void *user_data)
 {
@@ -66,6 +69,41 @@ static void free_device_settings(struct device_settings *conf_files)
 	l_free(conf_files);
 }
 
+static void log_stderr_handler(int priority, const char *file, const char *line,
+			       const char *func, const char *format, va_list ap)
+{
+	if (priority > log_priority)
+		return;
+
+	switch (priority) {
+	case L_LOG_ERR:
+		fprintf(stderr, "ERR: %s() ", func);
+		break;
+	case L_LOG_WARNING:
+		fprintf(stderr, "WARN: ");
+		break;
+	case L_LOG_INFO:
+		fprintf(stderr, "INFO: ");
+		break;
+	case L_LOG_DEBUG:
+		fprintf(stderr, "DEBUG: ");
+		break;
+	default:
+		return;
+	}
+
+	vfprintf(stderr, format, ap);
+}
+
+static void log_ell_enable(int priority)
+{
+	l_log_set_handler(log_stderr_handler);
+	log_priority = priority;
+
+	if (log_priority == L_LOG_DEBUG)
+		l_debug_enable("*");
+}
+
 int main(int argc, char *argv[])
 {
 	struct settings *settings;
@@ -86,7 +124,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	l_log_set_stderr();
+	log_ell_enable(L_LOG_INFO);
 
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);
