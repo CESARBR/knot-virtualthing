@@ -39,12 +39,12 @@
 #include "parser.h"
 #include "cloud.h"
 
-#define MQ_QUEUE_FOG "connOut-messages"
-#define MQ_QUEUE_CLOUD "connIn-messages"
+#define MQ_QUEUE_FOG_OUT "thingd-fogOut-messages"
+#define MQ_QUEUE_FOG_IN "thingd-fogIn-messages"
 
 /* Exchanges */
-#define MQ_EXCHANGE_FOG "connOut"
-#define MQ_EXCHANGE_CLOUD "connIn"
+#define MQ_EXCHANGE_FOG_OUT "fogOut"
+#define MQ_EXCHANGE_FOG_IN "fogIn"
 
 /* Headers */
 #define MQ_AUTHORIZATION_HEADER "Authorization"
@@ -239,7 +239,7 @@ int cloud_register_device(const char *id, const char *name)
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
+	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
 	if (!queue_cloud.bytes) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -255,7 +255,7 @@ int cloud_register_device(const char *id, const char *name)
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
 	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
+					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_DEVICE_REGISTER,
 					       headers, 1,
 					       MQ_MSG_EXPIRATION_TIME_MS,
@@ -286,7 +286,7 @@ int cloud_unregister_device(const char *id)
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
+	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
 	if (!queue_cloud.bytes) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -302,7 +302,7 @@ int cloud_unregister_device(const char *id)
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
 	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
+					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_DEVICE_UNREGISTER,
 					       headers, 1,
 					       MQ_MSG_EXPIRATION_TIME_MS,
@@ -334,7 +334,7 @@ int cloud_auth_device(const char *id, const char *token)
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
+	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
 	if (queue_cloud.bytes == NULL) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -350,7 +350,7 @@ int cloud_auth_device(const char *id, const char *token)
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
 	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
+					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_DEVICE_AUTH,
 					       headers, 1,
 					       0, // Set no expiration time
@@ -380,7 +380,7 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
+	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
 	if (!queue_cloud.bytes) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -396,7 +396,7 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
 	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
+					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_SCHEMA_UPDATE,
 					       headers, 1,
 					       MQ_MSG_EXPIRATION_TIME_MS,
@@ -431,7 +431,7 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_CLOUD);
+	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
 	if (!queue_cloud.bytes) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -448,7 +448,7 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
 	result = mq_publish_persistent_message(queue_cloud,
-					       MQ_EXCHANGE_CLOUD,
+					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_DATA_PUBLISH,
 					       headers, 1,
 					       MQ_MSG_EXPIRATION_TIME_MS,
@@ -486,14 +486,14 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 
 	cloud_cb = read_handler;
 
-	queue_fog = mq_declare_new_queue(MQ_QUEUE_FOG);
+	queue_fog = mq_declare_new_queue(MQ_QUEUE_FOG_OUT);
 	if (queue_fog.bytes == NULL) {
 		l_error("Error on declare a new queue");
 		return -1;
 	}
 
 	for (i = 0; fog_events[i] != NULL; i++) {
-		err = mq_bind_queue(queue_fog, MQ_EXCHANGE_FOG, fog_events[i]);
+		err = mq_bind_queue(queue_fog, MQ_EXCHANGE_FOG_OUT, fog_events[i]);
 		if (err) {
 			l_error("Error on set up queue to consume");
 			amqp_bytes_free(queue_fog);
