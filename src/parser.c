@@ -222,7 +222,7 @@ struct l_queue *parser_request_to_list(json_object *jso)
 
 	list = l_queue_new();
 
-	if (!json_object_object_get_ex(jso, "data", &json_array))
+	if (!json_object_object_get_ex(jso, "sensorIds", &json_array))
 		goto fail;
 
 	for (i = 0; i < json_object_array_length(json_array); i++) {
