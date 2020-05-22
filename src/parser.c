@@ -101,8 +101,8 @@ struct l_queue *parser_schema_to_list(const char *json_str)
 	list = l_queue_new();
 	/* Expected JSON object is in the following format:
 	 *
-	 * [ {"sensor_id": x, "value_type": w,
-	 *		"unit": z "type_id": y, "name": "foo"}]
+	 * [ {"sensorId": x, "valueType": w,
+	 *		"unit": z "typeId": y, "name": "foo"}]
 	 * }
 	 */
 
@@ -110,8 +110,8 @@ struct l_queue *parser_schema_to_list(const char *json_str)
 
 		jobjentry = json_object_array_get_idx(jobjarray, i);
 
-		/* Getting 'sensor_id' */
-		if (!json_object_object_get_ex(jobjentry, "sensor_id",
+		/* Getting 'sensorId' */
+		if (!json_object_object_get_ex(jobjentry, "sensorId",
 								&jobjkey))
 			goto done;
 
@@ -120,8 +120,8 @@ struct l_queue *parser_schema_to_list(const char *json_str)
 
 		sensor_id = json_object_get_int(jobjkey);
 
-		/* Getting 'value_type' */
-		if (!json_object_object_get_ex(jobjentry, "value_type",
+		/* Getting 'valueType' */
+		if (!json_object_object_get_ex(jobjentry, "valueType",
 								&jobjkey))
 			goto done;
 
@@ -139,8 +139,8 @@ struct l_queue *parser_schema_to_list(const char *json_str)
 
 		unit = json_object_get_int(jobjkey);
 
-		/* Getting 'type_id' */
-		if (!json_object_object_get_ex(jobjentry, "type_id", &jobjkey))
+		/* Getting 'typeId' */
+		if (!json_object_object_get_ex(jobjentry, "typeId", &jobjkey))
 			goto done;
 
 		if (json_object_get_type(jobjkey) != json_type_int)
@@ -259,7 +259,7 @@ json_object *parser_sensorid_to_json(const char *key, struct l_queue *list)
 
 	for (id = l_queue_pop_head(list); id; id = l_queue_pop_head(list)) {
 		entry = json_object_new_object();
-		json_object_object_add(entry, "sensor_id",
+		json_object_object_add(entry, "sensorId",
 				       json_object_new_int(*id));
 		json_object_array_add(ajobj, json_object_get(entry));
 	}
@@ -293,9 +293,9 @@ struct l_queue *parser_update_to_list(json_object *jso)
 		if (!json_data)
 			goto fail;
 
-		/* Getting 'sensor_id' */
+		/* Getting 'sensorId' */
 		if (!json_object_object_get_ex(json_data,
-							"sensor_id", &jobjkey))
+							"sensorId", &jobjkey))
 			goto fail;
 
 		if (json_object_get_type(jobjkey) != json_type_int)
@@ -418,7 +418,7 @@ json_object *parser_data_create_object(const char *device_id, uint8_t sensor_id,
 	json_object_object_add(json_msg, "id",
 			       json_object_new_string(device_id));
 	data = json_object_new_object();
-	json_object_object_add(data, "sensor_id",
+	json_object_object_add(data, "sensorId",
 			       json_object_new_int(sensor_id));
 
 	switch (value_type) {
@@ -467,7 +467,7 @@ json_object *parser_data_create_object(const char *device_id, uint8_t sensor_id,
 	 *
 	 * { "id": "fbe64efa6c7f717e",
 	 *   "data": [{
-	 *     "sensor_id": 1,
+	 *     "sensorId": 1,
 	 *     "value": false,
 	 *   }]
 	 * }
@@ -554,15 +554,15 @@ static json_object *schema_item_create_obj(knot_msg_schema *schema)
 
 	json_schema = json_object_new_object();
 
-	json_object_object_add(json_schema, "sensor_id",
+	json_object_object_add(json_schema, "sensorId",
 				       json_object_new_int(schema->sensor_id));
-	json_object_object_add(json_schema, "value_type",
+	json_object_object_add(json_schema, "valueType",
 				json_object_new_int(
 					schema->values.value_type));
 	json_object_object_add(json_schema, "unit",
 				json_object_new_int(
 					schema->values.unit));
-	json_object_object_add(json_schema, "type_id",
+	json_object_object_add(json_schema, "typeId",
 				json_object_new_int(
 					schema->values.type_id));
 	json_object_object_add(json_schema, "name",
@@ -573,10 +573,10 @@ static json_object *schema_item_create_obj(knot_msg_schema *schema)
 	 * Returned JSON object is in the following format:
 	 *
 	 * {
-	 *   "sensor_id": 1,
-	 *   "value_type": 0xFFF1,
+	 *   "sensorId": 1,
+	 *   "valueType": 0xFFF1,
 	 *   "unit": 0,
-	 *   "type_id": 3,
+	 *   "typeId": 3,
 	 *   "name": "Door lock"
 	 * }
 	 */
@@ -616,10 +616,10 @@ json_object *parser_schema_create_object(const char *device_id,
 	 *
 	 * { "id": "fbe64efa6c7f717e",
 	 *   "schema" : [{
-	 *         "sensor_id": 1,
-	 *         "value_type": 0xFFF1,
+	 *         "sensorId": 1,
+	 *         "valueType": 0xFFF1,
 	 *         "unit": 0,
-	 *         "type_id": 3,
+	 *         "typeId": 3,
 	 *         "name": "Door lock"
 	 *   }]
 	 * }
