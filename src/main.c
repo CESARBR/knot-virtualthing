@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	log_ell_enable(L_LOG_INFO);
+	log_ell_enable(settings->log_level);
 
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);

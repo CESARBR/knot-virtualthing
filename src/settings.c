@@ -34,13 +34,20 @@
 #define DEFAULT_DEVICE_FILE_PATH	"/etc/knot/device.conf"
 #define DEFAULT_AMQP_FILE_PATH		"/etc/knot/rabbitmq.conf"
 
+#define LOG_STRING_ERR			"error"
+#define LOG_STRING_WARN			"warn"
+#define LOG_STRING_INFO			"info"
+#define LOG_STRING_DEBUG		"debug"
+
 static bool detach = true;
 static bool help = false;
+static int log_level = L_LOG_INFO;
 
 static const struct option main_options[] = {
 	{ "credentials-file",	required_argument,	NULL, 'c' },
 	{ "dev-file",		required_argument,	NULL, 'd' },
 	{ "rabbitmq-url",	required_argument,	NULL, 'r' },
+	{ "log",		required_argument,	NULL, 'l' },
 	{ "nodetach",		no_argument,		NULL, 'n' },
 	{ "help",		no_argument,		NULL, 'h' },
 	{ }
@@ -57,8 +64,29 @@ static void usage(void)
 		"\t-d, --dev-file          Device configuration file path\n"
 		"\t-r, --rabbitmq-url      Connect with a different url "
 		"amqp://[$USERNAME[:$PASSWORD]\\@]$HOST[:$PORT]/[$VHOST]\n"
+		"\t-l, --log               Configure log level, options are:"
+		"error | warn | info | debug"
 		"\t-n, --nodetach          Disable running in background\n"
 		"\t-h, --help              Show help options\n");
+}
+
+static int parse_log_level(char *log_name)
+{
+	int priority;
+
+	if (!strcmp(log_name, LOG_STRING_ERR)) {
+		priority = L_LOG_ERR;
+	} else if (!strcmp(log_name, LOG_STRING_WARN)) {
+		priority = L_LOG_WARNING;
+	} else if (!strcmp(log_name, LOG_STRING_INFO)) {
+		priority = L_LOG_INFO;
+	} else if (!strcmp(log_name, LOG_STRING_DEBUG)) {
+		priority = L_LOG_DEBUG;
+	} else {
+		priority = -1;
+	}
+
+	return priority;
 }
 
 static int parse_args(int argc, char *argv[], struct settings *settings)
@@ -66,7 +94,7 @@ static int parse_args(int argc, char *argv[], struct settings *settings)
 	int opt;
 
 	for (;;) {
-		opt = getopt_long(argc, argv, "c:d:r:nh",
+		opt = getopt_long(argc, argv, "c:d:r:l:nh",
 				  main_options, NULL);
 		if (opt < 0)
 			break;
@@ -80,6 +108,14 @@ static int parse_args(int argc, char *argv[], struct settings *settings)
 			break;
 		case 'r':
 			settings->rabbitmq_path = optarg;
+			break;
+		case 'l':
+			settings->log_level = parse_log_level(optarg);
+			if (settings->log_level < 0) {
+				fprintf(stderr, "ERROR: Invalid log level\n");
+				usage();
+				return -EINVAL;
+			}
 			break;
 		case 'n':
 			settings->detach = false;
@@ -110,6 +146,7 @@ struct settings *settings_load(int argc, char *argv[])
 	settings->credentials_path = DEFAULT_CREDENTIALS_FILE_PATH;
 	settings->device_path = DEFAULT_DEVICE_FILE_PATH;
 	settings->rabbitmq_path = DEFAULT_AMQP_FILE_PATH;
+	settings->log_level = log_level;
 	settings->detach = detach;
 	settings->help = help;
 

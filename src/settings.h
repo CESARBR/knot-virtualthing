@@ -18,6 +18,7 @@ struct settings {
 	char *credentials_path;
 	char *device_path;
 	char *rabbitmq_path;
+	int log_level;
 	bool detach;
 	bool help;
 };
