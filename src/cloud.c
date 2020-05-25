@@ -313,8 +313,19 @@ int cloud_unregister_device(const char *id)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
+	/**
+	 * Exchange
+	 *	Type: Direct
+	 *	Name: device
+	 * Routing Key
+	 *	Name: device.unregister
+	 * Headers
+	 *	[0]: User Token
+	 * Expiration
+	 *	2000 ms
+	 */
 	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_FOG_IN,
+						  MQ_EXCHANGE_DEVICE,
 						  MQ_CMD_DEVICE_UNREGISTER,
 						  headers, 1,
 						  MQ_MSG_EXPIRATION_TIME_MS,
