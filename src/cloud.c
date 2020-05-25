@@ -65,7 +65,7 @@
 #define MQ_CMD_DEVICE_REGISTER "device.register"
 #define MQ_CMD_DEVICE_UNREGISTER "device.unregister"
 #define MQ_CMD_DEVICE_AUTH "device.cmd.auth"
-#define MQ_CMD_SCHEMA_UPDATE "schema.update"
+#define MQ_CMD_SCHEMA_SENT "device.schema.sent"
 
 cloud_cb_t cloud_cb;
 char *user_auth_token;
@@ -418,9 +418,20 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
+	/**
+	 * Exchange
+	 *	Type: Direct
+	 *	Name: device
+	 * Routing Key
+	 *	Name: device.schema.sent
+	 * Headers
+	 *	[0]: User Token
+	 * Expiration
+	 *	2000 ms
+	 */
 	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_FOG_IN,
-						  MQ_CMD_SCHEMA_UPDATE,
+						  MQ_EXCHANGE_DEVICE,
+						  MQ_CMD_SCHEMA_SENT,
 						  headers, 1,
 						  MQ_MSG_EXPIRATION_TIME_MS,
 						  json_str);
