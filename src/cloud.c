@@ -553,7 +553,8 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 	}
 
 	for (i = 0; fog_events[i] != NULL; i++) {
-		err = mq_bind_queue(queue_fog, MQ_EXCHANGE_FOG_OUT, fog_events[i]);
+		err = mq_prepare_direct_queue(queue_fog, MQ_EXCHANGE_FOG_OUT,
+					      fog_events[i]);
 		if (err) {
 			l_error("Error on set up queue to consume");
 			amqp_bytes_free(queue_fog);
