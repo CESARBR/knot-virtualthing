@@ -277,6 +277,37 @@ done:
 	l_free(tmp_url);
 }
 
+static int mq_prepare_queue(amqp_bytes_t queue, const char *exchange,
+			    const char *exchange_type, const char *routing_key)
+{
+	if (exchange == NULL || exchange_type == NULL || routing_key == NULL)
+		return -1;
+
+	/* Declare the exchange as durable */
+	amqp_exchange_declare(mq_ctx.conn, 1,
+			amqp_cstring_bytes(exchange),
+			amqp_cstring_bytes(exchange_type),
+			0 /* passive*/,
+			1 /* durable */,
+			0 /* auto_delete*/,
+			0 /* internal */,
+			amqp_empty_table);
+
+	/* Set up to bind a queue to an exchange */
+	amqp_queue_bind(mq_ctx.conn, 1, queue,
+			amqp_cstring_bytes(exchange),
+			amqp_cstring_bytes(routing_key),
+			amqp_empty_table);
+
+	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
+			       AMQP_RESPONSE_NORMAL) {
+		l_error("Error while binding queue");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mq_publish_message(amqp_bytes_t queue,
 			      const char *exchange,
 			      const char *type,
@@ -523,7 +554,7 @@ amqp_bytes_t mq_declare_new_queue(const char *name)
 }
 
 /**
- * mq_bind_queue:
+ * mq_prepare_queue:
  * @queue: queue declared
  * @exchange: exchange to be declared
  * @routing_key: routing key to bind
@@ -532,36 +563,11 @@ amqp_bytes_t mq_declare_new_queue(const char *name)
  *
  * Returns: 0 if successful and -1 otherwise.
  */
-int mq_bind_queue(amqp_bytes_t queue,
-			      const char *exchange,
-			      const char *routing_key)
+int mq_prepare_direct_queue(amqp_bytes_t queue, const char *exchange,
+			    const char *routing_key)
 {
-	if (exchange == NULL || routing_key == NULL)
-		return -1;
-
-	/* Declare the exchange as durable */
-	amqp_exchange_declare(mq_ctx.conn, 1,
-			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes("topic"),
-			0 /* passive*/,
-			1 /* durable */,
-			0 /* auto_delete*/,
-			0 /* internal */,
-			amqp_empty_table);
-
-	/* Set up to bind a queue to an exchange */
-	amqp_queue_bind(mq_ctx.conn, 1, queue,
-			amqp_cstring_bytes(exchange),
-			amqp_cstring_bytes(routing_key),
-			amqp_empty_table);
-
-	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
-			       AMQP_RESPONSE_NORMAL) {
-		l_error("Error while binding queue");
-		return -1;
-	}
-
-	return 0;
+	return mq_prepare_queue(queue, exchange, AMQP_EXCHANGE_TYPE_DIRECT,
+				routing_key);
 }
 
 /**
