@@ -41,10 +41,10 @@
 
 #define MQ_QUEUE_FOG_OUT "thingd-fogOut-messages"
 #define MQ_QUEUE_FOG_IN "thingd-fogIn-messages"
+#define MQ_QUEUE_REPLY "thingd-reply-messages"
 
 /* Exchanges */
 #define MQ_EXCHANGE_FOG_OUT "fogOut"
-#define MQ_EXCHANGE_FOG_IN "fogIn"
 #define MQ_EXCHANGE_DEVICE "device"
 #define MQ_EXCHANGE_DATA_SENT "data.sent"
 
@@ -64,10 +64,11 @@
  /* Northbound traffic (control, measurements) */
 #define MQ_CMD_DEVICE_REGISTER "device.register"
 #define MQ_CMD_DEVICE_UNREGISTER "device.unregister"
-#define MQ_CMD_DEVICE_AUTH "device.cmd.auth"
+#define MQ_CMD_DEVICE_AUTH "device.auth"
 #define MQ_CMD_SCHEMA_SENT "device.schema.sent"
 
 cloud_cb_t cloud_cb;
+amqp_bytes_t queue_reply;
 char *user_auth_token;
 amqp_table_entry_t headers[1];
 
@@ -363,6 +364,11 @@ int cloud_auth_device(const char *id, const char *token)
 		return -1;
 	}
 
+	if (!queue_reply.bytes) {
+		l_error("Reply queue not declared");
+		return KNOT_ERR_CLOUD_FAILURE;
+	}
+
 	jobj_auth = parser_auth_json_create(id, token);
 	if (!jobj_auth) {
 		amqp_bytes_free(queue_cloud);
@@ -372,12 +378,24 @@ int cloud_auth_device(const char *id, const char *token)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_FOG_IN,
-						  MQ_CMD_DEVICE_AUTH,
-						  headers, 1,
-						  MQ_MSG_EXPIRATION_TIME_MS,
-						  json_str);
+	/**
+	 * Exchange
+	 *	Type: Direct
+	 *	Name: device
+	 * Routing Key
+	 *	Name: device.auth
+	 * Headers
+	 *	[0]: User Token
+	 * Expiration
+	 *	2000 ms
+	 */
+	result = mq_publish_direct_persistent_msg_rpc(queue_cloud,
+						      MQ_EXCHANGE_DEVICE,
+						      MQ_CMD_DEVICE_AUTH,
+						      headers, 1,
+						      MQ_MSG_EXPIRATION_TIME_MS,
+						      queue_reply, id,
+						      json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
@@ -557,6 +575,17 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 
 	amqp_bytes_free(queue_fog);
 
+	queue_reply = mq_declare_new_queue(MQ_QUEUE_REPLY);
+	if (queue_reply.bytes == NULL) {
+		l_error("Error on declare a new queue");
+		return -1;
+	}
+
+	if (mq_consumer_queue(queue_reply)) {
+		l_error("Error on start a queue consumer");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -573,5 +602,8 @@ int cloud_start(char *url, char *user_token, cloud_connected_cb_t connected_cb,
 
 void cloud_stop(void)
 {
+	if (queue_reply.bytes)
+		amqp_bytes_free(queue_reply);
+
 	mq_stop();
 }
