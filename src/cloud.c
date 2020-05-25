@@ -40,7 +40,6 @@
 #include "cloud.h"
 
 #define MQ_QUEUE_FOG_OUT "thingd-fogOut-messages"
-#define MQ_QUEUE_FOG_IN "thingd-fogIn-messages"
 #define MQ_QUEUE_REPLY "thingd-reply-messages"
 
 /* Exchanges */
@@ -236,22 +235,14 @@ static bool on_cloud_receive_message(const char *exchange,
  */
 int cloud_register_device(const char *id, const char *name)
 {
-	amqp_bytes_t queue_cloud;
 	json_object *jobj_device;
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
-	if (!queue_cloud.bytes) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
 	jobj_device = parser_device_json_create(id, name);
-	if (!jobj_device) {
-		amqp_bytes_free(queue_cloud);
+	if (!jobj_device)
 		return KNOT_ERR_CLOUD_FAILURE;
-	}
+
 	json_str = json_object_to_json_string(jobj_device);
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
@@ -267,17 +258,15 @@ int cloud_register_device(const char *id, const char *name)
 	 * Expiration
 	 *	2000 ms
 	 */
-	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_DEVICE,
-						  MQ_CMD_DEVICE_REGISTER,
-						  headers, 1,
-						  MQ_MSG_EXPIRATION_TIME_MS,
-						  json_str);
+	result = mq_publish_direct_message(MQ_EXCHANGE_DEVICE,
+					   MQ_CMD_DEVICE_REGISTER,
+					   headers, 1,
+					   MQ_MSG_EXPIRATION_TIME_MS,
+					   json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
 	json_object_put(jobj_device);
-	amqp_bytes_free(queue_cloud);
 
 	return result;
 }
@@ -294,22 +283,14 @@ int cloud_register_device(const char *id, const char *name)
  */
 int cloud_unregister_device(const char *id)
 {
-	amqp_bytes_t queue_cloud;
 	json_object *jobj_unreg;
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
-	if (!queue_cloud.bytes) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
 	jobj_unreg = parser_unregister_json_create(id);
-	if (!jobj_unreg) {
-		amqp_bytes_free(queue_cloud);
+	if (!jobj_unreg)
 		return KNOT_ERR_CLOUD_FAILURE;
-	}
+
 	json_str = json_object_to_json_string(jobj_unreg);
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
@@ -325,17 +306,15 @@ int cloud_unregister_device(const char *id)
 	 * Expiration
 	 *	2000 ms
 	 */
-	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_DEVICE,
-						  MQ_CMD_DEVICE_UNREGISTER,
-						  headers, 1,
-						  MQ_MSG_EXPIRATION_TIME_MS,
-						  json_str);
+	result = mq_publish_direct_message(MQ_EXCHANGE_DEVICE,
+					   MQ_CMD_DEVICE_UNREGISTER,
+					   headers, 1,
+					   MQ_MSG_EXPIRATION_TIME_MS,
+					   json_str);
 	if (result < 0)
 		return KNOT_ERR_CLOUD_FAILURE;
 
 	json_object_put(jobj_unreg);
-	amqp_bytes_free(queue_cloud);
 
 	return 0;
 }
@@ -353,16 +332,9 @@ int cloud_unregister_device(const char *id)
  */
 int cloud_auth_device(const char *id, const char *token)
 {
-	amqp_bytes_t queue_cloud;
 	json_object *jobj_auth;
 	const char *json_str;
 	int result;
-
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
-	if (queue_cloud.bytes == NULL) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
 
 	if (!queue_reply.bytes) {
 		l_error("Reply queue not declared");
@@ -370,10 +342,9 @@ int cloud_auth_device(const char *id, const char *token)
 	}
 
 	jobj_auth = parser_auth_json_create(id, token);
-	if (!jobj_auth) {
-		amqp_bytes_free(queue_cloud);
+	if (!jobj_auth)
 		return KNOT_ERR_CLOUD_FAILURE;
-	}
+
 	json_str = json_object_to_json_string(jobj_auth);
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
@@ -389,18 +360,16 @@ int cloud_auth_device(const char *id, const char *token)
 	 * Expiration
 	 *	2000 ms
 	 */
-	result = mq_publish_direct_persistent_msg_rpc(queue_cloud,
-						      MQ_EXCHANGE_DEVICE,
-						      MQ_CMD_DEVICE_AUTH,
-						      headers, 1,
-						      MQ_MSG_EXPIRATION_TIME_MS,
-						      queue_reply, id,
-						      json_str);
+	result = mq_publish_direct_message_rpc(MQ_EXCHANGE_DEVICE,
+					       MQ_CMD_DEVICE_AUTH,
+					       headers, 1,
+					       MQ_MSG_EXPIRATION_TIME_MS,
+					       queue_reply, id,
+					       json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
 	json_object_put(jobj_auth);
-	amqp_bytes_free(queue_cloud);
 
 	return result;
 }
@@ -416,22 +385,14 @@ int cloud_auth_device(const char *id, const char *token)
  */
 int cloud_update_schema(const char *id, struct l_queue *schema_list)
 {
-	amqp_bytes_t queue_cloud;
 	json_object *jobj_schema;
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
-	if (!queue_cloud.bytes) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
 	jobj_schema = parser_schema_create_object(id, schema_list);
-	if (!jobj_schema) {
-		amqp_bytes_free(queue_cloud);
+	if (!jobj_schema)
 		return KNOT_ERR_CLOUD_FAILURE;
-	}
+
 	json_str = json_object_to_json_string(jobj_schema);
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
@@ -447,17 +408,15 @@ int cloud_update_schema(const char *id, struct l_queue *schema_list)
 	 * Expiration
 	 *	2000 ms
 	 */
-	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_DEVICE,
-						  MQ_CMD_SCHEMA_SENT,
-						  headers, 1,
-						  MQ_MSG_EXPIRATION_TIME_MS,
-						  json_str);
+	result = mq_publish_direct_message(MQ_EXCHANGE_DEVICE,
+					   MQ_CMD_SCHEMA_SENT,
+					   headers, 1,
+					   MQ_MSG_EXPIRATION_TIME_MS,
+					   json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
 	json_object_put(jobj_schema);
-	amqp_bytes_free(queue_cloud);
 
 	return result;
 }
@@ -478,23 +437,15 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 		       const knot_value_type *value,
 		       uint8_t kval_len)
 {
-	amqp_bytes_t queue_cloud;
 	json_object *jobj_data;
 	const char *json_str;
 	int result;
 
-	queue_cloud = mq_declare_new_queue(MQ_QUEUE_FOG_IN);
-	if (!queue_cloud.bytes) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
 	jobj_data = parser_data_create_object(id, sensor_id, value_type, value,
 					      kval_len);
-	if (!jobj_data) {
-		amqp_bytes_free(queue_cloud);
+	if (!jobj_data)
 		return KNOT_ERR_CLOUD_FAILURE;
-	}
+
 	json_str = json_object_to_json_string(jobj_data);
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
@@ -508,16 +459,15 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 	 * Expiration
 	 *	2000 ms
 	 */
-	result = mq_publish_fanout_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_DATA_SENT,
-						  headers, 1,
-						  MQ_MSG_EXPIRATION_TIME_MS,
-						  json_str);
+	result = mq_publish_fanout_message(MQ_EXCHANGE_DATA_SENT,
+					   headers, 1,
+					   MQ_MSG_EXPIRATION_TIME_MS,
+					   json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
 
 	json_object_put(jobj_data);
-	amqp_bytes_free(queue_cloud);
+
 	return result;
 }
 

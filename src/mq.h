@@ -23,28 +23,25 @@ typedef bool (*mq_read_cb_t) (const char *exchange, const char *routing_key,
 typedef void (*mq_connected_cb_t) (void *user_data);
 typedef void (*mq_disconnected_cb_t) (void *user_data);
 
-int8_t mq_publish_direct_persistent_msg_rpc(amqp_bytes_t queue,
-					    const char *exchange,
-					    const char *routing_key,
-					    amqp_table_entry_t *headers,
-					    size_t num_headers,
-					    uint64_t expiration_ms,
-					    amqp_bytes_t reply_to,
-					    const char *correlation_id,
-					    const char *body);
-int8_t mq_publish_direct_persistent_msg(amqp_bytes_t queue,
-					const char *exchange,
-					const char *routing_key,
-					amqp_table_entry_t *headers,
-					size_t num_headers,
-					uint64_t expiration_ms,
-					const char *body);
-int8_t mq_publish_fanout_persistent_msg(amqp_bytes_t queue,
-					const char *exchange,
-					amqp_table_entry_t *headers,
-					size_t num_headers,
-					uint64_t expiration_ms,
-					const char *body);
+int8_t mq_publish_direct_message_rpc(const char *exchange,
+				     const char *routing_key,
+				     amqp_table_entry_t *headers,
+				     size_t num_headers,
+				     uint64_t expiration_ms,
+				     amqp_bytes_t reply_to,
+				     const char *correlation_id,
+				     const char *body);
+int8_t mq_publish_direct_message(const char *exchange,
+				 const char *routing_key,
+				 amqp_table_entry_t *headers,
+				 size_t num_headers,
+				 uint64_t expiration_ms,
+				 const char *body);
+int8_t mq_publish_fanout_message(const char *exchange,
+				 amqp_table_entry_t *headers,
+				 size_t num_headers,
+				 uint64_t expiration_ms,
+				 const char *body);
 
 amqp_bytes_t mq_declare_new_queue(const char *name);
 int mq_prepare_direct_queue(amqp_bytes_t queue, const char *exchange,
