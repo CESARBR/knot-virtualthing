@@ -40,7 +40,8 @@ typedef bool (*cloud_cb_t) (const struct cloud_msg *msg, void *user_data);
 typedef void (*cloud_connected_cb_t) (void *user_data);
 typedef void (*cloud_disconnected_cb_t) (void *user_data);
 
-int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data);
+int cloud_set_read_handler(const char *id, cloud_cb_t read_handler,
+			   void *user_data);
 int cloud_start(char *url, char *user_token, cloud_connected_cb_t connected_cb,
 		cloud_disconnected_cb_t disconnected_cb, void *user_data);
 void cloud_stop(void);
