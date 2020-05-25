@@ -46,6 +46,7 @@
 #define MQ_EXCHANGE_FOG_OUT "fogOut"
 #define MQ_EXCHANGE_FOG_IN "fogIn"
 #define MQ_EXCHANGE_DEVICE "device"
+#define MQ_EXCHANGE_DATA_SENT "data.sent"
 
 /* Headers */
 #define MQ_AUTHORIZATION_HEADER "Authorization"
@@ -61,7 +62,6 @@
 #define MQ_EVENT_SCHEMA_UPDATED "schema.updated"
 
  /* Northbound traffic (control, measurements) */
-#define MQ_CMD_DATA_PUBLISH "data.publish"
 #define MQ_CMD_DEVICE_REGISTER "device.register"
 #define MQ_CMD_DEVICE_UNREGISTER "device.unregister"
 #define MQ_CMD_DEVICE_AUTH "device.cmd.auth"
@@ -481,9 +481,17 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
-	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_FOG_IN,
-						  MQ_CMD_DATA_PUBLISH,
+	/**
+	 * Exchange
+	 *	Type: Fanout
+	 *	Name: data.sent
+	 * Headers
+	 *	[0]: User Token
+	 * Expiration
+	 *	2000 ms
+	 */
+	result = mq_publish_fanout_persistent_msg(queue_cloud,
+						  MQ_EXCHANGE_DATA_SENT,
 						  headers, 1,
 						  MQ_MSG_EXPIRATION_TIME_MS,
 						  json_str);
