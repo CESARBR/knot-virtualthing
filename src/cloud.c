@@ -45,6 +45,7 @@
 /* Exchanges */
 #define MQ_EXCHANGE_FOG_OUT "fogOut"
 #define MQ_EXCHANGE_FOG_IN "fogIn"
+#define MQ_EXCHANGE_DEVICE "device"
 
 /* Headers */
 #define MQ_AUTHORIZATION_HEADER "Authorization"
@@ -254,8 +255,19 @@ int cloud_register_device(const char *id, const char *name)
 
 	headers[0].value.value.bytes = amqp_cstring_bytes(user_auth_token);
 
+	/**
+	 * Exchange
+	 *	Type: Direct
+	 *	Name: device
+	 * Routing Key
+	 *	Name: device.register
+	 * Headers
+	 *	[0]: User Token
+	 * Expiration
+	 *	2000 ms
+	 */
 	result = mq_publish_direct_persistent_msg(queue_cloud,
-						  MQ_EXCHANGE_FOG_IN,
+						  MQ_EXCHANGE_DEVICE,
 						  MQ_CMD_DEVICE_REGISTER,
 						  headers, 1,
 						  MQ_MSG_EXPIRATION_TIME_MS,
