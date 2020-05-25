@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <ell/ell.h>
 #include <json-c/json.h>
 #include <amqp.h>
@@ -39,8 +40,8 @@
 #include "parser.h"
 #include "cloud.h"
 
-#define MQ_QUEUE_FOG_OUT "thingd-fogOut-messages"
-#define MQ_QUEUE_REPLY "thingd-reply-messages"
+#define MQ_QUEUE_FOG_OUT "thingd-fogOut"
+#define MQ_QUEUE_REPLY "thingd-reply"
 
 /* Exchanges */
 #define MQ_EXCHANGE_FOG_OUT "fogOut"
@@ -473,6 +474,7 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 
 /**
  * cloud_set_read_handler:
+ * @id: thing id
  * @cb: callback to handle message received from cloud
  * @user_data: user data provided to callbacks
  *
@@ -480,7 +482,8 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
  *
  * Returns: 0 if successful and -1 otherwise.
  */
-int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
+int cloud_set_read_handler(const char *id, cloud_cb_t read_handler,
+			   void *user_data)
 {
 	const char *fog_events[] = {
 		MQ_EVENT_DATA_UPDATE,
@@ -492,11 +495,16 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 		NULL
 	};
 	amqp_bytes_t queue_fog;
+	char queue_fog_name[100];
+	char queue_reply_name[100];
 	int err, i;
 
 	cloud_cb = read_handler;
 
-	queue_fog = mq_declare_new_queue(MQ_QUEUE_FOG_OUT);
+	snprintf(queue_fog_name, sizeof(queue_fog_name), "%s-%s",
+		 MQ_QUEUE_FOG_OUT, id);
+
+	queue_fog = mq_declare_new_queue(queue_fog_name);
 	if (queue_fog.bytes == NULL) {
 		l_error("Error on declare a new queue");
 		return -1;
@@ -526,7 +534,10 @@ int cloud_set_read_handler(cloud_cb_t read_handler, void *user_data)
 
 	amqp_bytes_free(queue_fog);
 
-	queue_reply = mq_declare_new_queue(MQ_QUEUE_REPLY);
+	snprintf(queue_reply_name, sizeof(queue_reply_name), "%s-%s",
+		 MQ_QUEUE_REPLY, id);
+
+	queue_reply = mq_declare_new_queue(queue_reply_name);
 	if (queue_reply.bytes == NULL) {
 		l_error("Error on declare a new queue");
 		return -1;
