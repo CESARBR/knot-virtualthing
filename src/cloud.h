@@ -28,7 +28,8 @@ struct cloud_msg {
 		REGISTER_MSG,
 		UNREGISTER_MSG,
 		AUTH_MSG,
-		SCHEMA_MSG
+		SCHEMA_MSG,
+		MSG_TYPES_LENGTH
 	} type;
 	union {
 		const char *token; // used when type is REGISTER

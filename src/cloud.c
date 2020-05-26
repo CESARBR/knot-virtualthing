@@ -44,7 +44,6 @@
 #define MQ_QUEUE_REPLY "thingd-reply"
 
 /* Exchanges */
-#define MQ_EXCHANGE_FOG_OUT "fogOut"
 #define MQ_EXCHANGE_DEVICE "device"
 #define MQ_EXCHANGE_DATA_SENT "data.sent"
 
@@ -54,12 +53,13 @@
 #define MQ_MSG_EXPIRATION_TIME_MS 2000
 
  /* Southbound traffic (commands) */
-#define MQ_EVENT_DATA_UPDATE "data.update"
-#define MQ_EVENT_DATA_REQUEST "data.request"
+#define MQ_EVENT_PREFIX_DEVICE "device"
+#define MQ_EVENT_POSTFIX_DATA_UPDATE "data.update"
+#define MQ_EVENT_POSTFIX_DATA_REQUEST "data.request"
+
 #define MQ_EVENT_DEVICE_REGISTERED "device.registered"
 #define MQ_EVENT_DEVICE_UNREGISTERED "device.unregistered"
-#define MQ_EVENT_DEVICE_AUTH "device.auth"
-#define MQ_EVENT_SCHEMA_UPDATED "schema.updated"
+#define MQ_EVENT_DEVICE_SCHEMA_UPDATED "device.schema.updated"
 
  /* Northbound traffic (control, measurements) */
 #define MQ_CMD_DEVICE_REGISTER "device.register"
@@ -70,6 +70,7 @@
 cloud_cb_t cloud_cb;
 amqp_bytes_t queue_reply;
 char *user_auth_token;
+char *cloud_events[MSG_TYPES_LENGTH];
 amqp_table_entry_t headers[1];
 
 static void cloud_msg_destroy(struct cloud_msg *msg)
@@ -82,18 +83,13 @@ static void cloud_msg_destroy(struct cloud_msg *msg)
 
 static int map_routing_key_to_msg_type(const char *routing_key)
 {
-	if (!strcmp(routing_key, MQ_EVENT_DATA_UPDATE))
-		return UPDATE_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_DATA_REQUEST))
-		return REQUEST_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_DEVICE_REGISTERED))
-		return REGISTER_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_DEVICE_UNREGISTERED))
-		return UNREGISTER_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_DEVICE_AUTH))
-		return AUTH_MSG;
-	else if (!strcmp(routing_key, MQ_EVENT_SCHEMA_UPDATED))
-		return SCHEMA_MSG;
+	int msg_type;
+
+	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++) {
+		if (!strcmp(routing_key, cloud_events[msg_type]))
+			return msg_type;
+	}
+
 	return -1;
 }
 
@@ -180,6 +176,7 @@ static struct cloud_msg *create_msg(const char *routing_key, json_object *jso)
 
 		msg->error = parser_get_key_str_from_json_obj(jso, "error");
 		break;
+	case MSG_TYPES_LENGTH:
 	default:
 		l_error("Unknown event %s", routing_key);
 		goto err;
@@ -221,6 +218,39 @@ static bool on_cloud_receive_message(const char *exchange,
 	json_object_put(jso);
 
 	return consumed;
+}
+
+static int set_cloud_events(const char *id)
+{
+	char binding_key_reply[100];
+	char binding_key_update[100];
+	char binding_key_request[100];
+
+	snprintf(binding_key_reply, sizeof(binding_key_reply), "%s-%s",
+		 MQ_QUEUE_REPLY, id);
+
+	snprintf(binding_key_update, sizeof(binding_key_update), "%s.%s.%s",
+		 MQ_EVENT_PREFIX_DEVICE, id, MQ_EVENT_POSTFIX_DATA_UPDATE);
+
+	snprintf(binding_key_request, sizeof(binding_key_request), "%s.%s.%s",
+		 MQ_EVENT_PREFIX_DEVICE, id, MQ_EVENT_POSTFIX_DATA_REQUEST);
+
+	cloud_events[UPDATE_MSG] = l_strdup(binding_key_update);
+	cloud_events[REQUEST_MSG] = l_strdup(binding_key_request);
+	cloud_events[REGISTER_MSG] = l_strdup(MQ_EVENT_DEVICE_REGISTERED);
+	cloud_events[UNREGISTER_MSG] = l_strdup(MQ_EVENT_DEVICE_UNREGISTERED);
+	cloud_events[AUTH_MSG] = l_strdup(binding_key_reply);
+	cloud_events[SCHEMA_MSG] = l_strdup(MQ_EVENT_DEVICE_SCHEMA_UPDATED);
+
+	return 0;
+}
+
+static void destroy_cloud_events(void)
+{
+	int msg_type;
+
+	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++)
+		l_free(cloud_events[msg_type]);
 }
 
 /**
@@ -485,21 +515,16 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 int cloud_set_read_handler(const char *id, cloud_cb_t read_handler,
 			   void *user_data)
 {
-	const char *fog_events[] = {
-		MQ_EVENT_DATA_UPDATE,
-		MQ_EVENT_DATA_REQUEST,
-		MQ_EVENT_DEVICE_REGISTERED,
-		MQ_EVENT_DEVICE_UNREGISTERED,
-		MQ_EVENT_DEVICE_AUTH,
-		MQ_EVENT_SCHEMA_UPDATED,
-		NULL
-	};
 	amqp_bytes_t queue_fog;
 	char queue_fog_name[100];
 	char queue_reply_name[100];
-	int err, i;
+	int msg_type;
+	int err;
 
 	cloud_cb = read_handler;
+
+	if (set_cloud_events(id))
+		return -1;
 
 	snprintf(queue_fog_name, sizeof(queue_fog_name), "%s-%s",
 		 MQ_QUEUE_FOG_OUT, id);
@@ -510,9 +535,9 @@ int cloud_set_read_handler(const char *id, cloud_cb_t read_handler,
 		return -1;
 	}
 
-	for (i = 0; fog_events[i] != NULL; i++) {
-		err = mq_prepare_direct_queue(queue_fog, MQ_EXCHANGE_FOG_OUT,
-					      fog_events[i]);
+	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++) {
+		err = mq_prepare_direct_queue(queue_fog, MQ_EXCHANGE_DEVICE,
+					      cloud_events[msg_type]);
 		if (err) {
 			l_error("Error on set up queue to consume");
 			amqp_bytes_free(queue_fog);
@@ -567,5 +592,6 @@ void cloud_stop(void)
 	if (queue_reply.bytes)
 		amqp_bytes_free(queue_reply);
 
+	destroy_cloud_events();
 	mq_stop();
 }
