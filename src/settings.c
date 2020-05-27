@@ -37,6 +37,15 @@
 static bool detach = true;
 static bool help = false;
 
+static const struct option main_options[] = {
+	{ "credentials-file",	required_argument,	NULL, 'c' },
+	{ "dev-file",		required_argument,	NULL, 'd' },
+	{ "rabbitmq-url",	required_argument,	NULL, 'r' },
+	{ "nodetach",		no_argument,		NULL, 'n' },
+	{ "help",		no_argument,		NULL, 'h' },
+	{ }
+};
+
 static void usage(void)
 {
 	printf("thingd - KNoT VirtualThing\n"
@@ -51,15 +60,6 @@ static void usage(void)
 		"\t-n, --nodetach          Disable running in background\n"
 		"\t-h, --help              Show help options\n");
 }
-
-static const struct option main_options[] = {
-	{ "credentials-file",	required_argument,	NULL, 'c' },
-	{ "dev-file",		required_argument,	NULL, 'd' },
-	{ "rabbitmq-url",	required_argument,	NULL, 'r' },
-	{ "nodetach",		no_argument,		NULL, 'n' },
-	{ "help",		no_argument,		NULL, 'h' },
-	{ }
-};
 
 static int parse_args(int argc, char *argv[], struct settings *settings)
 {
