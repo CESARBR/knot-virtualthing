@@ -21,8 +21,17 @@
 #include <knot/knot_protocol.h>
 #include <ell/ell.h>
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
+#include <asm-generic/ioctls.h>
+
 #include "iface-modbus.h"
-#include "iface-modbus-driver.h"
 
 #define TCP_PREFIX "tcp://"
 #define TCP_PREFIX_SIZE 6
@@ -51,12 +60,111 @@ union modbus_types {
 	uint64_t val_u64;
 };
 
-struct modbus_driver connection_interface;
 struct l_timeout *connect_to;
 struct l_io *modbus_io;
 modbus_t *modbus_ctx;
 iface_modbus_connected_cb_t conn_cb;
 iface_modbus_disconnected_cb_t disconn_cb;
+
+static modbus_t *create_rtu(const char *url)
+{
+	struct serial_rs485 rs485conf;
+	modbus_t *ctx;
+	int mode = MODBUS_RTU_RS232;
+	int fd;
+	int baud_rate;
+	int data_bit;
+	int stop_bit;
+	char parity;
+	char port[256];
+
+	/* Ignoring "serial://" */
+	if (sscanf(&url[8], "%255[^:]:%d , %c , %d , %d", port, &baud_rate,
+		   &parity, &data_bit, &stop_bit) != 5) {
+		l_error("Address (%s) not supported: Invalid format", url);
+		return NULL;
+	}
+
+	fd = open(&url[8], O_RDWR);
+	if (fd < 0)
+		return NULL;
+
+	memset(&rs485conf, 0, sizeof(rs485conf));
+	if (ioctl(fd, TIOCGRS485, &rs485conf) < 0) {
+		mode = MODBUS_RTU_RS232;
+		l_info("Switching to RS-232 ...");
+	} else {
+		mode = MODBUS_RTU_RS485;
+		l_info("Switching to RS-485 ...");
+	}
+
+	close(fd);
+
+	ctx = modbus_new_rtu(port, baud_rate, parity, data_bit, stop_bit);
+
+	if (!ctx)
+		return NULL;
+
+	modbus_rtu_set_serial_mode(ctx, mode);
+	modbus_rtu_set_rts(ctx, MODBUS_RTU_RTS_NONE);
+
+	return ctx;
+}
+
+static modbus_t *create_tcp(const char *url)
+{
+	char hostname[128];
+	char port[8];
+
+	memset(hostname, 0, sizeof(hostname));
+	memset(port, 0, sizeof(port));
+
+	/* Ignoring "tcp://" */
+	if (sscanf(&url[6], "%127[^:]:%7s", hostname, port) != 2) {
+		l_error("Address (%s) not supported: Invalid format", url);
+		return NULL;
+	}
+
+	return modbus_new_tcp_pi(hostname, port);
+}
+
+static void destroy(modbus_t *ctx)
+{
+	modbus_close(ctx);
+	modbus_free(ctx);
+}
+
+static int read_bool(modbus_t *ctx, uint16_t addr, bool *out)
+{
+	uint8_t val_u8 = 0;
+	int ret;
+
+	ret = modbus_read_input_bits(ctx, addr, 1, &val_u8);
+	if (ret > 0)
+		*out = (val_u8 ? true : false);
+
+	return ret;
+}
+
+static int read_byte(modbus_t *ctx, uint16_t addr, uint8_t *out)
+{
+	return modbus_read_input_bits(ctx, addr, 8, out);
+}
+
+static int read_u16(modbus_t *ctx, uint16_t addr, uint16_t *out)
+{
+	return modbus_read_registers(ctx, addr, 1, out);
+}
+
+static int read_u32(modbus_t *ctx, uint16_t addr, uint32_t *out)
+{
+	return modbus_read_registers(ctx, addr, 2, (uint16_t *) out);
+}
+
+static int read_u64(modbus_t *ctx, uint16_t addr, uint64_t *out)
+{
+	return modbus_read_registers(ctx, addr, 4, (uint16_t *) out);
+}
 
 static int parse_url(const char *url)
 {
@@ -111,12 +219,10 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 
 	switch (bit_offset) {
 	case TYPE_BOOL:
-		rc = connection_interface.read_bool(modbus_ctx, reg_addr,
-						    &tmp.val_bool);
+		rc = read_bool(modbus_ctx, reg_addr, &tmp.val_bool);
 		break;
 	case TYPE_BYTE:
-		rc = connection_interface.read_byte(modbus_ctx, reg_addr,
-						    byte_tmp);
+		rc = read_byte(modbus_ctx, reg_addr, byte_tmp);
 		/**
 		 * Store in tmp.val_byte the value read from a Modbus Slave
 		 * where each position of byte_tmp corresponds to a bit.
@@ -125,16 +231,13 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 			tmp.val_byte |= byte_tmp[i] << i;
 		break;
 	case TYPE_U16:
-		rc = connection_interface.read_u16(modbus_ctx, reg_addr,
-						   &tmp.val_u16);
+		rc = read_u16(modbus_ctx, reg_addr, &tmp.val_u16);
 		break;
 	case TYPE_U32:
-		rc = connection_interface.read_u32(modbus_ctx, reg_addr,
-						   &tmp.val_u32);
+		rc = read_u32(modbus_ctx, reg_addr, &tmp.val_u32);
 		break;
 	case TYPE_U64:
-		rc = connection_interface.read_u64(modbus_ctx, reg_addr,
-						   &tmp.val_u64);
+		rc = read_u64(modbus_ctx, reg_addr, &tmp.val_u64);
 		break;
 	default:
 		rc = -EINVAL;
@@ -158,16 +261,15 @@ int iface_modbus_start(const char *url, int slave_id,
 {
 	switch (parse_url(url)) {
 	case TCP:
-		connection_interface = tcp;
+		modbus_ctx = create_tcp(url);
 		break;
 	case RTU:
-		connection_interface = rtu;
+		modbus_ctx = create_rtu(url);
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	modbus_ctx = connection_interface.create(url);
 	if (!modbus_ctx)
 		return -errno;
 
@@ -191,5 +293,5 @@ void iface_modbus_stop(void)
 		l_io_destroy(modbus_io);
 
 	if (modbus_ctx)
-		connection_interface.destroy(modbus_ctx);
+		destroy(modbus_ctx);
 }
