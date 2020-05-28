@@ -21,8 +21,8 @@
 #include <knot/knot_protocol.h>
 #include <ell/ell.h>
 
-#include "modbus-interface.h"
-#include "modbus-driver.h"
+#include "iface-modbus.h"
+#include "iface-modbus-driver.h"
 
 #define TCP_PREFIX "tcp://"
 #define TCP_PREFIX_SIZE 6
@@ -55,8 +55,8 @@ struct modbus_driver connection_interface;
 struct l_timeout *connect_to;
 struct l_io *modbus_io;
 modbus_t *modbus_ctx;
-modbus_connected_cb_t conn_cb;
-modbus_disconnected_cb_t disconn_cb;
+iface_modbus_connected_cb_t conn_cb;
+iface_modbus_disconnected_cb_t disconn_cb;
 
 static int parse_url(const char *url)
 {
@@ -100,7 +100,7 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 		conn_cb(user_data);
 }
 
-int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
+int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 {
 	int rc;
 	union modbus_types tmp;
@@ -151,10 +151,10 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 	return rc;
 }
 
-int modbus_start(const char *url, int slave_id,
-		 modbus_connected_cb_t connected_cb,
-		 modbus_disconnected_cb_t disconnected_cb,
-		 void *user_data)
+int iface_modbus_start(const char *url, int slave_id,
+		       iface_modbus_connected_cb_t connected_cb,
+		       iface_modbus_disconnected_cb_t disconnected_cb,
+		       void *user_data)
 {
 	switch (parse_url(url)) {
 	case TCP:
@@ -182,7 +182,7 @@ int modbus_start(const char *url, int slave_id,
 	return 0;
 }
 
-void modbus_stop(void)
+void iface_modbus_stop(void)
 {
 	if (likely(connect_to))
 		l_timeout_remove(connect_to);

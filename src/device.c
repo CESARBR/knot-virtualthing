@@ -31,7 +31,7 @@
 #include "conf-parameters.h"
 #include "device.h"
 #include "device-pvt.h"
-#include "modbus-interface.h"
+#include "iface-modbus.h"
 #include "cloud.h"
 #include "sm.h"
 #include "knot-config.h"
@@ -859,9 +859,9 @@ int device_read_data(int id)
 	struct l_queue *list;
 	int rc;
 
-	rc = modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
-			      thing.data_item[id].modbus_source.bit_offset,
-			      &thing.data_item[id].current_val);
+	rc = iface_modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
+				    thing.data_item[id].modbus_source.bit_offset,
+				    &thing.data_item[id].current_val);
 	if (config_check_value(thing.data_item[id].config,
 			       thing.data_item[id].current_val,
 			       thing.data_item[id].sent_val,
@@ -1037,8 +1037,9 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
-	err = modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
-			   on_modbus_connected, on_modbus_disconnected, NULL);
+	err = iface_modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
+				 on_modbus_connected, on_modbus_disconnected,
+				 NULL);
 	if (err < 0) {
 		l_error("Failed to initialize Modbus");
 		poll_destroy();
@@ -1051,7 +1052,7 @@ int device_start(struct device_settings *conf_files)
 	if (err < 0) {
 		l_error("Failed to initialize Cloud");
 		poll_destroy();
-		modbus_stop();
+		iface_modbus_stop();
 		knot_thing_destroy(&thing);
 		return err;
 	}
@@ -1067,7 +1068,7 @@ void device_destroy(void)
 
 	poll_destroy();
 	cloud_stop();
-	modbus_stop();
+	iface_modbus_stop();
 
 	knot_thing_destroy(&thing);
 }
