@@ -20,8 +20,6 @@ src_thingd_SOURCES = src/main.c \
 			src/device.c src/device.h \
 			src/storage.c src/storage.h \
 			src/iface-modbus.c src/iface-modbus.h \
-			src/iface-modbus-tcp.c src/iface-modbus-rtu.c \
-			src/iface-modbus-driver.h \
 			src/settings.c src/settings.h \
 			src/knot-config.c src/knot-config.h \
 			src/poll.c src/poll.h
