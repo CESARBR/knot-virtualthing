@@ -696,11 +696,15 @@ static void on_cloud_connected(void *user_data)
 	if (err < 0)
 		return;
 
+	l_info("Connected to Cloud %s", thing.rabbitmq_url);
+
 	conn_handler(CLOUD, true);
 }
 
 static void on_cloud_disconnected(void *user_data)
 {
+	l_info("Disconnected from Cloud");
+
 	conn_handler(CLOUD, false);
 }
 
@@ -735,12 +739,16 @@ static int erase_thing_id(int cred_fd)
 
 static void on_modbus_connected(void *user_data)
 {
+	l_info("Connected to Modbus %s", thing.modbus_slave.url);
+
 	poll_start();
 	conn_handler(MODBUS, true);
 }
 
 static void on_modbus_disconnected(void *user_data)
 {
+	l_info("Disconnected from Modbus");
+
 	poll_stop();
 	conn_handler(MODBUS, false);
 }
@@ -800,8 +808,10 @@ int device_start_config(void)
 	int i;
 
 	rc = config_start(on_config_timeout);
-	if (rc < 0)
+	if (rc < 0) {
+		l_error("Failed to start config");
 		return rc;
+	}
 
 	for (i = 0; i < thing.data_item_count; i++)
 		config_add_data_item(thing.data_item[i].sensor_id,
@@ -861,8 +871,10 @@ int device_clear_credentials(void)
 	int cred_fd;
 
 	cred_fd = storage_open(thing.credentials_path);
-	if (cred_fd < 0)
+	if (cred_fd < 0) {
+		l_error("Failed to open credentials file");
 		return cred_fd;
+	}
 
 	rc = erase_thing_token(cred_fd);
 	if (rc < 0)
@@ -877,6 +889,7 @@ int device_clear_credentials(void)
 	return rc;
 
 error:
+	l_error("Failed to clear device credentials");
 	storage_close(cred_fd);
 
 	return -EINVAL;
@@ -892,8 +905,10 @@ int device_store_credentials(char *token)
 
 	cred_fd = storage_open(thing.credentials_path);
 
-	if (cred_fd < 0)
+	if (cred_fd < 0) {
+		l_error("Failed to open credentials file");
 		return cred_fd;
+	}
 
 	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
 				      CREDENTIALS_THING_TOKEN, token);
@@ -914,6 +929,7 @@ int device_store_credentials(char *token)
 	return rc;
 
 error:
+	l_error("Failed to store device credentials");
 	storage_close(cred_fd);
 
 	return -EINVAL;
@@ -978,13 +994,16 @@ int device_start(struct device_settings *conf_files)
 {
 	int err;
 
-	if (device_set_properties(conf_files))
+	if (device_set_properties(conf_files)) {
+		l_error("Failed to set device properties");
 		return -EINVAL;
+	}
 
 	sm_start();
 
 	err = create_data_item_polling();
 	if (err < 0) {
+		l_error("Failed to create the device polling");
 		knot_thing_destroy(&thing);
 		return err;
 	}
@@ -992,6 +1011,7 @@ int device_start(struct device_settings *conf_files)
 	err = modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
 			   on_modbus_connected, on_modbus_disconnected, NULL);
 	if (err < 0) {
+		l_error("Failed to initialize Modbus");
 		poll_destroy();
 		knot_thing_destroy(&thing);
 		return err;
@@ -1000,11 +1020,14 @@ int device_start(struct device_settings *conf_files)
 	err = cloud_start(thing.rabbitmq_url, thing.user_token,
 			  on_cloud_connected, on_cloud_disconnected, NULL);
 	if (err < 0) {
+		l_error("Failed to initialize Cloud");
 		poll_destroy();
 		modbus_stop();
 		knot_thing_destroy(&thing);
 		return err;
 	}
+
+	l_info("Device \"%s\" has started successfully", thing.name);
 
 	return 0;
 }
