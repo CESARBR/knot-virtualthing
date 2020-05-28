@@ -284,15 +284,21 @@ int storage_read_key_float(int fd, const char *group, const char *key,
 }
 
 int storage_read_key_bool(int fd, const char *group, const char *key,
-			  bool *value)
+			  uint8_t *value)
 {
 	struct l_settings *settings;
+	bool result;
 
 	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
 	if (!settings)
 		return -EINVAL;
 
-	return l_settings_get_bool(settings, group, key, value);
+	if (!l_settings_get_bool(settings, group, key, &result))
+		return 0;
+
+	*value = result;
+
+	return 1;
 }
 
 int storage_read_key_int64(int fd, const char *group, const char *key,

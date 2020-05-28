@@ -244,36 +244,46 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 			   knot_value_type *temp)
 {
 	int rc;
-	bool val_b_aux;
+	knot_value_type_int val_i;
+	knot_value_type_float val_f;
+	knot_value_type_bool val_b;
+	knot_value_type_int64 val_i64;
+	knot_value_type_uint val_u;
+	knot_value_type_uint64 val_u64;
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
 		rc = storage_read_key_int(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					  &temp->val_i);
+					  &val_i);
+		temp->val_i = val_i;
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
 		rc = storage_read_key_float(fd, group_id,
 					    CONFIG_LOWER_THRESHOLD,
-					    &temp->val_f);
+					    &val_f);
+		temp->val_f = val_f;
 		break;
 	case KNOT_VALUE_TYPE_BOOL:
 		rc = storage_read_key_bool(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					   &val_b_aux);
-		temp->val_b = val_b_aux;
+					   &val_b);
+		temp->val_b = val_b;
 		break;
 	case KNOT_VALUE_TYPE_INT64:
 		rc = storage_read_key_int64(fd, group_id,
 					    CONFIG_LOWER_THRESHOLD,
-					    &temp->val_i64);
+					    &val_i64);
+		temp->val_i64 = val_i64;
 		break;
 	case KNOT_VALUE_TYPE_UINT:
 		rc = storage_read_key_uint(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					   &temp->val_u);
+					   &val_u);
+		temp->val_u = val_u;
 		break;
 	case KNOT_VALUE_TYPE_UINT64:
 		rc = storage_read_key_uint64(fd, group_id,
 					     CONFIG_LOWER_THRESHOLD,
-					     &temp->val_u64);
+					     &val_u64);
+		temp->val_u64 = val_u64;
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw */
@@ -288,36 +298,46 @@ static int get_upper_limit(int fd, char *group_id, int value_type,
 			   knot_value_type *temp)
 {
 	int rc;
-	bool val_b_aux;
+	knot_value_type_int val_i;
+	knot_value_type_float val_f;
+	knot_value_type_bool val_b;
+	knot_value_type_int64 val_i64;
+	knot_value_type_uint val_u;
+	knot_value_type_uint64 val_u64;
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
 		rc = storage_read_key_int(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					  &temp->val_i);
+					  &val_i);
+		temp->val_i = val_i;
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
 		rc = storage_read_key_float(fd, group_id,
 					    CONFIG_UPPER_THRESHOLD,
-					    &temp->val_f);
+					    &val_f);
+		temp->val_f = val_f;
 		break;
 	case KNOT_VALUE_TYPE_BOOL:
 		rc = storage_read_key_bool(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					   &val_b_aux);
-		temp->val_b = val_b_aux;
+					   &val_b);
+		temp->val_b = val_b;
 		break;
 	case KNOT_VALUE_TYPE_INT64:
 		rc = storage_read_key_int64(fd, group_id,
 					    CONFIG_UPPER_THRESHOLD,
-					    &temp->val_i64);
+					    &val_i64);
+		temp->val_i64 = val_i64;
 		break;
 	case KNOT_VALUE_TYPE_UINT:
 		rc = storage_read_key_uint(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					   &temp->val_u);
+					   &val_u);
+		temp->val_u = val_u;
 		break;
 	case KNOT_VALUE_TYPE_UINT64:
 		rc = storage_read_key_uint64(fd, group_id,
 					     CONFIG_UPPER_THRESHOLD,
-					     &temp->val_u64);
+					     &val_u64);
+		temp->val_u64 = val_u64;
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw */

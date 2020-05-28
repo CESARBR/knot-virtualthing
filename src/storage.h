@@ -53,7 +53,7 @@ int storage_read_key_int(int fd, const char *group,
 int storage_read_key_float(int fd, const char *group, const char *key,
 			   float *value);
 int storage_read_key_bool(int fd, const char *group, const char *key,
-			  bool *value);
+			  uint8_t *value);
 int storage_read_key_int64(int fd, const char *group, const char *key,
 			   int64_t *value);
 int storage_read_key_uint(int fd, const char *group, const char *key,
