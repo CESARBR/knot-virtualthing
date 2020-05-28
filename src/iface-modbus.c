@@ -16,7 +16,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <modbus.h>
+#include <modbus/modbus.h>
 #include <string.h>
 #include <knot/knot_protocol.h>
 #include <ell/ell.h>
