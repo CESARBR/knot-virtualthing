@@ -60,11 +60,11 @@ union modbus_types {
 	uint64_t val_u64;
 };
 
-struct l_timeout *connect_to;
-struct l_io *modbus_io;
-modbus_t *modbus_ctx;
-iface_modbus_connected_cb_t conn_cb;
-iface_modbus_disconnected_cb_t disconn_cb;
+static struct l_timeout *connect_to;
+static struct l_io *modbus_io;
+static modbus_t *modbus_ctx;
+static iface_modbus_connected_cb_t conn_cb;
+static iface_modbus_disconnected_cb_t disconn_cb;
 
 static modbus_t *create_rtu(const char *url)
 {
