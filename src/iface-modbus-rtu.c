@@ -27,28 +27,61 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
+#include <asm-generic/ioctls.h>
 
 #include <ell/ell.h>
 
 #include <modbus.h>
 
-#include "modbus-driver.h"
+#include "iface-modbus-driver.h"
 
 static modbus_t *create(const char *url)
 {
-	char hostname[128];
-	char port[8];
+	struct serial_rs485 rs485conf;
+	modbus_t *ctx;
+	int mode = MODBUS_RTU_RS232;
+	int fd;
+	int baud_rate;
+	int data_bit;
+	int stop_bit;
+	char parity;
+	char port[256];
 
-	memset(hostname, 0, sizeof(hostname));
-	memset(port, 0, sizeof(port));
-
-	/* Ignoring "tcp://" */
-	if (sscanf(&url[6], "%127[^:]:%7s", hostname, port) != 2) {
+	/* Ignoring "serial://" */
+	if (sscanf(&url[8], "%255[^:]:%d , %c , %d , %d", port, &baud_rate,
+		   &parity, &data_bit, &stop_bit) != 5) {
 		l_error("Address (%s) not supported: Invalid format", url);
 		return NULL;
 	}
 
-	return modbus_new_tcp_pi(hostname, port);
+	fd = open(&url[8], O_RDWR);
+	if (fd < 0)
+		return NULL;
+
+	memset(&rs485conf, 0, sizeof(rs485conf));
+	if (ioctl (fd, TIOCGRS485, &rs485conf) < 0) {
+		 mode = MODBUS_RTU_RS232;
+                 l_info("Switching to RS-232 ...");
+         } else {
+		 mode = MODBUS_RTU_RS485;
+                 l_info("Switching to RS-485 ...");
+	 }
+
+	close(fd);
+
+	ctx = modbus_new_rtu(port, baud_rate, parity, data_bit, stop_bit);
+
+	if (!ctx)
+		return NULL;
+
+	modbus_rtu_set_serial_mode(ctx, mode);
+	modbus_rtu_set_rts(ctx, MODBUS_RTU_RTS_NONE);
+
+	return ctx;
 }
 
 static void destroy(modbus_t *ctx)
@@ -89,8 +122,8 @@ static int read_u64(modbus_t *ctx, uint16_t addr, uint64_t *out)
 	return modbus_read_registers(ctx, addr, 4, (uint16_t *) out);
 }
 
-struct modbus_driver tcp = {
-	.name = "tcp",
+struct modbus_driver rtu = {
+	.name = "rtu",
 	.create = create,
 	.destroy = destroy,
 	.read_bool = read_bool,
