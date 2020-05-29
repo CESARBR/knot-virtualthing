@@ -129,6 +129,8 @@ int main(int argc, char *argv[])
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);
 
+	l_info("Starting KNoT VirtualThing");
+
 	err = device_start(conf_files);
 	if (err) {
 		l_error("Failed to start the device: %s (%d). Exiting...",
@@ -156,6 +158,8 @@ int main(int argc, char *argv[])
 	l_main_run_with_signal(signal_handler, NULL);
 
 	device_destroy();
+
+	l_info("Exiting KNoT VirtualThing");
 
 	l_main_exit();
 
