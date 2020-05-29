@@ -37,6 +37,7 @@ struct data_item_timeout {
 
 struct l_queue *sensor_timeouts;
 timeout_cb_t timeout_cb;
+static bool active;
 
 static int compare_int(int val1, int val2)
 {
@@ -140,6 +141,9 @@ int config_check_value(knot_config config, knot_value_type current_val,
 {
 	int rc;
 
+	if (!active)
+		return -ENOMSG;
+
 	if (value_type < KNOT_VALUE_TYPE_MIN ||
 			value_type > KNOT_VALUE_TYPE_MAX)
 		return -EINVAL;
@@ -183,12 +187,14 @@ int config_start(timeout_cb_t cb)
 	if (!sensor_timeouts)
 		return -ENOMSG;
 	timeout_cb = cb;
+	active = true;
 
 	return 0;
 }
 
 void config_stop(void)
 {
+	active = false;
 	if (sensor_timeouts) {
 		l_queue_destroy(sensor_timeouts, timeout_destroy);
 		sensor_timeouts = NULL;
