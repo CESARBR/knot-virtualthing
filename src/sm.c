@@ -37,6 +37,91 @@ struct state {
 static struct state *current_state;
 struct state states[N_OF_STATES];
 
+static char *event_to_str(enum EVENTS event)
+{
+	char *evt_str;
+
+	switch (event) {
+	case EVT_REG_PERM:
+		evt_str = "EVT_REG_PERM";
+		break;
+	case EVT_NOT_READY:
+		evt_str = "EVT_NOT_READY";
+		break;
+	case EVT_PUB_DATA:
+		evt_str = "EVT_PUB_DATA";
+		break;
+	case EVT_DATA_UPDT:
+		evt_str = "EVT_DATA_UPDT";
+		break;
+	case EVT_TIMEOUT:
+		evt_str = "EVT_TIMEOUT";
+		break;
+	case EVT_SCH_OK:
+		evt_str = "EVT_SCH_OK";
+		break;
+	case EVT_SCH_NOT_OK:
+		evt_str = "EVT_SCH_NOT_OK";
+		break;
+	case EVT_UNREG_REQ:
+		evt_str = "EVT_UNREG_REQ";
+		break;
+	case EVT_READY:
+		evt_str = "EVT_READY";
+		break;
+	case EVT_AUTH_OK:
+		evt_str = "EVT_AUTH_OK";
+		break;
+	case EVT_AUTH_NOT_OK:
+		evt_str = "EVT_AUTH_NOT_OK";
+		break;
+	case EVT_REG_OK:
+		evt_str = "EVT_REG_OK";
+		break;
+	case EVT_REG_NOT_OK:
+		evt_str = "EVT_REG_NOT_OK";
+		break;
+	default:
+		evt_str = "Unexpected Event";
+	}
+
+	return evt_str;
+}
+
+static char *state_to_str(enum STATES state)
+{
+	char *state_str;
+
+	switch (state) {
+	case ST_DISCONNECTED:
+		state_str = "ST_DISCONNECTED";
+		break;
+	case ST_AUTH:
+		state_str = "ST_AUTH";
+		break;
+	case ST_REGISTER:
+		state_str = "ST_REGISTER";
+		break;
+	case ST_SCHEMA:
+		state_str = "ST_SCHEMA";
+		break;
+	case ST_ONLINE:
+		state_str = "ST_ONLINE";
+		break;
+	case ST_UNREGISTER:
+		state_str = "ST_UNREGISTER";
+		break;
+	case ST_ERROR:
+		state_str = "ST_ERROR";
+		break;
+	case N_OF_STATES:
+	default:
+		state_str = "Unexpected State";
+	}
+
+	return state_str;
+}
+
 /* DISCONNECT */
 enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 {
@@ -359,15 +444,21 @@ void sm_input_event(enum EVENTS event, void *user_data)
 	enum STATES id = current_state->get_next(event, user_data);
 	struct state *next = &states[id];
 
+	l_debug("(%s -> %s)", event_to_str(event), state_to_str(id));
+
 	if (next != current_state) {
-		if (next->enter)
+		if (next->enter) {
+			l_info("Current state: %s", state_to_str(id));
 			next->enter();
+		}
 		current_state = next;
 	}
 }
 
 void sm_start(void)
 {
+	l_info("Starting State Machine");
+
 	states[ST_DISCONNECTED] = sm_create_state(enter_disconnected,
 						  get_next_disconnected);
 	states[ST_AUTH] = sm_create_state(enter_auth, get_next_auth);
@@ -379,4 +470,6 @@ void sm_start(void)
 						get_next_unregister);
 	states[ST_ERROR] = sm_create_state(enter_error, get_next_error);
 	current_state = &states[ST_DISCONNECTED];
+
+	l_info("Current state: %s", state_to_str(ST_DISCONNECTED));
 }
