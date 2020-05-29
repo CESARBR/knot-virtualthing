@@ -58,8 +58,6 @@ static modbus_t *create(const char *url)
 		return NULL;
 	}
 
-	l_info("RTU: %s", url);
-
 	fd = open(&url[8], O_RDWR);
 	if (fd < 0)
 		return NULL;
