@@ -82,7 +82,11 @@ static void on_disconnected(struct l_io *io, void *user_data)
 
 static void attempt_connect(struct l_timeout *to, void *user_data)
 {
+	l_debug("Trying to connect to Modbus");
+
 	if (modbus_connect(modbus_ctx) < 0) {
+		l_error("error connecting to Modbus: %s",
+			modbus_strerror(errno));
 		l_timeout_modify(to, RECONNECT_TIMEOUT);
 		return;
 	}
@@ -136,10 +140,13 @@ int modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 		rc = -EINVAL;
 	}
 
-	if (rc < 0)
+	if (rc < 0) {
 		rc = -errno;
-	else
+		l_error("Failed to read from Modbus: %s (%d)",
+			modbus_strerror(errno), rc);
+	} else {
 		memcpy(out, &tmp, sizeof(tmp));
+	}
 
 	return rc;
 }
