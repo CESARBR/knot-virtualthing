@@ -125,14 +125,12 @@ static bool on_receive(struct l_io *io, void *user_data)
 	if (res.reply_type != AMQP_RESPONSE_NORMAL)
 		return true;
 
-	l_debug("Receive %u, exchange %.*s routingkey %.*s",
+	l_debug("Receive %u -> exchange: %.*s, routingkey: %.*s\nBody: %.*s\n",
 		(unsigned int)envelope.delivery_tag,
 		(int)envelope.exchange.len,
 		(char *)envelope.exchange.bytes,
 		(int)envelope.routing_key.len,
-		(char *)envelope.routing_key.bytes);
-
-	l_debug("Body: %.*s",
+		(char *)envelope.routing_key.bytes,
 		(int)envelope.message.body.len,
 		(char *)envelope.message.body.bytes);
 
@@ -348,6 +346,11 @@ int8_t mq_publish_persistent_message(amqp_bytes_t queue,
 
 	props.content_type = amqp_cstring_bytes("text/plain");
 	props.delivery_mode = AMQP_DELIVERY_PERSISTENT;
+
+	l_debug("Publish -> exchange: %s, routingkey: %s\nBody: %s\n",
+		exchange,
+		routing_keys,
+		body);
 
 	rc = amqp_basic_publish(mq_ctx.conn, 1,
 			amqp_cstring_bytes(exchange),
