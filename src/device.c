@@ -480,16 +480,15 @@ static int set_data_items(char *filename)
 	int i;
 	int device_fd;
 	char **data_item_group;
-	int n_of_data_items;
 	int sensor_id;
 
 	device_fd = storage_open(filename);
 	if (device_fd < 0)
 		return device_fd;
 
-	n_of_data_items = get_number_of_data_items(device_fd);
-	thing.data_item_count = n_of_data_items;
-	thing.data_item = malloc(n_of_data_items*sizeof(struct knot_data_item));
+	thing.data_item_count = get_number_of_data_items(device_fd);
+	thing.data_item = malloc(thing.data_item_count *
+						sizeof(struct knot_data_item));
 	if (thing.data_item == NULL) {
 		storage_close(device_fd);
 		return -EINVAL;
@@ -500,7 +499,7 @@ static int set_data_items(char *filename)
 	storage_close(device_fd);
 	for (i = 0; data_item_group[i] != NULL ; i++) {
 		sensor_id = get_sensor_id(filename, data_item_group[i]);
-		rc = valid_sensor_id(sensor_id, n_of_data_items);
+		rc = valid_sensor_id(sensor_id, thing.data_item_count);
 		if (rc < 0)
 			goto error;
 		thing.data_item[sensor_id].sensor_id = sensor_id;
