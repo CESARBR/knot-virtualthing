@@ -157,7 +157,7 @@ static int set_rabbit_mq_url(char *filename)
 	return 0;
 }
 
-static int get_sensor_id(char *filename, char *group_id)
+static int set_sensor_id(char *filename, char *group_id, int index)
 {
 	int device_fd;
 	int rc;
@@ -176,13 +176,10 @@ static int get_sensor_id(char *filename, char *group_id)
 
 	storage_close(device_fd);
 
-	return sensor_id;
-}
-
-static int valid_sensor_id(int sensor_id, int n_of_data_items)
-{
-	if (sensor_id >= n_of_data_items)
+	if (sensor_id >= thing.data_item_count || index != sensor_id)
 		return -EINVAL;
+
+	thing.data_item[index].sensor_id = sensor_id;
 
 	return 0;
 }
@@ -480,7 +477,6 @@ static int set_data_items(char *filename)
 	int i;
 	int device_fd;
 	char **data_item_group;
-	int sensor_id;
 
 	device_fd = storage_open(filename);
 	if (device_fd < 0)
@@ -498,19 +494,19 @@ static int set_data_items(char *filename)
 
 	storage_close(device_fd);
 	for (i = 0; data_item_group[i] != NULL ; i++) {
-		sensor_id = get_sensor_id(filename, data_item_group[i]);
-		rc = valid_sensor_id(sensor_id, thing.data_item_count);
+		rc = set_sensor_id(filename, data_item_group[i], i);
 		if (rc < 0)
 			goto error;
-		thing.data_item[sensor_id].sensor_id = sensor_id;
-		rc = set_schema(filename, data_item_group[i], sensor_id);
+		rc = set_schema(filename, data_item_group[i],
+				thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
-		rc = set_config(filename, data_item_group[i], sensor_id);
+		rc = set_config(filename, data_item_group[i],
+				thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
 		rc = set_modbus_source_properties(filename, data_item_group[i],
-						  sensor_id);
+						  thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
 	}
