@@ -441,6 +441,35 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 	return 0;
 }
 
+static int valid_bit_offset(int bit_offset, int value_type)
+{
+	int value_type_mask;
+
+	switch (bit_offset) {
+	case 1:
+		value_type_mask = KNOT_VALUE_TYPE_BOOL;
+		break;
+	case 8:
+		/* KNoT Protocol doesn't have a matching value type */
+	case 16:
+		/* KNoT Protocol doesn't have a matching value type */
+	case 32:
+		value_type_mask = KNOT_VALUE_TYPE_INT | KNOT_VALUE_TYPE_UINT;
+		break;
+	case 64:
+		value_type_mask = KNOT_VALUE_TYPE_INT64 |
+				  KNOT_VALUE_TYPE_UINT64;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (!(value_type & value_type_mask))
+		return -EINVAL;
+
+	return 0;
+}
+
 static int set_modbus_source_properties(char *filename, char *group_id,
 					int sensor_id)
 {
@@ -460,6 +489,11 @@ static int set_modbus_source_properties(char *filename, char *group_id,
 	rc = storage_read_key_int(device_fd, group_id, MODBUS_BIT_OFFSET,
 				  &modbus_source_aux.bit_offset);
 	if (rc <= 0)
+		goto error;
+
+	rc = valid_bit_offset(modbus_source_aux.bit_offset,
+			      thing.data_item[sensor_id].schema.value_type);
+	if (rc < 0)
 		goto error;
 
 	storage_close(device_fd);
