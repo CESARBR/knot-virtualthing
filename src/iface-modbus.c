@@ -251,12 +251,7 @@ int iface_modbus_start(const char *url, int slave_id,
 
 void iface_modbus_stop(void)
 {
-	if (likely(connect_to))
-		l_timeout_remove(connect_to);
-
-	if (modbus_io)
-		l_io_destroy(modbus_io);
-
-	if (modbus_ctx)
-		destroy_ctx(modbus_ctx);
+	l_timeout_remove(connect_to);
+	l_io_destroy(modbus_io);
+	destroy_ctx(modbus_ctx);
 }
