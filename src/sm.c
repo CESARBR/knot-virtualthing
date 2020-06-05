@@ -26,6 +26,8 @@
 #include "sm-pvt.h"
 #include "device.h"
 
+#define DEFAULT_MSG_TIMEOUT 3
+
 typedef void (*enter_state_t)(void);
 typedef enum STATES (*get_next_t)(enum EVENTS, void *user_data);
 
@@ -169,18 +171,27 @@ enum STATES get_next_auth(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_NOT_READY:
+		device_msg_timeout_remove();
 		next_state = ST_DISCONNECTED;
 		break;
 	case EVT_AUTH_OK:
+		device_msg_timeout_remove();
 		next_state =
 			device_check_schema_change() ? ST_SCHEMA : ST_ONLINE;
 		break;
 	case EVT_AUTH_NOT_OK:
 	case EVT_UNREG_REQ:
+		device_msg_timeout_remove();
 		next_state = ST_UNREGISTER;
 		break;
-	case EVT_READY:
 	case EVT_TIMEOUT:
+		if (device_send_auth_request() < 0)
+			l_error("Couldn't send auth message");
+
+		device_msg_timeout_modify(DEFAULT_MSG_TIMEOUT);
+		next_state = ST_AUTH;
+		break;
+	case EVT_READY:
 	case EVT_REG_OK:
 	case EVT_REG_NOT_OK:
 	case EVT_SCH_OK:
@@ -205,6 +216,8 @@ static void enter_auth(void)
 
 	if(rc < 0)
 		l_error("Couldn't send auth message");
+
+	device_msg_timeout_create(DEFAULT_MSG_TIMEOUT);
 }
 
 /* REGISTER */
@@ -215,9 +228,11 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_NOT_READY:
+		device_msg_timeout_remove();
 		next_state = ST_DISCONNECTED;
 		break;
 	case EVT_REG_OK:
+		device_msg_timeout_remove();
 		rc = device_store_credentials(user_data);
 		if(rc < 0) {
 			next_state = ST_ERROR;
@@ -230,9 +245,15 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 		device_generate_new_id();
 		next_state = ST_REGISTER;
 		break;
+	case EVT_TIMEOUT:
+		if (device_send_register_request() < 0)
+			l_error("Couldn't send register message");
+
+		device_msg_timeout_modify(DEFAULT_MSG_TIMEOUT);
+		next_state = ST_REGISTER;
+		break;
 	case EVT_UNREG_REQ:
 	case EVT_READY:
-	case EVT_TIMEOUT:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
 	case EVT_SCH_OK:
@@ -257,6 +278,7 @@ static void enter_register(void)
 	if(rc < 0)
 		l_error("Couldn't send register message");
 
+	device_msg_timeout_create(DEFAULT_MSG_TIMEOUT);
 }
 
 /* SCHEMA */
@@ -266,19 +288,29 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_NOT_READY:
+		device_msg_timeout_remove();
 		next_state = ST_DISCONNECTED;
 		break;
 	case EVT_SCH_OK:
+		device_msg_timeout_remove();
 		next_state = ST_ONLINE;
 		break;
 	case EVT_SCH_NOT_OK:
+		device_msg_timeout_remove();
 		next_state = ST_ERROR;
 		break;
 	case EVT_UNREG_REQ:
+		device_msg_timeout_remove();
 		next_state = ST_UNREGISTER;
 		break;
-	case EVT_READY:
 	case EVT_TIMEOUT:
+		if (device_send_schema() < 0)
+			l_error("Couldn't send schema message");
+
+		device_msg_timeout_modify(DEFAULT_MSG_TIMEOUT);
+		next_state = ST_SCHEMA;
+		break;
+	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
 	case EVT_REG_OK:
@@ -304,6 +336,8 @@ static void enter_schema(void)
 
 	if(rc < 0)
 		l_error("Failure sending schema");
+
+	device_msg_timeout_create(DEFAULT_MSG_TIMEOUT);
 }
 
 /* ONLINE */
