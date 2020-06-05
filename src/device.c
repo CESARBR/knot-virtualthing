@@ -80,10 +80,15 @@ struct knot_thing {
 
 	int data_item_count;
 	struct knot_data_item *data_item;
+
+	struct l_timeout *msg_to;
 };
 
 static void knot_thing_destroy(struct knot_thing *thing)
 {
+	if (thing->msg_to)
+		l_timeout_remove(thing->msg_to);
+
 	l_free(thing->user_token);
 	l_free(thing->rabbitmq_url);
 	l_free(thing->modbus_slave.url);
@@ -829,6 +834,30 @@ static int create_data_item_polling(void)
 	}
 
 	return 0;
+}
+
+static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
+{
+	sm_input_event(EVT_TIMEOUT, user_data);
+}
+
+void device_msg_timeout_create(int seconds)
+{
+	if (thing.msg_to)
+		return;
+
+	thing.msg_to = l_timeout_create(seconds, on_msg_timeout, NULL, NULL);
+}
+
+void device_msg_timeout_modify(int seconds)
+{
+	l_timeout_modify(thing.msg_to, seconds);
+}
+
+void device_msg_timeout_remove(void)
+{
+	l_timeout_remove(thing.msg_to);
+	thing.msg_to = NULL;
 }
 
 int device_start_config(void)
