@@ -191,7 +191,7 @@ static void on_disconnect(struct l_io *io, void *user_data)
 			    MQ_CONNECTION_RETRY_TIMEOUT_MS);
 }
 
-static void start_connection(struct l_timeout *ltimeout, void *user_data)
+static void attempt_connection(struct l_timeout *ltimeout, void *user_data)
 {
 	const char *url = user_data;
 	amqp_socket_t *socket;
@@ -635,7 +635,7 @@ int mq_start(char *url, mq_connected_cb_t connected_cb,
 	mq_ctx.connection_data = user_data;
 
 	mq_ctx.conn_retry_timeout = l_timeout_create_ms(1, // start in oneshot
-							start_connection,
+							attempt_connection,
 							url, NULL);
 
 	return 0;
