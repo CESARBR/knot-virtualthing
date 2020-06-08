@@ -261,6 +261,11 @@ static void attempt_connection(struct l_timeout *ltimeout, void *user_data)
 io_destroy:
 	l_io_destroy(mq_ctx.amqp_io);
 	mq_ctx.amqp_io = NULL;
+close_channel:
+	r = amqp_channel_close(mq_ctx.conn, 1, AMQP_REPLY_SUCCESS);
+	if (r.reply_type != AMQP_RESPONSE_NORMAL)
+		l_error("amqp_channel_close: %s",
+				mq_rpc_reply_string(r));
 close_conn:
 	r = amqp_connection_close(mq_ctx.conn, AMQP_REPLY_SUCCESS);
 	if (r.reply_type != AMQP_RESPONSE_NORMAL)
