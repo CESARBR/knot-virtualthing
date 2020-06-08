@@ -353,7 +353,7 @@ int cloud_auth_device(const char *id, const char *token)
 					       MQ_EXCHANGE_FOG_IN,
 					       MQ_CMD_DEVICE_AUTH,
 					       headers, 1,
-					       0, // Set no expiration time
+					       MQ_MSG_EXPIRATION_TIME_MS,
 					       json_str);
 	if (result < 0)
 		result = KNOT_ERR_CLOUD_FAILURE;
