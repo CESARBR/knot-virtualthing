@@ -161,12 +161,14 @@ static bool on_receive(struct l_io *io, void *user_data)
 	return true;
 }
 
-static void on_disconnect(struct l_io *io, void *user_data)
+static void close_connection(void)
 {
 	amqp_rpc_reply_t r;
 	int err;
 
-	l_debug("AMQP broker disconnected");
+	if (!mq_ctx.conn)
+		return;
+
 	r = amqp_channel_close(mq_ctx.conn, 1, AMQP_REPLY_SUCCESS);
 	if (r.reply_type != AMQP_RESPONSE_NORMAL)
 		l_error("amqp_channel_close: %s",
@@ -182,9 +184,13 @@ static void on_disconnect(struct l_io *io, void *user_data)
 		l_error("amqp_destroy_connection: %s",
 				amqp_error_string2(err));
 
-	l_io_destroy(mq_ctx.amqp_io);
 	mq_ctx.conn = NULL;
-	mq_ctx.amqp_io = NULL;
+}
+
+static void on_disconnect(struct l_io *io, void *user_data)
+{
+	l_debug("AMQP broker disconnected");
+
 	mq_ctx.disconnected_cb(mq_ctx.connection_data);
 
 	if (mq_ctx.conn_retry_timeout)
@@ -203,6 +209,16 @@ static void attempt_connection(struct l_timeout *ltimeout, void *user_data)
 	int status;
 
 	l_debug("Trying to connect to rabbitmq");
+
+	/* Check and close if a connection is already up */
+	close_connection();
+
+	/* Check and destroy if an IO is already allocated */
+	if (mq_ctx.amqp_io) {
+		l_io_destroy(mq_ctx.amqp_io);
+		mq_ctx.amqp_io = NULL;
+	}
+
 	// This function will change the url after processed
 	status = amqp_parse_url(tmp_url, &cinfo);
 	if (status) {
@@ -248,6 +264,8 @@ static void attempt_connection(struct l_timeout *ltimeout, void *user_data)
 	}
 
 	mq_ctx.amqp_io = l_io_new(amqp_get_sockfd(mq_ctx.conn));
+	if (!mq_ctx.amqp_io)
+		goto close_channel;
 
 	status = l_io_set_disconnect_handler(mq_ctx.amqp_io, on_disconnect,
 					     NULL, NULL);
@@ -649,27 +667,11 @@ int mq_start(char *url, mq_connected_cb_t connected_cb,
 
 void mq_stop(void)
 {
-	amqp_rpc_reply_t r;
-	int err;
-
 	l_timeout_remove(mq_ctx.conn_retry_timeout);
 	mq_ctx.conn_retry_timeout = NULL;
 
-	if (!mq_ctx.conn)
-		return;
+	l_io_destroy(mq_ctx.amqp_io);
+	mq_ctx.amqp_io = NULL;
 
-	r = amqp_channel_close(mq_ctx.conn, 1, AMQP_REPLY_SUCCESS);
-	if (r.reply_type != AMQP_RESPONSE_NORMAL)
-		l_error("amqp_channel_close: %s",
-			      mq_rpc_reply_string(r));
-
-	r = amqp_connection_close(mq_ctx.conn, AMQP_REPLY_SUCCESS);
-	if (r.reply_type != AMQP_RESPONSE_NORMAL)
-		l_error("amqp_connection_close: %s",
-			      mq_rpc_reply_string(r));
-
-	err = amqp_destroy_connection(mq_ctx.conn);
-	if (err < 0)
-		l_error("amqp_destroy_connection: %s",
-			      amqp_error_string2(err));
+	close_connection();
 }
