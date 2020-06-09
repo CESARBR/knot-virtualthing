@@ -128,20 +128,23 @@ static modbus_t *create_tcp(const char *url)
 	return modbus_new_tcp_pi(hostname, port);
 }
 
+static modbus_t *create_ctx(const char *url)
+{
+	if (strncmp(url, TCP_PREFIX, TCP_PREFIX_SIZE) == 0) {
+		return create_tcp(url);
+	} else if (strncmp(url, RTU_PREFIX, RTU_PREFIX_SIZE) == 0) {
+		return create_rtu(url);
+	} else {
+		l_error("Address (%s) not supported: Invalid prefix", url);
+		errno = -EINVAL;
+		return NULL;
+	}
+}
+
 static void destroy_ctx(modbus_t *ctx)
 {
 	modbus_close(ctx);
 	modbus_free(ctx);
-}
-
-static int parse_url(const char *url)
-{
-	if (strncmp(url, TCP_PREFIX, TCP_PREFIX_SIZE) == 0)
-		return TCP;
-	else if (strncmp(url, RTU_PREFIX, RTU_PREFIX_SIZE) == 0)
-		return RTU;
-	else
-		return -EINVAL;
 }
 
 static void on_disconnected(struct l_io *io, void *user_data)
@@ -231,17 +234,7 @@ int iface_modbus_start(const char *url, int slave_id,
 		       iface_modbus_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	switch (parse_url(url)) {
-	case TCP:
-		modbus_ctx = create_tcp(url);
-		break;
-	case RTU:
-		modbus_ctx = create_rtu(url);
-		break;
-	default:
-		return -EINVAL;
-	}
-
+	modbus_ctx = create_ctx(url);
 	if (!modbus_ctx)
 		return -errno;
 
