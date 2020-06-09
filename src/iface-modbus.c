@@ -128,7 +128,7 @@ static modbus_t *create_tcp(const char *url)
 	return modbus_new_tcp_pi(hostname, port);
 }
 
-static void destroy(modbus_t *ctx)
+static void destroy_ctx(modbus_t *ctx)
 {
 	modbus_close(ctx);
 	modbus_free(ctx);
@@ -265,5 +265,5 @@ void iface_modbus_stop(void)
 		l_io_destroy(modbus_io);
 
 	if (modbus_ctx)
-		destroy(modbus_ctx);
+		destroy_ctx(modbus_ctx);
 }
