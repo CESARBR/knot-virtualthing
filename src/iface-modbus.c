@@ -53,7 +53,7 @@ enum modbus_types_offset {
 };
 
 union modbus_types {
-	bool val_bool;
+	uint8_t val_bool;
 	uint8_t val_byte;
 	uint16_t val_u16;
 	uint32_t val_u32;
@@ -134,38 +134,6 @@ static void destroy(modbus_t *ctx)
 	modbus_free(ctx);
 }
 
-static int read_bool(modbus_t *ctx, uint16_t addr, bool *out)
-{
-	uint8_t val_u8 = 0;
-	int ret;
-
-	ret = modbus_read_input_bits(ctx, addr, 1, &val_u8);
-	if (ret > 0)
-		*out = (val_u8 ? true : false);
-
-	return ret;
-}
-
-static int read_byte(modbus_t *ctx, uint16_t addr, uint8_t *out)
-{
-	return modbus_read_input_bits(ctx, addr, 8, out);
-}
-
-static int read_u16(modbus_t *ctx, uint16_t addr, uint16_t *out)
-{
-	return modbus_read_registers(ctx, addr, 1, out);
-}
-
-static int read_u32(modbus_t *ctx, uint16_t addr, uint32_t *out)
-{
-	return modbus_read_registers(ctx, addr, 2, (uint16_t *) out);
-}
-
-static int read_u64(modbus_t *ctx, uint16_t addr, uint64_t *out)
-{
-	return modbus_read_registers(ctx, addr, 4, (uint16_t *) out);
-}
-
 static int parse_url(const char *url)
 {
 	if (strncmp(url, TCP_PREFIX, TCP_PREFIX_SIZE) == 0)
@@ -219,10 +187,11 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 
 	switch (bit_offset) {
 	case TYPE_BOOL:
-		rc = read_bool(modbus_ctx, reg_addr, &tmp.val_bool);
+		rc = modbus_read_input_bits(modbus_ctx, reg_addr, 1,
+					    &tmp.val_bool);
 		break;
 	case TYPE_BYTE:
-		rc = read_byte(modbus_ctx, reg_addr, byte_tmp);
+		rc = modbus_read_input_bits(modbus_ctx, reg_addr, 8, byte_tmp);
 		/**
 		 * Store in tmp.val_byte the value read from a Modbus Slave
 		 * where each position of byte_tmp corresponds to a bit.
@@ -231,13 +200,16 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 			tmp.val_byte |= byte_tmp[i] << i;
 		break;
 	case TYPE_U16:
-		rc = read_u16(modbus_ctx, reg_addr, &tmp.val_u16);
+		rc = modbus_read_registers(modbus_ctx, reg_addr, 2,
+					   &tmp.val_u16);
 		break;
 	case TYPE_U32:
-		rc = read_u32(modbus_ctx, reg_addr, &tmp.val_u32);
+		rc = modbus_read_registers(modbus_ctx, reg_addr, 2,
+					   (uint16_t *) &tmp.val_u32);
 		break;
 	case TYPE_U64:
-		rc = read_u64(modbus_ctx, reg_addr, &tmp.val_u64);
+		rc = modbus_read_registers(modbus_ctx, reg_addr, 4,
+					   (uint16_t *) &tmp.val_u64);
 		break;
 	default:
 		rc = -EINVAL;
