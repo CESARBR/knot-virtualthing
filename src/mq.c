@@ -529,6 +529,29 @@ amqp_bytes_t mq_declare_new_queue(const char *name)
 }
 
 /**
+ * mq_delete_queue:
+ * @name: queue name
+ *
+ * Delete a queue in amqp connection.
+ *
+ * Returns: 0 if successful and -1 otherwise.
+ */
+int mq_delete_queue(amqp_bytes_t queue)
+{
+	if (!mq_ctx.conn)
+		return -1;
+
+	amqp_queue_delete(mq_ctx.conn, 1, queue, 0, 0);
+	if (amqp_get_rpc_reply(mq_ctx.conn).reply_type !=
+			       AMQP_RESPONSE_NORMAL) {
+		l_error("Error deleting queue name");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
  * mq_prepare_queue:
  * @queue: queue declared
  * @exchange: exchange to be declared
