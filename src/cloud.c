@@ -274,6 +274,25 @@ static int create_reply_queue(const char *id)
 	return 0;
 }
 
+static void destroy_cloud_queues(void)
+{
+	if (queue_reply.bytes) {
+		if (mq_delete_queue(queue_reply))
+			l_error("Error when delete Reply Queue");
+
+		amqp_bytes_free(queue_reply);
+		queue_reply = amqp_empty_bytes;
+	}
+
+	if (queue_fog.bytes) {
+		if (mq_delete_queue(queue_fog))
+			l_error("Error when delete Fog Queue");
+
+		amqp_bytes_free(queue_fog);
+		queue_fog = amqp_empty_bytes;
+	}
+}
+
 static int set_cloud_events(const char *id)
 {
 	char binding_key_reply[100];
@@ -601,11 +620,7 @@ int cloud_start(char *url, char *user_token, cloud_connected_cb_t connected_cb,
 
 void cloud_stop(void)
 {
-	if (queue_reply.bytes)
-		amqp_bytes_free(queue_reply);
-
-	if (queue_fog.bytes)
-		amqp_bytes_free(queue_fog);
+	destroy_cloud_queues();
 
 	destroy_cloud_events();
 	mq_stop();
