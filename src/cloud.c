@@ -69,6 +69,7 @@
 
 cloud_cb_t cloud_cb;
 amqp_bytes_t queue_reply;
+amqp_bytes_t queue_fog;
 char *user_auth_token;
 char *cloud_events[MSG_TYPES_LENGTH];
 amqp_table_entry_t headers[1];
@@ -221,7 +222,6 @@ static bool on_cloud_receive_message(const char *exchange,
 }
 static int create_fog_queue(const char *id)
 {
-	amqp_bytes_t queue_fog;
 	char queue_fog_name[100];
 	int msg_type;
 	int err;
@@ -240,7 +240,6 @@ static int create_fog_queue(const char *id)
 					      cloud_events[msg_type]);
 		if (err) {
 			l_error("Error on set up queue to consume");
-			amqp_bytes_free(queue_fog);
 			return -1;
 		}
 	}
@@ -251,7 +250,6 @@ static int create_fog_queue(const char *id)
 		return -1;
 	}
 
-	amqp_bytes_free(queue_fog);
 	return 0;
 }
 
@@ -605,6 +603,9 @@ void cloud_stop(void)
 {
 	if (queue_reply.bytes)
 		amqp_bytes_free(queue_reply);
+
+	if (queue_fog.bytes)
+		amqp_bytes_free(queue_fog);
 
 	destroy_cloud_events();
 	mq_stop();
