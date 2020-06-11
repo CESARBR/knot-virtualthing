@@ -727,7 +727,7 @@ static void on_cloud_connected(void *user_data)
 {
 	int err;
 
-	err = cloud_set_read_handler(thing.id, on_cloud_receive, NULL);
+	err = cloud_read_start(thing.id, on_cloud_receive, NULL);
 	if (err < 0)
 		return;
 

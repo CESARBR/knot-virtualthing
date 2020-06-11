@@ -219,6 +219,62 @@ static bool on_cloud_receive_message(const char *exchange,
 
 	return consumed;
 }
+static int create_fog_queue(const char *id)
+{
+	amqp_bytes_t queue_fog;
+	char queue_fog_name[100];
+	int msg_type;
+	int err;
+
+	snprintf(queue_fog_name, sizeof(queue_fog_name), "%s-%s",
+		 MQ_QUEUE_FOG_OUT, id);
+
+	queue_fog = mq_declare_new_queue(queue_fog_name);
+	if (queue_fog.bytes == NULL) {
+		l_error("Error on declare a new queue");
+		return -1;
+	}
+
+	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++) {
+		err = mq_prepare_direct_queue(queue_fog, MQ_EXCHANGE_DEVICE,
+					      cloud_events[msg_type]);
+		if (err) {
+			l_error("Error on set up queue to consume");
+			amqp_bytes_free(queue_fog);
+			return -1;
+		}
+	}
+
+	err = mq_consumer_queue(queue_fog);
+	if (err) {
+		l_error("Error on start a queue consumer");
+		return -1;
+	}
+
+	amqp_bytes_free(queue_fog);
+	return 0;
+}
+
+static int create_reply_queue(const char *id)
+{
+	char queue_reply_name[100];
+
+	snprintf(queue_reply_name, sizeof(queue_reply_name), "%s-%s",
+		 MQ_QUEUE_REPLY, id);
+
+	queue_reply = mq_declare_new_queue(queue_reply_name);
+	if (queue_reply.bytes == NULL) {
+		l_error("Error on declare a new queue");
+		return -1;
+	}
+
+	if (mq_consumer_queue(queue_reply)) {
+		l_error("Error on start a queue consumer");
+		return -1;
+	}
+
+	return 0;
+}
 
 static int set_cloud_events(const char *id)
 {
@@ -260,7 +316,7 @@ static void destroy_cloud_events(void)
  *
  * Requests cloud to add a device.
  * The confirmation that the cloud received the message comes from a callback
- * set in function cloud_set_read_handler with message type REGISTER_MSG.
+ * set in function cloud_read_start with message type REGISTER_MSG.
  *
  * Returns: 0 if successful and a KNoT error otherwise.
  */
@@ -308,7 +364,7 @@ int cloud_register_device(const char *id, const char *name)
  *
  * Requests cloud to remove a device.
  * The confirmation that the cloud received the message comes from a callback
- * set in function cloud_set_read_handler  with message type UNREGISTER_MSG.
+ * set in function cloud_read_start  with message type UNREGISTER_MSG.
  *
  * Returns: 0 if successful and a KNoT error otherwise.
  */
@@ -357,7 +413,7 @@ int cloud_unregister_device(const char *id)
  *
  * Requests cloud to auth a device.
  * The confirmation that the cloud received the message comes from a callback
- * set in function cloud_set_read_handler.
+ * set in function cloud_read_start.
  *
  * Returns: 0 if successful and a KNoT error otherwise.
  */
@@ -410,7 +466,7 @@ int cloud_auth_device(const char *id, const char *token)
  *
  * Requests cloud to update the device schema.
  * The confirmation that the cloud received the message comes from a callback
- * set in function cloud_set_read_handler with message type SCHEMA_MSG.
+ * set in function cloud_read_start with message type SCHEMA_MSG.
  *
  * Returns: 0 if successful and a KNoT error otherwise.
  */
@@ -503,73 +559,31 @@ int cloud_publish_data(const char *id, uint8_t sensor_id, uint8_t value_type,
 }
 
 /**
- * cloud_set_read_handler:
+ * cloud_read_start:
  * @id: thing id
- * @cb: callback to handle message received from cloud
+ * @read_handler_cb: callback to handle message received from cloud
  * @user_data: user data provided to callbacks
  *
- * Set callback handler when receive cloud messages.
+ * Start Cloud to receive messages on read_handler_cb function.
  *
  * Returns: 0 if successful and -1 otherwise.
  */
-int cloud_set_read_handler(const char *id, cloud_cb_t read_handler,
-			   void *user_data)
+int cloud_read_start(const char *id, cloud_cb_t read_handler_cb,
+		     void *user_data)
 {
-	amqp_bytes_t queue_fog;
-	char queue_fog_name[100];
-	char queue_reply_name[100];
-	int msg_type;
-	int err;
-
-	cloud_cb = read_handler;
+	cloud_cb = read_handler_cb;
 
 	if (set_cloud_events(id))
 		return -1;
 
-	snprintf(queue_fog_name, sizeof(queue_fog_name), "%s-%s",
-		 MQ_QUEUE_FOG_OUT, id);
-
-	queue_fog = mq_declare_new_queue(queue_fog_name);
-	if (queue_fog.bytes == NULL) {
-		l_error("Error on declare a new queue");
+	if (create_fog_queue(id))
 		return -1;
-	}
 
-	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++) {
-		err = mq_prepare_direct_queue(queue_fog, MQ_EXCHANGE_DEVICE,
-					      cloud_events[msg_type]);
-		if (err) {
-			l_error("Error on set up queue to consume");
-			amqp_bytes_free(queue_fog);
-			return -1;
-		}
-	}
+	if (create_reply_queue(id))
+		return -1;
 
-	err = mq_set_read_cb(on_cloud_receive_message, user_data);
-	if (err) {
+	if (mq_set_read_cb(on_cloud_receive_message, user_data)) {
 		l_error("Error on set up read callback");
-		return -1;
-	}
-
-	err = mq_consumer_queue(queue_fog);
-	if (err) {
-		l_error("Error on start a queue consumer");
-		return -1;
-	}
-
-	amqp_bytes_free(queue_fog);
-
-	snprintf(queue_reply_name, sizeof(queue_reply_name), "%s-%s",
-		 MQ_QUEUE_REPLY, id);
-
-	queue_reply = mq_declare_new_queue(queue_reply_name);
-	if (queue_reply.bytes == NULL) {
-		l_error("Error on declare a new queue");
-		return -1;
-	}
-
-	if (mq_consumer_queue(queue_reply)) {
-		l_error("Error on start a queue consumer");
 		return -1;
 	}
 
