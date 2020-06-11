@@ -293,6 +293,18 @@ static void destroy_cloud_queues(void)
 	}
 }
 
+static void destroy_cloud_events(void)
+{
+	int msg_type;
+
+	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++) {
+		if (cloud_events[msg_type] != NULL) {
+			l_free(cloud_events[msg_type]);
+			cloud_events[msg_type] = NULL;
+		}
+	}
+}
+
 static int set_cloud_events(const char *id)
 {
 	char binding_key_reply[100];
@@ -308,6 +320,9 @@ static int set_cloud_events(const char *id)
 	snprintf(binding_key_request, sizeof(binding_key_request), "%s.%s.%s",
 		 MQ_EVENT_PREFIX_DEVICE, id, MQ_EVENT_POSTFIX_DATA_REQUEST);
 
+	/* Free cloud_events if already allocated */
+	destroy_cloud_events();
+
 	cloud_events[UPDATE_MSG] = l_strdup(binding_key_update);
 	cloud_events[REQUEST_MSG] = l_strdup(binding_key_request);
 	cloud_events[REGISTER_MSG] = l_strdup(MQ_EVENT_DEVICE_REGISTERED);
@@ -316,14 +331,6 @@ static int set_cloud_events(const char *id)
 	cloud_events[SCHEMA_MSG] = l_strdup(MQ_EVENT_DEVICE_SCHEMA_UPDATED);
 
 	return 0;
-}
-
-static void destroy_cloud_events(void)
-{
-	int msg_type;
-
-	for (msg_type = UPDATE_MSG; msg_type < MSG_TYPES_LENGTH; msg_type++)
-		l_free(cloud_events[msg_type]);
 }
 
 /**
@@ -589,6 +596,9 @@ int cloud_read_start(const char *id, cloud_cb_t read_handler_cb,
 		     void *user_data)
 {
 	cloud_cb = read_handler_cb;
+
+	/* Delete queues if already declared */
+	destroy_cloud_queues();
 
 	if (set_cloud_events(id))
 		return -1;
