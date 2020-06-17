@@ -156,7 +156,9 @@ static void on_disconnected(struct l_io *io, void *user_data)
 
 	l_io_destroy(modbus_io);
 	modbus_io = NULL;
-	l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
+
+	if (connect_to)
+		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
 }
 
 static void attempt_connect(struct l_timeout *to, void *user_data)
@@ -252,6 +254,8 @@ int iface_modbus_start(const char *url, int slave_id,
 void iface_modbus_stop(void)
 {
 	l_timeout_remove(connect_to);
+	connect_to = NULL;
+
 	l_io_destroy(modbus_io);
 	destroy_ctx(modbus_ctx);
 }
