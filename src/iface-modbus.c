@@ -141,21 +141,10 @@ static modbus_t *create_ctx(const char *url)
 	}
 }
 
-static void destroy_ctx(modbus_t *ctx)
-{
-	modbus_close(ctx);
-	modbus_free(ctx);
-}
-
 static void on_disconnected(struct l_io *io, void *user_data)
 {
-	modbus_close(modbus_ctx);
-
 	if (disconn_cb)
 		disconn_cb(user_data);
-
-	l_io_destroy(modbus_io);
-	modbus_io = NULL;
 
 	if (connect_to)
 		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
@@ -165,20 +154,44 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 {
 	l_debug("Trying to connect to Modbus");
 
+	/* Check and close if a connection is already up */
+	if (modbus_get_socket(modbus_ctx) != -1)
+		modbus_close(modbus_ctx);
+
+	/* Check and destroy if an IO is already allocated */
+	if (modbus_io) {
+		l_io_destroy(modbus_io);
+		modbus_io = NULL;
+	}
+
 	if (modbus_connect(modbus_ctx) < 0) {
 		l_error("error connecting to Modbus: %s",
 			modbus_strerror(errno));
-		l_timeout_modify(to, RECONNECT_TIMEOUT);
-		return;
+		goto retry;
 	}
 
 	modbus_io = l_io_new(modbus_get_socket(modbus_ctx));
+	if (!modbus_io)
+		goto connection_close;
+
 	if (!l_io_set_disconnect_handler(modbus_io, on_disconnected, NULL,
-					 NULL))
+					 NULL)) {
 		l_error("Couldn't set Modbus disconnect handler");
+		goto io_destroy;
+	}
 
 	if (conn_cb)
 		conn_cb(user_data);
+
+	return;
+
+io_destroy:
+	l_io_destroy(modbus_io);
+	modbus_io = NULL;
+connection_close:
+	modbus_close(modbus_ctx);
+retry:
+	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
 int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
@@ -257,5 +270,8 @@ void iface_modbus_stop(void)
 	connect_to = NULL;
 
 	l_io_destroy(modbus_io);
-	destroy_ctx(modbus_ctx);
+	modbus_io = NULL;
+
+	modbus_close(modbus_ctx);
+	modbus_free(modbus_ctx);
 }
