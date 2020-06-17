@@ -187,8 +187,9 @@ static void on_disconnect(struct l_io *io, void *user_data)
 	mq_ctx.amqp_io = NULL;
 	mq_ctx.disconnected_cb(mq_ctx.connection_data);
 
-	l_timeout_modify_ms(mq_ctx.conn_retry_timeout,
-			    MQ_CONNECTION_RETRY_TIMEOUT_MS);
+	if (mq_ctx.conn_retry_timeout)
+		l_timeout_modify_ms(mq_ctx.conn_retry_timeout,
+				    MQ_CONNECTION_RETRY_TIMEOUT_MS);
 }
 
 static void attempt_connection(struct l_timeout *ltimeout, void *user_data)
@@ -652,6 +653,7 @@ void mq_stop(void)
 	int err;
 
 	l_timeout_remove(mq_ctx.conn_retry_timeout);
+	mq_ctx.conn_retry_timeout = NULL;
 
 	if (!mq_ctx.conn)
 		return;
