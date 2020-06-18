@@ -97,19 +97,13 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	free(thing->data_item);
 }
 
-static int set_modbus_slave_properties(char *filename)
+static int set_modbus_slave_properties(int fd)
 {
 	int rc;
-	int device_fd;
 	int aux;
 	struct modbus_slave modbus_slave_aux;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	rc = storage_read_key_int(device_fd, THING_GROUP, THING_MODBUS_SLAVE_ID,
-				  &aux);
+	rc = storage_read_key_int(fd, THING_GROUP, THING_MODBUS_SLAVE_ID, &aux);
 	if (rc <= 0)
 		goto error;
 
@@ -118,13 +112,11 @@ static int set_modbus_slave_properties(char *filename)
 
 	modbus_slave_aux.id = aux;
 
-	modbus_slave_aux.url = storage_read_key_string(device_fd, THING_GROUP,
+	modbus_slave_aux.url = storage_read_key_string(fd, THING_GROUP,
 						       THING_MODBUS_URL);
 	if (modbus_slave_aux.url == NULL || !strcmp(modbus_slave_aux.url, ""))
 		goto error;
 	/* TODO: Check if modbus url is in a valid format */
-
-	storage_close(device_fd);
 
 	thing.modbus_slave = modbus_slave_aux;
 
@@ -132,7 +124,6 @@ static int set_modbus_slave_properties(char *filename)
 
 error:
 	l_free(modbus_slave_aux.url);
-	storage_close(device_fd);
 
 	return -EINVAL;
 }
@@ -162,24 +153,14 @@ static int set_rabbit_mq_url(char *filename)
 	return 0;
 }
 
-static int set_sensor_id(char *filename, char *group_id, int index)
+static int set_sensor_id(int fd, char *group_id, int index)
 {
-	int device_fd;
 	int rc;
 	int sensor_id;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	rc = storage_read_key_int(device_fd, group_id, SCHEMA_SENSOR_ID,
-				  &sensor_id);
-	if (rc <= 0) {
-		storage_close(device_fd);
+	rc = storage_read_key_int(fd, group_id, SCHEMA_SENSOR_ID, &sensor_id);
+	if (rc <= 0)
 		return -EINVAL;
-	}
-
-	storage_close(device_fd);
 
 	if (sensor_id >= thing.data_item_count || index != sensor_id)
 		return -EINVAL;
@@ -189,57 +170,45 @@ static int set_sensor_id(char *filename, char *group_id, int index)
 	return 0;
 }
 
-static int set_schema(char *filename, char *group_id, int sensor_id)
+static int set_schema(int fd, char *group_id, int sensor_id)
 {
 	char *name;
 	int rc;
 	int aux;
-	int device_fd;
 	knot_schema schema_aux;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	name = storage_read_key_string(device_fd, group_id, SCHEMA_SENSOR_NAME);
+	name = storage_read_key_string(fd, group_id, SCHEMA_SENSOR_NAME);
 	if (name == NULL || !strcmp(name, "") ||
 			strlen(name) >= KNOT_PROTOCOL_DATA_NAME_LEN)
-		goto error;
+		return -EINVAL;
 
 	strcpy(schema_aux.name, name);
 	l_free(name);
 
-	rc = storage_read_key_int(device_fd, group_id, SCHEMA_VALUE_TYPE, &aux);
+	rc = storage_read_key_int(fd, group_id, SCHEMA_VALUE_TYPE, &aux);
 	if (rc <= 0)
-		goto error;
+		return -EINVAL;
 	schema_aux.value_type = aux;
 
-	rc = storage_read_key_int(device_fd, group_id, SCHEMA_UNIT, &aux);
+	rc = storage_read_key_int(fd, group_id, SCHEMA_UNIT, &aux);
 	if (rc <= 0)
-		goto error;
+		return -EINVAL;
 	schema_aux.unit = aux;
 
-	rc = storage_read_key_int(device_fd, group_id, SCHEMA_TYPE_ID, &aux);
+	rc = storage_read_key_int(fd, group_id, SCHEMA_TYPE_ID, &aux);
 	if (rc <= 0)
-		goto error;
+		return -EINVAL;
 	schema_aux.type_id = aux;
 
 	rc = knot_schema_is_valid(schema_aux.type_id,
 				  schema_aux.value_type,
 				  schema_aux.unit);
 	if (rc)
-		goto error;
-
-	storage_close(device_fd);
+		return -EINVAL;
 
 	thing.data_item[sensor_id].schema = schema_aux;
 
 	return 0;
-
-error:
-	storage_close(device_fd);
-
-	return -EINVAL;
 }
 
 static int get_lower_limit(int fd, char *group_id, int value_type,
@@ -381,25 +350,19 @@ static int assign_limit(int value_type, knot_value_type value,
 	return 0;
 }
 
-static int set_config(char *filename, char *group_id, int sensor_id)
+static int set_config(int fd, char *group_id, int sensor_id)
 {
 	int rc;
 	int aux;
-	int device_fd;
 	int value_type_aux;
 	knot_value_type tmp_value_type;
 	knot_config config_aux;
 
 	memset(&config_aux, 0, sizeof(knot_config));
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
 	value_type_aux = thing.data_item[sensor_id].schema.value_type;
 
-	rc = get_lower_limit(device_fd, group_id, value_type_aux,
-			     &tmp_value_type);
+	rc = get_lower_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
 	if (rc > 0) {
 		config_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
@@ -407,8 +370,7 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 			     &config_aux.lower_limit);
 	}
 
-	rc = get_upper_limit(device_fd, group_id, value_type_aux,
-			     &tmp_value_type);
+	rc = get_upper_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
 	if (rc > 0) {
 		config_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
@@ -416,13 +378,13 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 			     &config_aux.upper_limit);
 	}
 
-	rc = storage_read_key_int(device_fd, group_id, CONFIG_TIME_SEC, &aux);
+	rc = storage_read_key_int(fd, group_id, CONFIG_TIME_SEC, &aux);
 	if (rc > 0) {
 		config_aux.event_flags |= KNOT_EVT_FLAG_TIME;
 		config_aux.time_sec = aux;
 	}
 
-	rc = storage_read_key_int(device_fd, group_id, CONFIG_CHANGE, &aux);
+	rc = storage_read_key_int(fd, group_id, CONFIG_CHANGE, &aux);
 	if (rc > 0)
 		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
@@ -431,12 +393,8 @@ static int set_config(char *filename, char *group_id, int sensor_id)
 				  config_aux.time_sec,
 				  &config_aux.lower_limit,
 				  &config_aux.upper_limit);
-	if (rc) {
-		storage_close(device_fd);
+	if (rc)
 		return -EINVAL;
-	}
-
-	storage_close(device_fd);
 
 	thing.data_item[sensor_id].config = config_aux;
 
@@ -472,79 +430,58 @@ static int valid_bit_offset(int bit_offset, int value_type)
 	return 0;
 }
 
-static int set_modbus_source_properties(char *filename, char *group_id,
-					int sensor_id)
+static int set_modbus_source_properties(int fd, char *group_id, int sensor_id)
 {
 	int rc;
-	int device_fd;
 	struct modbus_source modbus_source_aux;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	rc = storage_read_key_int(device_fd, group_id, MODBUS_REG_ADDRESS,
+	rc = storage_read_key_int(fd, group_id, MODBUS_REG_ADDRESS,
 				  &modbus_source_aux.reg_addr);
 	if (rc <= 0)
-		goto error;
+		return -EINVAL;
 
-	rc = storage_read_key_int(device_fd, group_id, MODBUS_BIT_OFFSET,
+	rc = storage_read_key_int(fd, group_id, MODBUS_BIT_OFFSET,
 				  &modbus_source_aux.bit_offset);
 	if (rc <= 0)
-		goto error;
+		return -EINVAL;
 
 	rc = valid_bit_offset(modbus_source_aux.bit_offset,
 			      thing.data_item[sensor_id].schema.value_type);
 	if (rc < 0)
-		goto error;
-
-	storage_close(device_fd);
+		return -EINVAL;
 
 	thing.data_item[sensor_id].modbus_source = modbus_source_aux;
 
 	return 0;
-
-error:
-	storage_close(device_fd);
-
-	return -EINVAL;
 }
 
-static int set_data_items(char *filename)
+static int set_data_items(int fd)
 {
 	int rc;
 	int i;
-	int device_fd;
 	char **data_item_group;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	thing.data_item_count = get_number_of_data_items(device_fd);
+	thing.data_item_count = get_number_of_data_items(fd);
 	thing.data_item = malloc(thing.data_item_count *
 						sizeof(struct knot_data_item));
-	if (thing.data_item == NULL) {
-		storage_close(device_fd);
+	if (thing.data_item == NULL)
 		return -EINVAL;
-	}
 
-	data_item_group = get_data_item_groups(device_fd);
+	data_item_group = get_data_item_groups(fd);
 
-	storage_close(device_fd);
 	for (i = 0; data_item_group[i] != NULL ; i++) {
-		rc = set_sensor_id(filename, data_item_group[i], i);
+		rc = set_sensor_id(fd, data_item_group[i], i);
 		if (rc < 0)
 			goto error;
-		rc = set_schema(filename, data_item_group[i],
+		rc = set_schema(fd, data_item_group[i],
 				thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
-		rc = set_config(filename, data_item_group[i],
+		rc = set_config(fd, data_item_group[i],
 				thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
-		rc = set_modbus_source_properties(filename, data_item_group[i],
+		rc = set_modbus_source_properties(fd, data_item_group[i],
 						  thing.data_item[i].sensor_id);
 		if (rc < 0)
 			goto error;
@@ -560,51 +497,33 @@ error:
 	return -EINVAL;
 }
 
-static int set_thing_name(char *filename)
+static int set_thing_name(int fd)
 {
-	int device_fd;
 	char *knot_thing_name;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	knot_thing_name = storage_read_key_string(device_fd, THING_GROUP,
-						  THING_NAME);
+	knot_thing_name = storage_read_key_string(fd, THING_GROUP, THING_NAME);
 	if (knot_thing_name == NULL || !strcmp(knot_thing_name, "") ||
 	    strlen(knot_thing_name) >= KNOT_PROTOCOL_DEVICE_NAME_LEN) {
 		l_free(knot_thing_name);
-		storage_close(device_fd);
 		return -EINVAL;
 	}
 
 	strcpy(thing.name, knot_thing_name);
 	l_free(knot_thing_name);
 
-	storage_close(device_fd);
-
 	return 0;
 }
 
-static int set_thing_user_token(char *filename)
+static int set_thing_user_token(int fd)
 {
-	int device_fd;
 	char *user_token;
 
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	user_token = storage_read_key_string(device_fd, THING_GROUP,
-					     THING_USER_TOKEN);
+	user_token = storage_read_key_string(fd, THING_GROUP, THING_USER_TOKEN);
 	if (user_token == NULL || !strcmp(user_token, "")) {
 		l_free(user_token);
-		storage_close(device_fd);
 		return -EINVAL;
 	}
 	thing.user_token = user_token;
-
-	storage_close(device_fd);
 
 	return 0;
 }
@@ -635,27 +554,53 @@ static int set_thing_credentials(char *filename)
 	return 0;
 }
 
+static int set_thing_properties(char *filename)
+{
+	int device_fd;
+	int rc;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0)
+		return device_fd;
+
+	rc = set_thing_name(device_fd);
+	if (rc < 0) {
+		storage_close(device_fd);
+		return rc;
+	}
+
+	rc = set_thing_user_token(device_fd);
+	if (rc < 0) {
+		storage_close(device_fd);
+		return rc;
+	}
+
+	rc = set_modbus_slave_properties(device_fd);
+	if (rc < 0) {
+		storage_close(device_fd);
+		return rc;
+	}
+
+	rc = set_data_items(device_fd);
+	if (rc < 0) {
+		storage_close(device_fd);
+		return rc;
+	}
+
+	storage_close(device_fd);
+
+	return rc;
+}
+
 static int device_set_properties(struct device_settings *conf_files)
 {
 	int rc;
 
-	rc = set_thing_name(conf_files->device_path);
+	rc = set_thing_properties(conf_files->device_path);
 	if (rc < 0)
 		return rc;
 
 	rc = set_rabbit_mq_url(conf_files->rabbitmq_path);
-	if (rc < 0)
-		return rc;
-
-	rc = set_thing_user_token(conf_files->device_path);
-	if (rc < 0)
-		return rc;
-
-	rc = set_modbus_slave_properties(conf_files->device_path);
-	if (rc < 0)
-		return rc;
-
-	rc = set_data_items(conf_files->device_path);
 	if (rc < 0)
 		return rc;
 
