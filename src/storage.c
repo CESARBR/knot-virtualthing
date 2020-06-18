@@ -362,33 +362,6 @@ bool storage_has_unit(int fd, const char *group, const char *key)
 	return l_settings_has_key(settings, group, key);
 }
 
-int get_number_of_data_items(int fd)
-{
-	struct l_settings *settings;
-	char **groups;
-	int n_of_data_items = 0;
-	int group_index;
-	int aux;
-
-	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
-
-	if (!settings)
-		return -1;
-
-	groups = l_settings_get_groups(settings);
-
-	for (group_index = 0; groups[group_index] != NULL; group_index++) {
-		aux = strncmp(groups[group_index], DATA_ITEM_GROUP,
-						strlen(DATA_ITEM_GROUP));
-		if (!aux)
-			n_of_data_items++;
-	}
-
-	l_strfreev(groups);
-
-	return n_of_data_items;
-}
-
 char **get_data_item_groups(int fd)
 {
 	struct l_settings *settings;

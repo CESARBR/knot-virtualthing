@@ -105,6 +105,8 @@ int poll_create(int interval, int id, poll_read_cb_t read_cb)
 
 void poll_destroy(void)
 {
-	if (poll_entries)
+	if (poll_entries) {
 		l_queue_destroy(poll_entries, entry_destroy);
+		poll_entries = NULL;
+	}
 }
