@@ -78,8 +78,7 @@ struct knot_thing {
 	char *rabbitmq_url;
 	char *credentials_path;
 
-	int data_item_count;
-	struct knot_data_item *data_item;
+	struct l_hashmap *data_items;
 
 	struct l_timeout *msg_to;
 };
@@ -94,7 +93,7 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_free(thing->modbus_slave.url);
 	l_free(thing->credentials_path);
 
-	free(thing->data_item);
+	l_hashmap_destroy(thing->data_items, l_free);
 }
 
 static int set_modbus_slave_properties(int fd)
@@ -153,7 +152,8 @@ static int set_rabbit_mq_url(char *filename)
 	return 0;
 }
 
-static int set_sensor_id(int fd, char *group_id, int index)
+static int set_sensor_id(int fd, char *group_id,
+			 struct knot_data_item *data_item)
 {
 	int rc;
 	int sensor_id;
@@ -162,15 +162,15 @@ static int set_sensor_id(int fd, char *group_id, int index)
 	if (rc <= 0)
 		return -EINVAL;
 
-	if (sensor_id >= thing.data_item_count || index != sensor_id)
+	if (l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(sensor_id)))
 		return -EINVAL;
 
-	thing.data_item[index].sensor_id = sensor_id;
+	data_item->sensor_id = sensor_id;
 
 	return 0;
 }
 
-static int set_schema(int fd, char *group_id, int sensor_id)
+static int set_schema(int fd, char *group_id, struct knot_data_item *data_item)
 {
 	char *name;
 	int rc;
@@ -206,7 +206,7 @@ static int set_schema(int fd, char *group_id, int sensor_id)
 	if (rc)
 		return -EINVAL;
 
-	thing.data_item[sensor_id].schema = schema_aux;
+	data_item->schema = schema_aux;
 
 	return 0;
 }
@@ -350,7 +350,7 @@ static int assign_limit(int value_type, knot_value_type value,
 	return 0;
 }
 
-static int set_config(int fd, char *group_id, int sensor_id)
+static int set_config(int fd, char *group_id, struct knot_data_item *data_item)
 {
 	int rc;
 	int aux;
@@ -360,7 +360,7 @@ static int set_config(int fd, char *group_id, int sensor_id)
 
 	memset(&config_aux, 0, sizeof(knot_config));
 
-	value_type_aux = thing.data_item[sensor_id].schema.value_type;
+	value_type_aux = data_item->schema.value_type;
 
 	rc = get_lower_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
@@ -389,14 +389,14 @@ static int set_config(int fd, char *group_id, int sensor_id)
 		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
 	rc = knot_config_is_valid(config_aux.event_flags,
-				  thing.data_item[sensor_id].schema.value_type,
+				  data_item->schema.value_type,
 				  config_aux.time_sec,
 				  &config_aux.lower_limit,
 				  &config_aux.upper_limit);
 	if (rc)
 		return -EINVAL;
 
-	thing.data_item[sensor_id].config = config_aux;
+	data_item->config = config_aux;
 
 	return 0;
 }
@@ -430,7 +430,8 @@ static int valid_bit_offset(int bit_offset, int value_type)
 	return 0;
 }
 
-static int set_modbus_source_properties(int fd, char *group_id, int sensor_id)
+static int set_modbus_source_properties(int fd, char *group_id,
+					struct knot_data_item *data_item)
 {
 	int rc;
 	struct modbus_source modbus_source_aux;
@@ -446,11 +447,11 @@ static int set_modbus_source_properties(int fd, char *group_id, int sensor_id)
 		return -EINVAL;
 
 	rc = valid_bit_offset(modbus_source_aux.bit_offset,
-			      thing.data_item[sensor_id].schema.value_type);
+			      data_item->schema.value_type);
 	if (rc < 0)
 		return -EINVAL;
 
-	thing.data_item[sensor_id].modbus_source = modbus_source_aux;
+	data_item->modbus_source = modbus_source_aux;
 
 	return 0;
 }
@@ -460,31 +461,35 @@ static int set_data_items(int fd)
 	int rc;
 	int i;
 	char **data_item_group;
+	struct knot_data_item *data_item_aux;
 
-	thing.data_item_count = get_number_of_data_items(fd);
-	thing.data_item = malloc(thing.data_item_count *
-						sizeof(struct knot_data_item));
-	if (thing.data_item == NULL)
-		return -EINVAL;
+	thing.data_items = l_hashmap_new();
 
 	data_item_group = get_data_item_groups(fd);
 
 	for (i = 0; data_item_group[i] != NULL ; i++) {
-		rc = set_sensor_id(fd, data_item_group[i], i);
+		data_item_aux = l_new(struct knot_data_item, 1);
+
+		rc = set_sensor_id(fd, data_item_group[i], data_item_aux);
 		if (rc < 0)
 			goto error;
-		rc = set_schema(fd, data_item_group[i],
-				thing.data_item[i].sensor_id);
+
+		rc = set_schema(fd, data_item_group[i], data_item_aux);
 		if (rc < 0)
 			goto error;
-		rc = set_config(fd, data_item_group[i],
-				thing.data_item[i].sensor_id);
+
+		rc = set_config(fd, data_item_group[i], data_item_aux);
 		if (rc < 0)
 			goto error;
+
 		rc = set_modbus_source_properties(fd, data_item_group[i],
-						  thing.data_item[i].sensor_id);
+						  data_item_aux);
 		if (rc < 0)
 			goto error;
+
+		l_hashmap_insert(thing.data_items,
+				 L_INT_TO_PTR(data_item_aux->sensor_id),
+				 data_item_aux);
 	}
 
 	l_strfreev(data_item_group);
@@ -493,6 +498,7 @@ static int set_data_items(int fd)
 
 error:
 	l_strfreev(data_item_group);
+	l_free(data_item_aux);
 
 	return -EINVAL;
 }
@@ -729,19 +735,18 @@ static void on_modbus_disconnected(void *user_data)
 
 static void on_publish_data(void *data, void *user_data)
 {
-	struct knot_data_item data_item;
+	struct knot_data_item *data_item;
 	int *sensor_id = data;
 	int rc;
 
-	if (*sensor_id >= thing.data_item_count)
+	data_item = l_hashmap_lookup(thing.data_items, sensor_id);
+	if (!data_item)
 		return;
 
-	data_item = thing.data_item[*sensor_id];
-
-	rc = cloud_publish_data(thing.id, *sensor_id,
-				data_item.schema.value_type,
-				&data_item.current_val,
-				sizeof(data_item.schema.value_type));
+	rc = cloud_publish_data(thing.id, data_item->sensor_id,
+				data_item->schema.value_type,
+				&data_item->current_val,
+				sizeof(data_item->schema.value_type));
 	if (rc < 0)
 		l_error("Couldn't send data_update for data_item #%d",
 			*sensor_id);
@@ -759,21 +764,58 @@ static void on_config_timeout(int id)
 	l_queue_destroy(list, NULL);
 }
 
+static void foreach_send_schema(const void *key, void *value, void *user_data)
+{
+	struct knot_data_item *data_item = value;
+	struct l_queue *schema_queue = user_data;
+	knot_msg_schema schema_aux;
+
+	schema_aux.sensor_id = data_item->sensor_id;
+	schema_aux.values = data_item->schema;
+	l_queue_push_head(schema_queue, l_memdup(&schema_aux,
+						 sizeof(knot_msg_schema)));
+}
+
+static void foreach_publish_all_data(const void *key, void *value,
+				     void *user_data)
+{
+	struct knot_data_item *data_item = value;
+
+	on_publish_data(&data_item->sensor_id, NULL);
+}
+
+static void foreach_config_add_data_item(const void *key, void *value,
+					 void *user_data)
+{
+	struct knot_data_item *data_item = value;
+
+	config_add_data_item(data_item->sensor_id, data_item->config);
+}
+
+static void foreach_data_item_polling(const void *key, void *value,
+				      void *user_data)
+{
+	struct knot_data_item *data_item = value;
+	int *rc = user_data;
+
+	if (poll_create(DEFAULT_POLLING_INTERVAL, data_item->sensor_id,
+			device_read_data)) {
+		l_error("Fail on create poll to read data item with id: %d",
+			data_item->sensor_id);
+		*rc = -1;
+	}
+}
+
 static int create_data_item_polling(void)
 {
-	int i;
-	int rc;
+	int rc = 0;
 
-	for (i = 0; i < thing.data_item_count; i++) {
-		rc = poll_create(DEFAULT_POLLING_INTERVAL, i,
-				 device_read_data);
-		if (rc < 0) {
-			poll_destroy();
-			return rc;
-		}
-	}
+	l_hashmap_foreach(thing.data_items, foreach_data_item_polling,
+			  &rc);
+	if (rc)
+		poll_destroy();
 
-	return 0;
+	return rc;
 }
 
 static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
@@ -808,7 +850,6 @@ int device_start_read_cloud(void)
 int device_start_config(void)
 {
 	int rc;
-	int i;
 
 	rc = config_start(on_config_timeout);
 	if (rc < 0) {
@@ -816,9 +857,7 @@ int device_start_config(void)
 		return rc;
 	}
 
-	for (i = 0; i < thing.data_item_count; i++)
-		config_add_data_item(thing.data_item[i].sensor_id,
-				     thing.data_item[i].config);
+	l_hashmap_foreach(thing.data_items, foreach_config_add_data_item, NULL);
 
 	return 0;
 }
@@ -830,17 +869,22 @@ void device_stop_config(void)
 
 int device_read_data(int id)
 {
+	struct knot_data_item *data_item;
 	struct l_queue *list;
 	int rc;
 
-	rc = iface_modbus_read_data(thing.data_item[id].modbus_source.reg_addr,
-				    thing.data_item[id].modbus_source.bit_offset,
-				    &thing.data_item[id].current_val);
-	if (config_check_value(thing.data_item[id].config,
-			       thing.data_item[id].current_val,
-			       thing.data_item[id].sent_val,
-			       thing.data_item[id].schema.value_type) > 0) {
-		thing.data_item[id].sent_val = thing.data_item[id].current_val;
+	data_item = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
+	if (!data_item)
+		return -EINVAL;
+
+	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
+				    data_item->modbus_source.bit_offset,
+				    &data_item->current_val);
+	if (config_check_value(data_item->config,
+			       data_item->current_val,
+			       data_item->sent_val,
+			       data_item->schema.value_type) > 0) {
+		data_item->sent_val = data_item->current_val;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
 
@@ -959,19 +1003,11 @@ int device_send_register_request()
 int device_send_schema()
 {
 	struct l_queue *schema_queue;
-	knot_msg_schema schema_aux;
-	int size;
 	int rc;
-	int i;
 
 	schema_queue = l_queue_new();
-	size = sizeof(knot_msg_schema);
 
-	for(i = 0; i < thing.data_item_count; i++) {
-		schema_aux.sensor_id = i;
-		schema_aux.values = thing.data_item[i].schema;
-		l_queue_push_head(schema_queue, l_memdup(&schema_aux, size));
-	}
+	l_hashmap_foreach(thing.data_items, foreach_send_schema, schema_queue);
 
 	rc = cloud_update_schema(thing.id, schema_queue);
 
@@ -987,10 +1023,7 @@ void device_publish_data_list(struct l_queue *sensor_id_list)
 
 void device_publish_data_all(void)
 {
-	int sensor_id;
-
-	for (sensor_id = 0; sensor_id < thing.data_item_count; sensor_id++)
-		on_publish_data(&sensor_id, NULL);
+	l_hashmap_foreach(thing.data_items, foreach_publish_all_data, NULL);
 }
 
 int device_start(struct device_settings *conf_files)

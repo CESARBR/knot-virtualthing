@@ -61,5 +61,5 @@ int storage_read_key_uint(int fd, const char *group, const char *key,
 int storage_read_key_uint64(int fd, const char *group, const char *key,
 			    uint64_t *value);
 bool storage_has_unit(int fd, const char *group, const char *key);
-int get_number_of_data_items(int fd);
+
 char **get_data_item_groups(int fd);
