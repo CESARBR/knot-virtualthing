@@ -20,3 +20,7 @@
 
 int properties_create_device(struct knot_thing *thing,
 			     struct device_settings *conf_files);
+
+int properties_clear_credentials(struct knot_thing *thing, char *filename);
+int properties_store_credentials(struct knot_thing *thing, char *filename,
+				 char *id, char *token);

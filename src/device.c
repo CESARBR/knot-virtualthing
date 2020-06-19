@@ -40,7 +40,6 @@
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
-#define EMPTY_STRING ""
 #define DEFAULT_POLLING_INTERVAL 1
 
 struct knot_thing thing;
@@ -164,35 +163,6 @@ static void on_cloud_disconnected(void *user_data)
 	l_info("Disconnected from Cloud");
 
 	conn_handler(CLOUD, false);
-}
-
-static int erase_thing_token(int cred_fd)
-{
-	int rc;
-
-	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
-				      CREDENTIALS_THING_TOKEN, EMPTY_STRING);
-	if (rc < 0)
-		l_error("Failed to erase thing token");
-
-	else
-		thing.token[0] = '\0';
-
-	return rc;
-}
-
-static int erase_thing_id(int cred_fd)
-{
-	int rc;
-
-	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
-				      CREDENTIALS_THING_ID, EMPTY_STRING);
-	if (rc < 0)
-		l_error("Failed to erase thing id");
-	else
-		thing.id[0] = '\0';
-
-	return rc;
 }
 
 static void on_modbus_connected(void *user_data)
@@ -359,6 +329,16 @@ void device_set_thing_credentials_path(struct knot_thing *thing,
 	thing->credentials_path = l_strdup(path);
 }
 
+void device_clear_thing_id(struct knot_thing *thing)
+{
+	thing->id[0] = '\0';
+}
+
+void device_clear_thing_token(struct knot_thing *thing)
+{
+	thing->token[0] = '\0';
+}
+
 void device_msg_timeout_create(int seconds)
 {
 	if (thing.msg_to)
@@ -450,72 +430,21 @@ int device_has_credentials(void)
 
 int device_clear_credentials(void)
 {
-	int rc;
-	int cred_fd;
-
-	cred_fd = storage_open(thing.credentials_path);
-	if (cred_fd < 0) {
-		l_error("Failed to open credentials file");
-		return cred_fd;
-	}
-
-	rc = erase_thing_token(cred_fd);
-	if (rc < 0)
-		goto error;
-
-	rc = erase_thing_id(cred_fd);
-	if (rc < 0)
-		goto error;
-
-	storage_close(cred_fd);
-
-	return rc;
-
-error:
-	l_error("Failed to clear device credentials");
-	storage_close(cred_fd);
-
-	return -EINVAL;
+	return properties_clear_credentials(&thing, thing.credentials_path);
 }
 
 int device_store_credentials(char *token)
 {
 	int rc;
-	int cred_fd;
 
-	if (strlen(token) > KNOT_PROTOCOL_TOKEN_LEN)
-		return -EINVAL;
-
-	cred_fd = storage_open(thing.credentials_path);
-
-	if (cred_fd < 0) {
-		l_error("Failed to open credentials file");
-		return cred_fd;
-	}
-
-	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
-				      CREDENTIALS_THING_TOKEN, token);
-	if(rc < 0)
-		goto error;
+	rc = properties_store_credentials(&thing, thing.credentials_path,
+					  thing.id, token);
+	if (rc < 0)
+		return -1;
 
 	strncpy(thing.token, token, KNOT_PROTOCOL_TOKEN_LEN);
 
-	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
-				      CREDENTIALS_THING_ID, thing.id);
-	if(rc < 0) {
-		erase_thing_token(cred_fd);
-		goto error;
-	}
-
-	storage_close(cred_fd);
-
-	return rc;
-
-error:
-	l_error("Failed to store device credentials");
-	storage_close(cred_fd);
-
-	return -EINVAL;
+	return 0;
 }
 
 char *device_get_id(void)
