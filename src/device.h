@@ -49,7 +49,6 @@ void device_msg_timeout_remove(void);
 int device_start_read_cloud(void);
 int device_start_config(void);
 void device_stop_config(void);
-int device_read_data(int id);
 int device_send_schema();
 int device_has_credentials(void);
 int device_store_credentials(char *token);

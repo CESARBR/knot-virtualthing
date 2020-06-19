@@ -35,11 +35,6 @@ void device_stop_config(void)
 	/* purposely left empty as no behaviour expected/required */
 }
 
-int device_read_data(int rc)
-{
-	return rc;
-}
-
 int device_send_schema(void)
 {
 	return 0;
