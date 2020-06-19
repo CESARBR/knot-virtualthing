@@ -40,24 +40,29 @@ void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 				  const char *token);
 void device_set_thing_credentials_path(struct knot_thing *thing,
 				       const char *path);
+void device_generate_new_id(void);
 void device_clear_thing_id(struct knot_thing *thing);
 void device_clear_thing_token(struct knot_thing *thing);
+int device_has_credentials(void);
+int device_store_credentials(char *token);
+int device_clear_credentials(void);
+
+int device_check_schema_change(void);
+
+int device_send_register_request(void);
+int device_send_auth_request(void);
+int device_send_schema(void);
+void device_publish_data_list(struct l_queue *sensor_id_list);
+void device_publish_data_all(void);
 
 void device_msg_timeout_create(int seconds);
 void device_msg_timeout_modify(int seconds);
 void device_msg_timeout_remove(void);
-int device_start_read_cloud(void);
+
 int device_start_config(void);
 void device_stop_config(void);
-int device_send_schema();
-int device_has_credentials(void);
-int device_store_credentials(char *token);
-int device_send_register_request();
-void device_generate_new_id();
-int device_send_auth_request(void);
-int device_check_schema_change(void);
-int device_clear_credentials(void);
-void device_publish_data_list(struct l_queue *sensor_id_list);
-void device_publish_data_all(void);
+
+int device_start_read_cloud(void);
+
 int device_start(struct device_settings *conf_files);
 void device_destroy(void);

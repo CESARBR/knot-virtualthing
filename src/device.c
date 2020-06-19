@@ -42,8 +42,6 @@
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
 #define DEFAULT_POLLING_INTERVAL 1
 
-struct knot_thing thing;
-
 enum CONN_TYPE {
 	MODBUS = 0x0F,
 	CLOUD = 0xF0
@@ -83,6 +81,8 @@ struct knot_thing {
 	struct l_timeout *msg_to;
 };
 
+struct knot_thing thing;
+
 static void knot_thing_destroy(struct knot_thing *thing)
 {
 	if (thing->msg_to)
@@ -96,18 +96,68 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_hashmap_destroy(thing->data_items, l_free);
 }
 
-static void conn_handler(enum CONN_TYPE conn, bool is_up)
+static void foreach_send_schema(const void *key, void *value, void *user_data)
 {
-	static uint8_t conn_mask;
+	struct knot_data_item *data_item = value;
+	struct l_queue *schema_queue = user_data;
+	knot_msg_schema schema_aux;
 
-	conn_mask = set_conn_bitmask(is_up, conn_mask, conn);
+	schema_aux.sensor_id = data_item->sensor_id;
+	schema_aux.values = data_item->schema;
+	l_queue_push_head(schema_queue, l_memdup(&schema_aux,
+						 sizeof(knot_msg_schema)));
+}
 
-	if(conn_mask != CONNECTED_MASK) {
-		sm_input_event(EVT_NOT_READY, NULL);
+static void on_publish_data(void *data, void *user_data)
+{
+	struct knot_data_item *data_item;
+	int *sensor_id = data;
+	int rc;
+
+	data_item = l_hashmap_lookup(thing.data_items, sensor_id);
+	if (!data_item)
 		return;
-	}
 
-	sm_input_event(EVT_READY, NULL);
+	rc = cloud_publish_data(thing.id, data_item->sensor_id,
+				data_item->schema.value_type,
+				&data_item->current_val,
+				sizeof(data_item->schema.value_type));
+	if (rc < 0)
+		l_error("Couldn't send data_update for data_item #%d",
+			*sensor_id);
+}
+
+static void foreach_publish_all_data(const void *key, void *value,
+				     void *user_data)
+{
+	struct knot_data_item *data_item = value;
+
+	on_publish_data(&data_item->sensor_id, NULL);
+}
+
+static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
+{
+	sm_input_event(EVT_TIMEOUT, user_data);
+}
+
+static void foreach_config_add_data_item(const void *key, void *value,
+					 void *user_data)
+{
+	struct knot_data_item *data_item = value;
+
+	config_add_data_item(data_item->sensor_id, data_item->config);
+}
+
+static void on_config_timeout(int id)
+{
+	struct l_queue *list;
+
+	list = l_queue_new();
+	l_queue_push_head(list, &id);
+
+	sm_input_event(EVT_PUB_DATA, list);
+
+	l_queue_destroy(list, NULL);
 }
 
 static bool on_cloud_receive(const struct cloud_msg *msg, void *user_data)
@@ -151,11 +201,18 @@ static bool on_cloud_receive(const struct cloud_msg *msg, void *user_data)
 	return true;
 }
 
-static void on_cloud_connected(void *user_data)
+static void conn_handler(enum CONN_TYPE conn, bool is_up)
 {
-	l_info("Connected to Cloud %s", thing.rabbitmq_url);
+	static uint8_t conn_mask;
 
-	conn_handler(CLOUD, true);
+	conn_mask = set_conn_bitmask(is_up, conn_mask, conn);
+
+	if (conn_mask != CONNECTED_MASK) {
+		sm_input_event(EVT_NOT_READY, NULL);
+		return;
+	}
+
+	sm_input_event(EVT_READY, NULL);
 }
 
 static void on_cloud_disconnected(void *user_data)
@@ -165,12 +222,11 @@ static void on_cloud_disconnected(void *user_data)
 	conn_handler(CLOUD, false);
 }
 
-static void on_modbus_connected(void *user_data)
+static void on_cloud_connected(void *user_data)
 {
-	l_info("Connected to Modbus %s", thing.modbus_slave.url);
+	l_info("Connected to Cloud %s", thing.rabbitmq_url);
 
-	poll_start();
-	conn_handler(MODBUS, true);
+	conn_handler(CLOUD, true);
 }
 
 static void on_modbus_disconnected(void *user_data)
@@ -181,63 +237,12 @@ static void on_modbus_disconnected(void *user_data)
 	conn_handler(MODBUS, false);
 }
 
-static void on_publish_data(void *data, void *user_data)
+static void on_modbus_connected(void *user_data)
 {
-	struct knot_data_item *data_item;
-	int *sensor_id = data;
-	int rc;
+	l_info("Connected to Modbus %s", thing.modbus_slave.url);
 
-	data_item = l_hashmap_lookup(thing.data_items, sensor_id);
-	if (!data_item)
-		return;
-
-	rc = cloud_publish_data(thing.id, data_item->sensor_id,
-				data_item->schema.value_type,
-				&data_item->current_val,
-				sizeof(data_item->schema.value_type));
-	if (rc < 0)
-		l_error("Couldn't send data_update for data_item #%d",
-			*sensor_id);
-}
-
-static void on_config_timeout(int id)
-{
-	struct l_queue *list;
-
-	list = l_queue_new();
-	l_queue_push_head(list, &id);
-
-	sm_input_event(EVT_PUB_DATA, list);
-
-	l_queue_destroy(list, NULL);
-}
-
-static void foreach_send_schema(const void *key, void *value, void *user_data)
-{
-	struct knot_data_item *data_item = value;
-	struct l_queue *schema_queue = user_data;
-	knot_msg_schema schema_aux;
-
-	schema_aux.sensor_id = data_item->sensor_id;
-	schema_aux.values = data_item->schema;
-	l_queue_push_head(schema_queue, l_memdup(&schema_aux,
-						 sizeof(knot_msg_schema)));
-}
-
-static void foreach_publish_all_data(const void *key, void *value,
-				     void *user_data)
-{
-	struct knot_data_item *data_item = value;
-
-	on_publish_data(&data_item->sensor_id, NULL);
-}
-
-static void foreach_config_add_data_item(const void *key, void *value,
-					 void *user_data)
-{
-	struct knot_data_item *data_item = value;
-
-	config_add_data_item(data_item->sensor_id, data_item->config);
+	poll_start();
+	conn_handler(MODBUS, true);
 }
 
 static int on_modbus_poll_receive(int id)
@@ -295,9 +300,9 @@ static int create_data_item_polling(void)
 	return rc;
 }
 
-static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
+char *device_get_id(void)
 {
-	sm_input_event(EVT_TIMEOUT, user_data);
+	return thing.id;
 }
 
 void device_set_thing_name(struct knot_thing *thing, const char *name)
@@ -358,6 +363,14 @@ void device_set_thing_credentials_path(struct knot_thing *thing,
 	thing->credentials_path = l_strdup(path);
 }
 
+void device_generate_new_id(void)
+{
+	uint64_t id; /* knot id uses 16 characters which fits inside a uint64 */
+
+	l_getrandom(&id, sizeof(id));
+	sprintf(thing.id, "%"PRIx64, id); /* PRIx64 formats the string as hex */
+}
+
 void device_clear_thing_id(struct knot_thing *thing)
 {
 	thing->id[0] = '\0';
@@ -368,69 +381,9 @@ void device_clear_thing_token(struct knot_thing *thing)
 	thing->token[0] = '\0';
 }
 
-void device_msg_timeout_create(int seconds)
-{
-	if (thing.msg_to)
-		return;
-
-	thing.msg_to = l_timeout_create(seconds, on_msg_timeout, NULL, NULL);
-}
-
-void device_msg_timeout_modify(int seconds)
-{
-	l_timeout_modify(thing.msg_to, seconds);
-}
-
-void device_msg_timeout_remove(void)
-{
-	l_timeout_remove(thing.msg_to);
-	thing.msg_to = NULL;
-}
-
-int device_start_read_cloud(void)
-{
-	return cloud_read_start(thing.id, on_cloud_receive, NULL);
-}
-
-int device_start_config(void)
-{
-	int rc;
-
-	rc = config_start(on_config_timeout);
-	if (rc < 0) {
-		l_error("Failed to start config");
-		return rc;
-	}
-
-	l_hashmap_foreach(thing.data_items, foreach_config_add_data_item, NULL);
-
-	return 0;
-}
-
-void device_stop_config(void)
-{
-	config_stop();
-}
-
-int device_check_schema_change(void)
-{
-	/* TODO: Add schema change verification */
-	return 1;
-}
-
-int device_send_auth_request(void)
-{
-	return cloud_auth_device(thing.id, thing.token);
-}
-
 int device_has_credentials(void)
 {
 	return thing.token[0] != '\0';
-}
-
-int device_clear_credentials(void)
-{
-	return properties_clear_credentials(&thing, thing.credentials_path);
 }
 
 int device_store_credentials(char *token)
@@ -447,25 +400,28 @@ int device_store_credentials(char *token)
 	return 0;
 }
 
-char *device_get_id(void)
+int device_clear_credentials(void)
 {
-	return thing.id;
+	return properties_clear_credentials(&thing, thing.credentials_path);
 }
 
-void device_generate_new_id()
+int device_check_schema_change(void)
 {
-	uint64_t id; /* knot id uses 16 characters which fits inside a uint64 */
-
-	l_getrandom(&id, sizeof(id));
-	sprintf(thing.id, "%"PRIx64, id); /* PRIx64 formats the string as hex */
+	/* TODO: Add schema change verification */
+	return 1;
 }
 
-int device_send_register_request()
+int device_send_register_request(void)
 {
 	return cloud_register_device(thing.id, thing.name);
 }
 
-int device_send_schema()
+int device_send_auth_request(void)
+{
+	return cloud_auth_device(thing.id, thing.token);
+}
+
+int device_send_schema(void)
 {
 	struct l_queue *schema_queue;
 	int rc;
@@ -489,6 +445,50 @@ void device_publish_data_list(struct l_queue *sensor_id_list)
 void device_publish_data_all(void)
 {
 	l_hashmap_foreach(thing.data_items, foreach_publish_all_data, NULL);
+}
+
+void device_msg_timeout_create(int seconds)
+{
+	if (thing.msg_to)
+		return;
+
+	thing.msg_to = l_timeout_create(seconds, on_msg_timeout, NULL, NULL);
+}
+
+void device_msg_timeout_modify(int seconds)
+{
+	l_timeout_modify(thing.msg_to, seconds);
+}
+
+void device_msg_timeout_remove(void)
+{
+	l_timeout_remove(thing.msg_to);
+	thing.msg_to = NULL;
+}
+
+int device_start_config(void)
+{
+	int rc;
+
+	rc = config_start(on_config_timeout);
+	if (rc < 0) {
+		l_error("Failed to start config");
+		return rc;
+	}
+
+	l_hashmap_foreach(thing.data_items, foreach_config_add_data_item, NULL);
+
+	return 0;
+}
+
+void device_stop_config(void)
+{
+	config_stop();
+}
+
+int device_start_read_cloud(void)
+{
+	return cloud_read_start(thing.id, on_cloud_receive, NULL);
 }
 
 int device_start(struct device_settings *conf_files)
