@@ -237,7 +237,7 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 		break;
 	case EVT_REG_OK:
 		device_msg_timeout_remove();
-		rc = device_store_credentials(user_data);
+		rc = device_store_credentials_on_file(user_data);
 		if(rc < 0) {
 			next_state = ST_ERROR;
 			l_error("Failed to write credentials");
@@ -437,7 +437,7 @@ static void enter_unregister(void)
 {
 	int rc;
 
-	rc = device_clear_credentials();
+	rc = device_clear_credentials_on_file();
 	if(rc < 0)
 		l_error("Something went wrong when cleaning credentials");
 }
