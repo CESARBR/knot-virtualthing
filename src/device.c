@@ -363,7 +363,7 @@ void device_set_thing_credentials_path(struct knot_thing *thing,
 	thing->credentials_path = l_strdup(path);
 }
 
-void device_generate_new_id(void)
+void device_generate_thing_id(void)
 {
 	uint64_t id; /* knot id uses 16 characters which fits inside a uint64 */
 

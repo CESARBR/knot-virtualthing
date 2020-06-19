@@ -21,11 +21,11 @@
 #include "src/device.h"
 #include "src/device-pvt.h"
 
-START_TEST(device_generate_new_id_is_not_empty)
+START_TEST(device_generate_thing_id_is_not_empty)
 {
 	char fst[KNOT_PROTOCOL_UUID_LEN + 1];
 
-	device_generate_new_id();
+	device_generate_thing_id();
 	strncpy(fst, device_get_id(), KNOT_PROTOCOL_UUID_LEN);
 	fst[KNOT_PROTOCOL_UUID_LEN] = '\0';
 
@@ -33,16 +33,16 @@ START_TEST(device_generate_new_id_is_not_empty)
 }
 END_TEST
 
-START_TEST(device_generate_new_id_is_different_from_previous)
+START_TEST(device_generate_thing_id_is_different_from_previous)
 {
 	char fst[KNOT_PROTOCOL_UUID_LEN + 1];
 	char snd[KNOT_PROTOCOL_UUID_LEN + 1];
 
-	device_generate_new_id();
+	device_generate_thing_id();
 	strncpy(fst, device_get_id(), KNOT_PROTOCOL_UUID_LEN);
 	fst[KNOT_PROTOCOL_UUID_LEN] = '\0';
 
-	device_generate_new_id();
+	device_generate_thing_id();
 	strncpy(snd, device_get_id(), KNOT_PROTOCOL_UUID_LEN);
 	snd[KNOT_PROTOCOL_UUID_LEN] = '\0';
 
@@ -60,8 +60,8 @@ Suite *device_suite(void)
 	/* Generate ID test case */
 	tc_generate_id = tcase_create("Generate ID");
 	tcase_add_test(tc_generate_id,
-		       device_generate_new_id_is_different_from_previous);
-	tcase_add_test(tc_generate_id, device_generate_new_id_is_not_empty);
+		       device_generate_thing_id_is_different_from_previous);
+	tcase_add_test(tc_generate_id, device_generate_thing_id_is_not_empty);
 
 	suite_add_tcase(dvc_suite, tc_generate_id);
 
