@@ -18,11 +18,28 @@
  *  Device header file
  */
 
+struct knot_data_item;
+struct knot_thing;
+
 struct device_settings {
 	char *credentials_path;
 	char *device_path;
 	char *rabbitmq_path;
 };
+
+void device_set_thing_name(struct knot_thing *thing, const char *name);
+void device_set_thing_user_token(struct knot_thing *thing, char *token);
+void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
+				   char *url);
+void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
+			      knot_schema schema, knot_config config,
+			      int reg_addr, int bit_offset);
+void *device_data_item_lookup(struct knot_thing *thing, int *sensor_id);
+void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
+void device_set_thing_credentials(struct knot_thing *thing, const char *id,
+				  const char *token);
+void device_set_thing_credentials_path(struct knot_thing *thing,
+				       const char *path);
 
 void device_msg_timeout_create(int seconds);
 void device_msg_timeout_modify(int seconds);

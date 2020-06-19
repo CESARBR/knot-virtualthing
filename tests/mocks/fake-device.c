@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  */
 
+#include <knot/knot_protocol.h>
 #include <ell/ell.h>
 
 #include "src/device.h"
