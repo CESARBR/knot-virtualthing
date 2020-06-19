@@ -386,7 +386,7 @@ int device_has_thing_token(void)
 	return thing.token[0] != '\0';
 }
 
-int device_store_credentials(char *token)
+int device_store_credentials_on_file(char *token)
 {
 	int rc;
 
@@ -400,7 +400,7 @@ int device_store_credentials(char *token)
 	return 0;
 }
 
-int device_clear_credentials(void)
+int device_clear_credentials_on_file(void)
 {
 	return properties_clear_credentials(&thing, thing.credentials_path);
 }

@@ -45,7 +45,7 @@ int device_has_thing_token(void)
 	return cred_rc;
 }
 
-int device_store_credentials(char *token)
+int device_store_credentials_on_file(char *token)
 {
 	return store_cred_rc;
 }
@@ -70,7 +70,7 @@ int device_check_schema_change(void)
 	return schema_change_rc;
 }
 
-int device_clear_credentials(void)
+int device_clear_credentials_on_file(void)
 {
 	return 0;
 }

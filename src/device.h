@@ -44,8 +44,8 @@ void device_generate_thing_id(void);
 void device_clear_thing_id(struct knot_thing *thing);
 void device_clear_thing_token(struct knot_thing *thing);
 int device_has_thing_token(void);
-int device_store_credentials(char *token);
-int device_clear_credentials(void);
+int device_store_credentials_on_file(char *token);
+int device_clear_credentials_on_file(void);
 
 int device_check_schema_change(void);
 
