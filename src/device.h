@@ -40,6 +40,8 @@ void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 				  const char *token);
 void device_set_thing_credentials_path(struct knot_thing *thing,
 				       const char *path);
+void device_clear_thing_id(struct knot_thing *thing);
+void device_clear_thing_token(struct knot_thing *thing);
 
 void device_msg_timeout_create(int seconds);
 void device_msg_timeout_modify(int seconds);

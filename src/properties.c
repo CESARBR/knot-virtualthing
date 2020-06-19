@@ -31,6 +31,37 @@
 #include "storage.h"
 #include "conf-parameters.h"
 
+#define EMPTY_STRING ""
+
+static int erase_thing_id(struct knot_thing *thing, int cred_fd)
+{
+	int rc;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_ID, EMPTY_STRING);
+	if (rc < 0)
+		l_error("Failed to erase thing id");
+	else
+		device_clear_thing_id(thing);
+
+	return rc;
+}
+
+static int erase_thing_token(struct knot_thing *thing, int cred_fd)
+{
+	int rc;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_TOKEN, EMPTY_STRING);
+	if (rc < 0)
+		l_error("Failed to erase thing token");
+
+	else
+		device_clear_thing_token(thing);
+
+	return rc;
+}
+
 static int set_thing_credentials(struct knot_thing *thing, char *filename)
 {
 	int cred_fd;
@@ -554,4 +585,75 @@ int properties_create_device(struct knot_thing *thing,
 	device_set_thing_credentials_path(thing, conf_files->credentials_path);
 
 	return 0;
+}
+
+int properties_clear_credentials(struct knot_thing *thing, char *filename)
+{
+	int rc;
+	int cred_fd;
+
+	cred_fd = storage_open(filename);
+	if (cred_fd < 0) {
+		l_error("Failed to open credentials file");
+		return cred_fd;
+	}
+
+	rc = erase_thing_token(thing, cred_fd);
+	if (rc < 0)
+		goto error;
+
+	rc = erase_thing_id(thing, cred_fd);
+	if (rc < 0)
+		goto error;
+
+	storage_close(cred_fd);
+
+	return rc;
+
+error:
+	l_error("Failed to clear device credentials");
+	storage_close(cred_fd);
+
+	return -EINVAL;
+}
+
+int properties_store_credentials(struct knot_thing *thing, char *filename,
+				 char *id, char *token)
+{
+	int rc;
+	int cred_fd;
+
+	if (strlen(token) > KNOT_PROTOCOL_TOKEN_LEN)
+		return -EINVAL;
+
+	cred_fd = storage_open(filename);
+
+	if (cred_fd < 0) {
+		l_error("Failed to open credentials file");
+		return cred_fd;
+	}
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_TOKEN, token);
+	if (rc < 0)
+		goto error;
+
+	rc = storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+				      CREDENTIALS_THING_ID, id);
+	if (rc < 0) {
+		storage_write_key_string(cred_fd, CREDENTIALS_GROUP,
+					 CREDENTIALS_THING_TOKEN,
+					 EMPTY_STRING);
+		goto error;
+	}
+
+	storage_close(cred_fd);
+
+	return rc;
+
+error:
+	l_error("Failed to store device credentials");
+	storage_close(cred_fd);
+
+	return -EINVAL;
 }
