@@ -136,7 +136,7 @@ enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 			next_state = ST_AUTH;
 		else {
 			next_state = ST_REGISTER;
-			device_generate_new_id();
+			device_generate_thing_id();
 		}
 
 		if (device_start_read_cloud())
@@ -246,7 +246,7 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 		next_state = ST_AUTH;
 		break;
 	case EVT_REG_NOT_OK:
-		device_generate_new_id();
+		device_generate_thing_id();
 
 		if (device_start_read_cloud())
 			l_error("Fail to start cloud read");
@@ -405,7 +405,7 @@ enum STATES get_next_unregister(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_REG_PERM:
-		device_generate_new_id();
+		device_generate_thing_id();
 
 		if (device_start_read_cloud())
 			l_error("Fail to start cloud read");

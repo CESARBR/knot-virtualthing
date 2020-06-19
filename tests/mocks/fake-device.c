@@ -55,7 +55,7 @@ int device_send_register_request(void)
 	return 0;
 }
 
-void device_generate_new_id(void)
+void device_generate_thing_id(void)
 {
 	/* purposely left empty as no behaviour expected/required */
 }
