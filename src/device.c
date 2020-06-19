@@ -240,6 +240,35 @@ static void foreach_config_add_data_item(const void *key, void *value,
 	config_add_data_item(data_item->sensor_id, data_item->config);
 }
 
+static int on_modbus_poll_receive(int id)
+{
+	struct knot_data_item *data_item;
+	struct l_queue *list;
+	int rc;
+
+	data_item = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
+	if (!data_item)
+		return -EINVAL;
+
+	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
+				    data_item->modbus_source.bit_offset,
+				    &data_item->current_val);
+	if (config_check_value(data_item->config,
+			       data_item->current_val,
+			       data_item->sent_val,
+			       data_item->schema.value_type) > 0) {
+		data_item->sent_val = data_item->current_val;
+		list = l_queue_new();
+		l_queue_push_head(list, &id);
+
+		sm_input_event(EVT_PUB_DATA, list);
+
+		l_queue_destroy(list, NULL);
+	}
+
+	return rc;
+}
+
 static void foreach_data_item_polling(const void *key, void *value,
 				      void *user_data)
 {
@@ -247,7 +276,7 @@ static void foreach_data_item_polling(const void *key, void *value,
 	int *rc = user_data;
 
 	if (poll_create(DEFAULT_POLLING_INTERVAL, data_item->sensor_id,
-			device_read_data)) {
+			on_modbus_poll_receive)) {
 		l_error("Fail on create poll to read data item with id: %d",
 			data_item->sensor_id);
 		*rc = -1;
@@ -381,35 +410,6 @@ int device_start_config(void)
 void device_stop_config(void)
 {
 	config_stop();
-}
-
-int device_read_data(int id)
-{
-	struct knot_data_item *data_item;
-	struct l_queue *list;
-	int rc;
-
-	data_item = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
-	if (!data_item)
-		return -EINVAL;
-
-	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
-				    data_item->modbus_source.bit_offset,
-				    &data_item->current_val);
-	if (config_check_value(data_item->config,
-			       data_item->current_val,
-			       data_item->sent_val,
-			       data_item->schema.value_type) > 0) {
-		data_item->sent_val = data_item->current_val;
-		list = l_queue_new();
-		l_queue_push_head(list, &id);
-
-		sm_input_event(EVT_PUB_DATA, list);
-
-		l_queue_destroy(list, NULL);
-	}
-
-	return rc;
 }
 
 int device_check_schema_change(void)
