@@ -36,6 +36,7 @@
 #include "sm.h"
 #include "knot-config.h"
 #include "poll.h"
+#include "properties.h"
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
@@ -94,529 +95,6 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_free(thing->credentials_path);
 
 	l_hashmap_destroy(thing->data_items, l_free);
-}
-
-static int set_modbus_slave_properties(int fd)
-{
-	int rc;
-	int aux;
-	struct modbus_slave modbus_slave_aux;
-
-	rc = storage_read_key_int(fd, THING_GROUP, THING_MODBUS_SLAVE_ID, &aux);
-	if (rc <= 0)
-		goto error;
-
-	if (aux < MODBUS_MIN_SLAVE_ID || aux > MODBUS_MAX_SLAVE_ID)
-		goto error;
-
-	modbus_slave_aux.id = aux;
-
-	modbus_slave_aux.url = storage_read_key_string(fd, THING_GROUP,
-						       THING_MODBUS_URL);
-	if (modbus_slave_aux.url == NULL || !strcmp(modbus_slave_aux.url, ""))
-		goto error;
-	/* TODO: Check if modbus url is in a valid format */
-
-	thing.modbus_slave = modbus_slave_aux;
-
-	return 0;
-
-error:
-	l_free(modbus_slave_aux.url);
-
-	return -EINVAL;
-}
-
-static int set_rabbit_mq_url(char *filename)
-{
-	int rabbitmq_fd;
-	char *rabbitmq_url_aux;
-
-	rabbitmq_fd = storage_open(filename);
-	if (rabbitmq_fd < 0)
-		return rabbitmq_fd;
-
-	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
-						   RABBIT_URL);
-	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, "")) {
-		l_free(rabbitmq_url_aux);
-		storage_close(rabbitmq_fd);
-		return -EINVAL;
-	}
-	/* TODO: Check if rabbit mq url is in a valid format */
-
-	storage_close(rabbitmq_fd);
-
-	thing.rabbitmq_url = rabbitmq_url_aux;
-
-	return 0;
-}
-
-static int set_sensor_id(int fd, char *group_id,
-			 struct knot_data_item *data_item)
-{
-	int rc;
-	int sensor_id;
-
-	rc = storage_read_key_int(fd, group_id, SCHEMA_SENSOR_ID, &sensor_id);
-	if (rc <= 0)
-		return -EINVAL;
-
-	if (l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(sensor_id)))
-		return -EINVAL;
-
-	data_item->sensor_id = sensor_id;
-
-	return 0;
-}
-
-static int set_schema(int fd, char *group_id, struct knot_data_item *data_item)
-{
-	char *name;
-	int rc;
-	int aux;
-	knot_schema schema_aux;
-
-	name = storage_read_key_string(fd, group_id, SCHEMA_SENSOR_NAME);
-	if (name == NULL || !strcmp(name, "") ||
-			strlen(name) >= KNOT_PROTOCOL_DATA_NAME_LEN)
-		return -EINVAL;
-
-	strcpy(schema_aux.name, name);
-	l_free(name);
-
-	rc = storage_read_key_int(fd, group_id, SCHEMA_VALUE_TYPE, &aux);
-	if (rc <= 0)
-		return -EINVAL;
-	schema_aux.value_type = aux;
-
-	rc = storage_read_key_int(fd, group_id, SCHEMA_UNIT, &aux);
-	if (rc <= 0)
-		return -EINVAL;
-	schema_aux.unit = aux;
-
-	rc = storage_read_key_int(fd, group_id, SCHEMA_TYPE_ID, &aux);
-	if (rc <= 0)
-		return -EINVAL;
-	schema_aux.type_id = aux;
-
-	rc = knot_schema_is_valid(schema_aux.type_id,
-				  schema_aux.value_type,
-				  schema_aux.unit);
-	if (rc)
-		return -EINVAL;
-
-	data_item->schema = schema_aux;
-
-	return 0;
-}
-
-static int get_lower_limit(int fd, char *group_id, int value_type,
-			   knot_value_type *temp)
-{
-	int rc;
-	knot_value_type_int val_i;
-	knot_value_type_float val_f;
-	knot_value_type_bool val_b;
-	knot_value_type_int64 val_i64;
-	knot_value_type_uint val_u;
-	knot_value_type_uint64 val_u64;
-
-	switch (value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		rc = storage_read_key_int(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					  &val_i);
-		temp->val_i = val_i;
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-		rc = storage_read_key_float(fd, group_id,
-					    CONFIG_LOWER_THRESHOLD,
-					    &val_f);
-		temp->val_f = val_f;
-		break;
-	case KNOT_VALUE_TYPE_BOOL:
-		rc = storage_read_key_bool(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					   &val_b);
-		temp->val_b = val_b;
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		rc = storage_read_key_int64(fd, group_id,
-					    CONFIG_LOWER_THRESHOLD,
-					    &val_i64);
-		temp->val_i64 = val_i64;
-		break;
-	case KNOT_VALUE_TYPE_UINT:
-		rc = storage_read_key_uint(fd, group_id, CONFIG_LOWER_THRESHOLD,
-					   &val_u);
-		temp->val_u = val_u;
-		break;
-	case KNOT_VALUE_TYPE_UINT64:
-		rc = storage_read_key_uint64(fd, group_id,
-					     CONFIG_LOWER_THRESHOLD,
-					     &val_u64);
-		temp->val_u64 = val_u64;
-		break;
-	case KNOT_VALUE_TYPE_RAW:
-		/* Storage doesn't give support to raw */
-	default:
-		return -EINVAL;
-	}
-
-	return rc;
-}
-
-static int get_upper_limit(int fd, char *group_id, int value_type,
-			   knot_value_type *temp)
-{
-	int rc;
-	knot_value_type_int val_i;
-	knot_value_type_float val_f;
-	knot_value_type_bool val_b;
-	knot_value_type_int64 val_i64;
-	knot_value_type_uint val_u;
-	knot_value_type_uint64 val_u64;
-
-	switch (value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		rc = storage_read_key_int(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					  &val_i);
-		temp->val_i = val_i;
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-		rc = storage_read_key_float(fd, group_id,
-					    CONFIG_UPPER_THRESHOLD,
-					    &val_f);
-		temp->val_f = val_f;
-		break;
-	case KNOT_VALUE_TYPE_BOOL:
-		rc = storage_read_key_bool(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					   &val_b);
-		temp->val_b = val_b;
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		rc = storage_read_key_int64(fd, group_id,
-					    CONFIG_UPPER_THRESHOLD,
-					    &val_i64);
-		temp->val_i64 = val_i64;
-		break;
-	case KNOT_VALUE_TYPE_UINT:
-		rc = storage_read_key_uint(fd, group_id, CONFIG_UPPER_THRESHOLD,
-					   &val_u);
-		temp->val_u = val_u;
-		break;
-	case KNOT_VALUE_TYPE_UINT64:
-		rc = storage_read_key_uint64(fd, group_id,
-					     CONFIG_UPPER_THRESHOLD,
-					     &val_u64);
-		temp->val_u64 = val_u64;
-		break;
-	case KNOT_VALUE_TYPE_RAW:
-		/* Storage doesn't give support to raw */
-	default:
-		return -EINVAL;
-	}
-
-	return rc;
-}
-
-static int assign_limit(int value_type, knot_value_type value,
-			knot_value_type *limit)
-{
-	switch (value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		limit->val_i = value.val_i;
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-		limit->val_f = value.val_f;
-		break;
-	case KNOT_VALUE_TYPE_BOOL:
-		limit->val_b = value.val_b;
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		limit->val_i64 = value.val_i64;
-		break;
-	case KNOT_VALUE_TYPE_UINT:
-		limit->val_u = value.val_u;
-		break;
-	case KNOT_VALUE_TYPE_UINT64:
-		limit->val_u64 = value.val_u64;
-		break;
-	case KNOT_VALUE_TYPE_RAW:
-		/* Storage doesn't give support to raw */
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int set_config(int fd, char *group_id, struct knot_data_item *data_item)
-{
-	int rc;
-	int aux;
-	int value_type_aux;
-	knot_value_type tmp_value_type;
-	knot_config config_aux;
-
-	memset(&config_aux, 0, sizeof(knot_config));
-
-	value_type_aux = data_item->schema.value_type;
-
-	rc = get_lower_limit(fd, group_id, value_type_aux, &tmp_value_type);
-
-	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
-		assign_limit(value_type_aux, tmp_value_type,
-			     &config_aux.lower_limit);
-	}
-
-	rc = get_upper_limit(fd, group_id, value_type_aux, &tmp_value_type);
-
-	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
-		assign_limit(value_type_aux, tmp_value_type,
-			     &config_aux.upper_limit);
-	}
-
-	rc = storage_read_key_int(fd, group_id, CONFIG_TIME_SEC, &aux);
-	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_TIME;
-		config_aux.time_sec = aux;
-	}
-
-	rc = storage_read_key_int(fd, group_id, CONFIG_CHANGE, &aux);
-	if (rc > 0)
-		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
-
-	rc = knot_config_is_valid(config_aux.event_flags,
-				  data_item->schema.value_type,
-				  config_aux.time_sec,
-				  &config_aux.lower_limit,
-				  &config_aux.upper_limit);
-	if (rc)
-		return -EINVAL;
-
-	data_item->config = config_aux;
-
-	return 0;
-}
-
-static int valid_bit_offset(int bit_offset, int value_type)
-{
-	int value_type_mask;
-
-	switch (bit_offset) {
-	case 1:
-		value_type_mask = KNOT_VALUE_TYPE_BOOL;
-		break;
-	case 8:
-		/* KNoT Protocol doesn't have a matching value type */
-	case 16:
-		/* KNoT Protocol doesn't have a matching value type */
-	case 32:
-		value_type_mask = KNOT_VALUE_TYPE_INT | KNOT_VALUE_TYPE_UINT;
-		break;
-	case 64:
-		value_type_mask = KNOT_VALUE_TYPE_INT64 |
-				  KNOT_VALUE_TYPE_UINT64;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (!(value_type & value_type_mask))
-		return -EINVAL;
-
-	return 0;
-}
-
-static int set_modbus_source_properties(int fd, char *group_id,
-					struct knot_data_item *data_item)
-{
-	int rc;
-	struct modbus_source modbus_source_aux;
-
-	rc = storage_read_key_int(fd, group_id, MODBUS_REG_ADDRESS,
-				  &modbus_source_aux.reg_addr);
-	if (rc <= 0)
-		return -EINVAL;
-
-	rc = storage_read_key_int(fd, group_id, MODBUS_BIT_OFFSET,
-				  &modbus_source_aux.bit_offset);
-	if (rc <= 0)
-		return -EINVAL;
-
-	rc = valid_bit_offset(modbus_source_aux.bit_offset,
-			      data_item->schema.value_type);
-	if (rc < 0)
-		return -EINVAL;
-
-	data_item->modbus_source = modbus_source_aux;
-
-	return 0;
-}
-
-static int set_data_items(int fd)
-{
-	int rc;
-	int i;
-	char **data_item_group;
-	struct knot_data_item *data_item_aux;
-
-	thing.data_items = l_hashmap_new();
-
-	data_item_group = get_data_item_groups(fd);
-
-	for (i = 0; data_item_group[i] != NULL ; i++) {
-		data_item_aux = l_new(struct knot_data_item, 1);
-
-		rc = set_sensor_id(fd, data_item_group[i], data_item_aux);
-		if (rc < 0)
-			goto error;
-
-		rc = set_schema(fd, data_item_group[i], data_item_aux);
-		if (rc < 0)
-			goto error;
-
-		rc = set_config(fd, data_item_group[i], data_item_aux);
-		if (rc < 0)
-			goto error;
-
-		rc = set_modbus_source_properties(fd, data_item_group[i],
-						  data_item_aux);
-		if (rc < 0)
-			goto error;
-
-		l_hashmap_insert(thing.data_items,
-				 L_INT_TO_PTR(data_item_aux->sensor_id),
-				 data_item_aux);
-	}
-
-	l_strfreev(data_item_group);
-
-	return 0;
-
-error:
-	l_strfreev(data_item_group);
-	l_free(data_item_aux);
-
-	return -EINVAL;
-}
-
-static int set_thing_name(int fd)
-{
-	char *knot_thing_name;
-
-	knot_thing_name = storage_read_key_string(fd, THING_GROUP, THING_NAME);
-	if (knot_thing_name == NULL || !strcmp(knot_thing_name, "") ||
-	    strlen(knot_thing_name) >= KNOT_PROTOCOL_DEVICE_NAME_LEN) {
-		l_free(knot_thing_name);
-		return -EINVAL;
-	}
-
-	strcpy(thing.name, knot_thing_name);
-	l_free(knot_thing_name);
-
-	return 0;
-}
-
-static int set_thing_user_token(int fd)
-{
-	char *user_token;
-
-	user_token = storage_read_key_string(fd, THING_GROUP, THING_USER_TOKEN);
-	if (user_token == NULL || !strcmp(user_token, "")) {
-		l_free(user_token);
-		return -EINVAL;
-	}
-	thing.user_token = user_token;
-
-	return 0;
-}
-
-static int set_thing_credentials(char *filename)
-{
-	int cred_fd;
-	char *thingid;
-	char *thingtoken;
-
-	cred_fd = storage_open(filename);
-	if (cred_fd < 0)
-		return cred_fd;
-
-	thingid = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
-					  CREDENTIALS_THING_ID);
-
-	thingtoken = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
-					     CREDENTIALS_THING_TOKEN);
-
-	strncpy(thing.id, thingid, KNOT_PROTOCOL_UUID_LEN);
-	strncpy(thing.token, thingtoken, KNOT_PROTOCOL_TOKEN_LEN);
-	l_free(thingid);
-	l_free(thingtoken);
-
-	storage_close(cred_fd);
-
-	return 0;
-}
-
-static int set_thing_properties(char *filename)
-{
-	int device_fd;
-	int rc;
-
-	device_fd = storage_open(filename);
-	if (device_fd < 0)
-		return device_fd;
-
-	rc = set_thing_name(device_fd);
-	if (rc < 0) {
-		storage_close(device_fd);
-		return rc;
-	}
-
-	rc = set_thing_user_token(device_fd);
-	if (rc < 0) {
-		storage_close(device_fd);
-		return rc;
-	}
-
-	rc = set_modbus_slave_properties(device_fd);
-	if (rc < 0) {
-		storage_close(device_fd);
-		return rc;
-	}
-
-	rc = set_data_items(device_fd);
-	if (rc < 0) {
-		storage_close(device_fd);
-		return rc;
-	}
-
-	storage_close(device_fd);
-
-	return rc;
-}
-
-static int device_set_properties(struct device_settings *conf_files)
-{
-	int rc;
-
-	rc = set_thing_properties(conf_files->device_path);
-	if (rc < 0)
-		return rc;
-
-	rc = set_rabbit_mq_url(conf_files->rabbitmq_path);
-	if (rc < 0)
-		return rc;
-
-	rc = set_thing_credentials(conf_files->credentials_path);
-	if (rc < 0)
-		return rc;
-
-	thing.credentials_path = l_strdup(conf_files->credentials_path);
-
-	return 0;
 }
 
 static void conn_handler(enum CONN_TYPE conn, bool is_up)
@@ -821,6 +299,64 @@ static int create_data_item_polling(void)
 static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
 {
 	sm_input_event(EVT_TIMEOUT, user_data);
+}
+
+void device_set_thing_name(struct knot_thing *thing, const char *name)
+{
+	strcpy(thing->name, name);
+}
+
+void device_set_thing_user_token(struct knot_thing *thing, char *token)
+{
+	thing->user_token = token;
+}
+
+void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
+				   char *url)
+{
+	thing->modbus_slave.id = slave_id;
+	thing->modbus_slave.url = url;
+}
+
+void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
+			      knot_schema schema, knot_config config,
+			      int reg_addr, int bit_offset)
+{
+	struct knot_data_item *data_item_aux;
+
+	data_item_aux = l_new(struct knot_data_item, 1);
+	data_item_aux->sensor_id = sensor_id;
+	data_item_aux->schema = schema;
+	data_item_aux->config = config;
+	data_item_aux->modbus_source.reg_addr = reg_addr;
+	data_item_aux->modbus_source.bit_offset = bit_offset;
+
+	l_hashmap_insert(thing->data_items,
+			 L_INT_TO_PTR(data_item_aux->sensor_id),
+			 data_item_aux);
+}
+
+void *device_data_item_lookup(struct knot_thing *thing, int *sensor_id)
+{
+	return l_hashmap_lookup(thing->data_items, sensor_id);
+}
+
+void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url)
+{
+	thing->rabbitmq_url = url;
+}
+
+void device_set_thing_credentials(struct knot_thing *thing, const char *id,
+				  const char *token)
+{
+	strncpy(thing->id, id, KNOT_PROTOCOL_UUID_LEN);
+	strncpy(thing->token, token, KNOT_PROTOCOL_TOKEN_LEN);
+}
+
+void device_set_thing_credentials_path(struct knot_thing *thing,
+				       const char *path)
+{
+	thing->credentials_path = l_strdup(path);
 }
 
 void device_msg_timeout_create(int seconds)
@@ -1030,7 +566,8 @@ int device_start(struct device_settings *conf_files)
 {
 	int err;
 
-	if (device_set_properties(conf_files)) {
+	thing.data_items = l_hashmap_new();
+	if (properties_create_device(&thing, conf_files)) {
 		l_error("Failed to set device properties");
 		return -EINVAL;
 	}

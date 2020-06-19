@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <knot/knot_protocol.h>
 #include <ell/ell.h>
 
 #include "settings.h"
