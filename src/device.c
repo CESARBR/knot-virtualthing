@@ -381,7 +381,7 @@ void device_clear_thing_token(struct knot_thing *thing)
 	thing->token[0] = '\0';
 }
 
-int device_has_credentials(void)
+int device_has_thing_token(void)
 {
 	return thing.token[0] != '\0';
 }

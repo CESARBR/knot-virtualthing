@@ -132,7 +132,7 @@ enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 
 	switch(event) {
 	case EVT_READY:
-		if(device_has_credentials())
+		if (device_has_thing_token())
 			next_state = ST_AUTH;
 		else {
 			next_state = ST_REGISTER;

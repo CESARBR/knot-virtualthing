@@ -40,7 +40,7 @@ int device_send_schema(void)
 	return 0;
 }
 
-int device_has_credentials(void)
+int device_has_thing_token(void)
 {
 	return cred_rc;
 }
