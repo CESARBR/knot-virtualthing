@@ -69,8 +69,10 @@ static int set_thing_credentials(struct knot_thing *thing, char *filename)
 	char *thing_token;
 
 	cred_fd = storage_open(filename);
-	if (cred_fd < 0)
+	if (cred_fd < 0) {
+		l_error("Failed to open credentials file");
 		return cred_fd;
+	}
 
 	thing_id = storage_read_key_string(cred_fd, CREDENTIALS_GROUP,
 					  CREDENTIALS_THING_ID);
@@ -94,8 +96,10 @@ static int set_rabbit_mq_url(struct knot_thing *thing, char *filename)
 	char *rabbitmq_url_aux;
 
 	rabbitmq_fd = storage_open(filename);
-	if (rabbitmq_fd < 0)
+	if (rabbitmq_fd < 0) {
+		l_error("Failed to open RabbitMQ file");
 		return rabbitmq_fd;
+	}
 
 	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
 						   RABBIT_URL);
@@ -443,22 +447,34 @@ static int set_data_items(struct knot_thing *thing, int fd)
 
 	for (i = 0; data_item_group[i] != NULL ; i++) {
 		rc = set_sensor_id(thing, fd, data_item_group[i], &sensor_id);
-		if (rc < 0)
+		if (rc < 0) {
+			l_error("Failed to set Sensor ID on %s",
+				data_item_group[i]);
 			goto error;
+		}
 
 		rc = set_schema(thing, fd, data_item_group[i], &schema);
-		if (rc < 0)
+		if (rc < 0) {
+			l_error("Failed to set Schema on %s",
+				data_item_group[i]);
 			goto error;
+		}
 
 		rc = set_config(thing, fd, data_item_group[i], schema, &config);
-		if (rc < 0)
+		if (rc < 0) {
+			l_error("Failed to set Config on %s",
+				data_item_group[i]);
 			goto error;
+		}
 
 		rc = set_modbus_source_properties(thing, fd, data_item_group[i],
 						  schema, &reg_addr,
 						  &bit_offset);
-		if (rc < 0)
+		if (rc < 0) {
+			l_error("Failed to set Modbus Source properties on %s",
+				data_item_group[i]);
 			goto error;
+		}
 
 		device_set_new_data_item(thing, sensor_id, schema, config,
 					 reg_addr, bit_offset);
@@ -537,29 +553,35 @@ static int set_thing_properties(struct knot_thing *thing, char *filename)
 	int rc;
 
 	device_fd = storage_open(filename);
-	if (device_fd < 0)
+	if (device_fd < 0) {
+		l_error("Failed to open device file");
 		return device_fd;
+	}
 
 	rc = set_thing_name(thing, device_fd);
 	if (rc < 0) {
+		l_error("Failed to set Thing name");
 		storage_close(device_fd);
 		return rc;
 	}
 
 	rc = set_thing_user_token(thing, device_fd);
 	if (rc < 0) {
+		l_error("Failed to set User Token");
 		storage_close(device_fd);
 		return rc;
 	}
 
 	rc = set_modbus_slave_properties(thing, device_fd);
 	if (rc < 0) {
+		l_error("Failed to set Modbus Slave properties");
 		storage_close(device_fd);
 		return rc;
 	}
 
 	rc = set_data_items(thing, device_fd);
 	if (rc < 0) {
+		l_error("Failed to set KNoT Data items");
 		storage_close(device_fd);
 		return rc;
 	}
@@ -575,16 +597,22 @@ int properties_create_device(struct knot_thing *thing,
 	int rc;
 
 	rc = set_thing_properties(thing, conf_files->device_path);
-	if (rc < 0)
+	if (rc < 0) {
+		l_error("Failed to set Thing properties");
 		return rc;
+	}
 
 	rc = set_rabbit_mq_url(thing, conf_files->rabbitmq_path);
-	if (rc < 0)
+	if (rc < 0) {
+		l_error("Failed to set RabbitMQ path");
 		return rc;
+	}
 
 	rc = set_thing_credentials(thing, conf_files->credentials_path);
-	if (rc < 0)
+	if (rc < 0) {
+		l_error("Failed to set Thing credentials");
 		return rc;
+	}
 
 	device_set_thing_credentials_path(thing, conf_files->credentials_path);
 
