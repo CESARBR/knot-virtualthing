@@ -116,27 +116,31 @@ static int set_rabbit_mq_url(struct knot_thing *thing, char *filename)
 static int valid_bit_offset(int bit_offset, int value_type)
 {
 	int value_type_mask;
+	int valid_value_type_mask;
+
+	value_type_mask = 1 << value_type;
 
 	switch (bit_offset) {
 	case 1:
-		value_type_mask = KNOT_VALUE_TYPE_BOOL;
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
 		break;
 	case 8:
 		/* KNoT Protocol doesn't have a matching value type */
 	case 16:
 		/* KNoT Protocol doesn't have a matching value type */
 	case 32:
-		value_type_mask = KNOT_VALUE_TYPE_INT | KNOT_VALUE_TYPE_UINT;
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT) |
+					(1 << KNOT_VALUE_TYPE_UINT);
 		break;
 	case 64:
-		value_type_mask = KNOT_VALUE_TYPE_INT64 |
-				  KNOT_VALUE_TYPE_UINT64;
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT64) |
+					(1 << KNOT_VALUE_TYPE_UINT64);
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	if (!(value_type & value_type_mask))
+	if (!(value_type_mask & valid_value_type_mask))
 		return -EINVAL;
 
 	return 0;
