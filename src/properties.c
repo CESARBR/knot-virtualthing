@@ -423,7 +423,7 @@ static int set_sensor_id(struct knot_thing *thing, int fd, char *group_id,
 	if (rc <= 0)
 		return -EINVAL;
 
-	if (device_data_item_lookup(thing, L_INT_TO_PTR(sensor_id_aux)))
+	if (device_data_item_lookup(thing, sensor_id_aux))
 		return -EINVAL;
 
 	*sensor_id = sensor_id_aux;

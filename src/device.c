@@ -114,7 +114,8 @@ static void on_publish_data(void *data, void *user_data)
 	int *sensor_id = data;
 	int rc;
 
-	data_item = l_hashmap_lookup(thing.data_items, sensor_id);
+	data_item = l_hashmap_lookup(thing.data_items,
+				     L_INT_TO_PTR(*sensor_id));
 	if (!data_item)
 		return;
 
@@ -340,9 +341,9 @@ void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			 data_item_aux);
 }
 
-void *device_data_item_lookup(struct knot_thing *thing, int *sensor_id)
+void *device_data_item_lookup(struct knot_thing *thing, int sensor_id)
 {
-	return l_hashmap_lookup(thing->data_items, sensor_id);
+	return l_hashmap_lookup(thing->data_items, L_INT_TO_PTR(sensor_id));
 }
 
 void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url)
