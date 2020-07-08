@@ -47,26 +47,6 @@ abstraction to the KNoT Cloud for C applications.
 2. `git checkout 559e3e9` to checkout to a hash
 3. Follow instructions on `README.md` file
 
-### Install json-c
-
-json-c provides helpers functions to manipulate JSON datas.
-To install json-c lib, you have to follow the instructions below:
-
-1. `git clone https://github.com/json-c/json-c.git && cd json-c`
-2. `git checkout json-c-0.14-20200419 && cd ..`
-3. Follow instructions on `README.md` file
-
-### Install rabbitmq-c
-
-rabbitmq-c is a C-language AMQP client library for use with v2.0+ of the
-[RabbitMQ](http://www.rabbitmq.com/) broker.
-After install cmake, install rabbitmq-c. You have to follow the instructions
-below to install it:
-
-1. `git clone https://github.com/alanxz/rabbitmq-c`
-2. `git checkout v0.10.0` to checkout to version 0.10.0
-3. Follow instructions on `README.md` file
-
 ### Install KNoT Protocol
 
 KNOT Application layer protocol library provides the application layer messages

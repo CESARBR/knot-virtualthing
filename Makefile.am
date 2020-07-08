@@ -2,10 +2,9 @@ AM_MAKEFLAGS = --no-print-directory
 
 ACLOCAL_AMFLAGS = -I m4
 
-modules_ldadd = @ELL_LIBS@ @KNOTCLOUDSDK_LIBS@ @JSON_LIBS@ @RABBITMQ_LIBS@ \
-		@KNOTPROTO_LIBS@ @MODBUS_LIBS@
-modules_cflags = @ELL_CFLAGS@ @KNOTCLOUDSDK_CFLAGS@ @JSON_CFLAGS@ \
-		@RABBITMQ_CFLAGS@ @KNOTPROTO_CFLAGS@ @MODBUS_CFLAGS@
+modules_ldadd = @ELL_LIBS@ @KNOTCLOUDSDK_LIBS@ @KNOTPROTO_LIBS@ @MODBUS_LIBS@
+modules_cflags = @ELL_CFLAGS@ @KNOTCLOUDSDK_CFLAGS@ @KNOTPROTO_CFLAGS@ \
+		@MODBUS_CFLAGS@
 
 AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS)
 AM_LDFLAGS = $(BUILD_LDFLAGS)
@@ -14,9 +13,6 @@ bin_PROGRAMS = src/thingd
 
 src_thingd_SOURCES = src/main.c \
 			src/sm.c \
-			src/mq.c src/mq.h \
-			src/parser.c src/parser.h \
-			src/cloud.c src/cloud.h \
 			src/device.c src/device.h \
 			src/storage.c src/storage.h \
 			src/iface-modbus.c src/iface-modbus.h \
