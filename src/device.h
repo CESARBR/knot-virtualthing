@@ -34,7 +34,7 @@ void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_config config,
 			      int reg_addr, int bit_offset);
-void *device_data_item_lookup(struct knot_thing *thing, int *sensor_id);
+void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
 void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
 void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 				  const char *token);
