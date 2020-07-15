@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
+#include <knot/knot_cloud.h>
 #include <ell/ell.h>
 #include <stdio.h>
 #include <errno.h>
@@ -32,7 +33,6 @@
 #include "device.h"
 #include "device-pvt.h"
 #include "iface-modbus.h"
-#include "cloud.h"
 #include "sm.h"
 #include "knot-config.h"
 #include "poll.h"
@@ -119,10 +119,10 @@ static void on_publish_data(void *data, void *user_data)
 	if (!data_item)
 		return;
 
-	rc = cloud_publish_data(thing.id, data_item->sensor_id,
-				data_item->schema.value_type,
-				&data_item->current_val,
-				sizeof(data_item->schema.value_type));
+	rc = knot_cloud_publish_data(thing.id, data_item->sensor_id,
+				     data_item->schema.value_type,
+				     &data_item->current_val,
+				     sizeof(data_item->schema.value_type));
 	if (rc < 0)
 		l_error("Couldn't send data_update for data_item #%d",
 			*sensor_id);
@@ -161,7 +161,7 @@ static void on_config_timeout(int id)
 	l_queue_destroy(list, NULL);
 }
 
-static bool on_cloud_receive(const struct cloud_msg *msg, void *user_data)
+static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
 {
 	switch (msg->type) {
 	case UPDATE_MSG:
@@ -414,12 +414,12 @@ int device_check_schema_change(void)
 
 int device_send_register_request(void)
 {
-	return cloud_register_device(thing.id, thing.name);
+	return knot_cloud_register_device(thing.id, thing.name);
 }
 
 int device_send_auth_request(void)
 {
-	return cloud_auth_device(thing.id, thing.token);
+	return knot_cloud_auth_device(thing.id, thing.token);
 }
 
 int device_send_schema(void)
@@ -431,7 +431,7 @@ int device_send_schema(void)
 
 	l_hashmap_foreach(thing.data_items, foreach_send_schema, schema_queue);
 
-	rc = cloud_update_schema(thing.id, schema_queue);
+	rc = knot_cloud_update_schema(thing.id, schema_queue);
 
 	l_queue_destroy(schema_queue, l_free);
 
@@ -489,7 +489,7 @@ void device_stop_config(void)
 
 int device_start_read_cloud(void)
 {
-	return cloud_read_start(thing.id, on_cloud_receive, NULL);
+	return knot_cloud_read_start(thing.id, on_cloud_receive, NULL);
 }
 
 int device_start(struct device_settings *conf_files)
@@ -521,8 +521,8 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
-	err = cloud_start(thing.rabbitmq_url, thing.user_token,
-			  on_cloud_connected, on_cloud_disconnected, NULL);
+	err = knot_cloud_start(thing.rabbitmq_url, thing.user_token,
+			       on_cloud_connected, on_cloud_disconnected, NULL);
 	if (err < 0) {
 		l_error("Failed to initialize Cloud");
 		poll_destroy();
@@ -541,7 +541,7 @@ void device_destroy(void)
 	config_stop();
 
 	poll_destroy();
-	cloud_stop();
+	knot_cloud_stop();
 	iface_modbus_stop();
 
 	knot_thing_destroy(&thing);

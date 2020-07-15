@@ -4,6 +4,7 @@ FROM alpine:3.10.3 AS builder
 ARG LIBELL_VERSION=0.18
 ARG JSONC_VERSION=0.14-20200419
 ARG RABBITMQC_VERSION=v0.10.0
+ARG KNOT_CLOUD_SDK_VERSION=559e3e9
 ARG KNOT_PROTOCOL_VERSION=891d01d
 ARG LIBMODBUS_VERSION=3.1.4
 
@@ -31,6 +32,11 @@ RUN cd rabbitmq-c && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/us
 RUN mkdir -p /usr/local/knot-protocol
 RUN git clone https://github.com/CESARBR/knot-protocol-source.git /usr/local/knot-protocol
 RUN cd knot-protocol && git checkout $KNOT_PROTOCOL_VERSION && ./bootstrap-configure && make install
+
+# Install knot-cloud-sdk-c
+RUN mkdir -p /usr/local/knot-cloud-sdk-c
+RUN git clone https://github.com/CESARBR/knot-cloud-sdk-c.git /usr/local/knot-cloud-sdk-c
+RUN cd knot-cloud-sdk-c && git checkout $KNOT_CLOUD_SDK_VERSION && ./bootstrap-configure && make install
 
 # Install libmodbus dependency
 RUN mkdir -p /usr/local/libmodbus
