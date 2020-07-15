@@ -38,6 +38,15 @@ To install libell, you have to follow the instructions below:
 2. `git checkout 0.18` to checkout to version 0.18
 3. Follow instructions on `INSTALL` file
 
+### Install KNoT Cloud SDK in C
+
+KNoT Cloud SDK in C is a client-side library that provides an AMQP
+abstraction to the KNoT Cloud for C applications.
+
+1. `git clone git@github.com:CESARBR/knot-cloud-sdk-c.git`
+2. `git checkout 559e3e9` to checkout to a hash
+3. Follow instructions on `README.md` file
+
 ### Install json-c
 
 json-c provides helpers functions to manipulate JSON datas.
