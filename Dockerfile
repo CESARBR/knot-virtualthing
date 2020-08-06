@@ -58,7 +58,7 @@ FROM alpine:3.10.3
 
 ENV CRED_CONF_PATH /etc/knot/credentials.conf
 ENV DEV_CONF_PATH /etc/knot/device.conf
-ENV RABBITMQ_CONF_PATH /etc/knot/rabbitmq.conf
+ENV CLOUD_CONF_PATH /etc/knot/cloud.conf
 
 WORKDIR /usr/local
 
@@ -78,7 +78,7 @@ COPY --from=builder /usr/local/src/thingd /usr/bin/thingd
 # Copy configuration files
 COPY --from=builder /usr/local/confs/credentials.conf $CRED_CONF_PATH
 COPY --from=builder /usr/local/confs/device.conf $DEV_CONF_PATH
-COPY --from=builder /usr/local/confs/rabbitmq.conf $RABBITMQ_CONF_PATH
+COPY --from=builder /usr/local/confs/cloud.conf $CLOUD_CONF_PATH
 
 # Run
-CMD (thingd -n -c $CRED_CONF_PATH -d $DEV_CONF_PATH -r $RABBITMQ_CONF_PATH)
+CMD (thingd -n -c $CRED_CONF_PATH -d $DEV_CONF_PATH -p $CLOUD_CONF_PATH)

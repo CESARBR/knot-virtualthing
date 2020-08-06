@@ -602,7 +602,7 @@ int properties_create_device(struct knot_thing *thing,
 		return rc;
 	}
 
-	rc = set_rabbit_mq_url(thing, conf_files->rabbitmq_path);
+	rc = set_rabbit_mq_url(thing, conf_files->cloud_path);
 	if (rc < 0) {
 		l_error("Failed to set RabbitMQ path");
 		return rc;
