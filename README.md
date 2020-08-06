@@ -138,7 +138,7 @@ The build arguments available are:
 
 To run the container:
 
-`docker run -it thingd`
+`docker run --network=host -it thingd`
 
 
 ## License
