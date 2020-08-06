@@ -140,6 +140,23 @@ To run the container:
 
 `docker run --network=host -it thingd`
 
+#### Warning
+
+The docker environment has it own set of configuration files.
+
+To edit them you first need to identify the thingd container id:
+
+`docker ps --filter "ancestor=thingd"`
+
+Then you need to open its bash and navigate to the configuration
+files path:
+
+`docker exec -it <CONTAINER_ID> /bin/sh`
+`cd /etc/knot`
+
+Now you can open and edit using vi:
+
+`vi <file>`
 
 ## License
 
