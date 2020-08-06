@@ -90,29 +90,19 @@ static int set_thing_credentials(struct knot_thing *thing, char *filename)
 	return 0;
 }
 
-static int set_rabbit_mq_url(struct knot_thing *thing, char *filename)
+static int set_rabbit_mq_url(struct knot_thing *thing, int rabbitmq_fd)
 {
-	int rabbitmq_fd;
 	char *rabbitmq_url_aux;
 
-	rabbitmq_fd = storage_open(filename);
-	if (rabbitmq_fd < 0) {
-		l_error("Failed to open RabbitMQ file");
-		return rabbitmq_fd;
-	}
-
-	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, RABBIT_MQ_GROUP,
+	rabbitmq_url_aux = storage_read_key_string(rabbitmq_fd, CLOUD_GROUP,
 						   RABBIT_URL);
 	if (rabbitmq_url_aux == NULL || !strcmp(rabbitmq_url_aux, "")) {
 		l_free(rabbitmq_url_aux);
-		storage_close(rabbitmq_fd);
 		return -EINVAL;
 	}
 	/* TODO: Check if rabbit mq url is in a valid format */
 
 	device_set_thing_rabbitmq_url(thing, rabbitmq_url_aux);
-
-	storage_close(rabbitmq_fd);
 
 	return 0;
 }
@@ -520,7 +510,7 @@ static int set_thing_user_token(struct knot_thing *thing, int fd)
 {
 	char *user_token;
 
-	user_token = storage_read_key_string(fd, THING_GROUP, THING_USER_TOKEN);
+	user_token = storage_read_key_string(fd, CLOUD_GROUP, THING_USER_TOKEN);
 	if (user_token == NULL || !strcmp(user_token, "")) {
 		l_free(user_token);
 		return -EINVAL;
@@ -565,13 +555,6 @@ static int set_thing_properties(struct knot_thing *thing, char *filename)
 		return rc;
 	}
 
-	rc = set_thing_user_token(thing, device_fd);
-	if (rc < 0) {
-		l_error("Failed to set User Token");
-		storage_close(device_fd);
-		return rc;
-	}
-
 	rc = set_modbus_slave_properties(thing, device_fd);
 	if (rc < 0) {
 		l_error("Failed to set Modbus Slave properties");
@@ -591,6 +574,36 @@ static int set_thing_properties(struct knot_thing *thing, char *filename)
 	return rc;
 }
 
+static int set_cloud_properties(struct knot_thing *thing, char *filename)
+{
+	int rc;
+	int cloud_fd;
+
+	cloud_fd = storage_open(filename);
+	if (cloud_fd < 0) {
+		l_error("Failed to open cloud file");
+		return cloud_fd;
+	}
+
+	rc = set_rabbit_mq_url(thing, cloud_fd);
+	if (rc < 0) {
+		l_error("Failed to set RabbitMQ path");
+		storage_close(cloud_fd);
+		return rc;
+	}
+
+	rc = set_thing_user_token(thing, cloud_fd);
+	if (rc < 0) {
+		l_error("Failed to set User Token");
+		storage_close(cloud_fd);
+		return rc;
+	}
+
+	storage_close(cloud_fd);
+
+	return rc;
+}
+
 int properties_create_device(struct knot_thing *thing,
 			     struct device_settings *conf_files)
 {
@@ -602,9 +615,9 @@ int properties_create_device(struct knot_thing *thing,
 		return rc;
 	}
 
-	rc = set_rabbit_mq_url(thing, conf_files->cloud_path);
+	rc = set_cloud_properties(thing, conf_files->cloud_path);
 	if (rc < 0) {
-		l_error("Failed to set RabbitMQ path");
+		l_error("Failed to set Cloud properties");
 		return rc;
 	}
 
