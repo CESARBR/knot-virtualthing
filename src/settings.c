@@ -32,7 +32,7 @@
 
 #define DEFAULT_CREDENTIALS_FILE_PATH	"/etc/knot/credentials.conf"
 #define DEFAULT_DEVICE_FILE_PATH	"/etc/knot/device.conf"
-#define DEFAULT_AMQP_FILE_PATH		"/etc/knot/rabbitmq.conf"
+#define DEFAULT_AMQP_FILE_PATH		"/etc/knot/cloud.conf"
 
 #define LOG_STRING_ERR			"error"
 #define LOG_STRING_WARN			"warn"
@@ -46,7 +46,7 @@ static int log_level = L_LOG_INFO;
 static const struct option main_options[] = {
 	{ "credentials-file",	required_argument,	NULL, 'c' },
 	{ "dev-file",		required_argument,	NULL, 'd' },
-	{ "rabbitmq-url",	required_argument,	NULL, 'r' },
+	{ "cloud-file",		required_argument,	NULL, 'p' },
 	{ "log",		required_argument,	NULL, 'l' },
 	{ "nodetach",		no_argument,		NULL, 'n' },
 	{ "help",		no_argument,		NULL, 'h' },
@@ -62,7 +62,7 @@ static void usage(void)
 		"\t-c, --credentials-file  Credentials configuration file "
 		"path\n"
 		"\t-d, --dev-file          Device configuration file path\n"
-		"\t-r, --rabbitmq-url      Connect with a different url "
+		"\t-p, --cloud-file        Cloud configuration file path "
 		"amqp://[$USERNAME[:$PASSWORD]\\@]$HOST[:$PORT]/[$VHOST]\n"
 		"\t-l, --log               Configure log level, options are:"
 		"error | warn | info | debug"
@@ -94,7 +94,7 @@ static int parse_args(int argc, char *argv[], struct settings *settings)
 	int opt;
 
 	for (;;) {
-		opt = getopt_long(argc, argv, "c:d:r:l:nh",
+		opt = getopt_long(argc, argv, "c:d:p:l:nh",
 				  main_options, NULL);
 		if (opt < 0)
 			break;
@@ -106,8 +106,8 @@ static int parse_args(int argc, char *argv[], struct settings *settings)
 		case 'd':
 			settings->device_path = optarg;
 			break;
-		case 'r':
-			settings->rabbitmq_path = optarg;
+		case 'p':
+			settings->cloud_path = optarg;
 			break;
 		case 'l':
 			settings->log_level = parse_log_level(optarg);
@@ -145,7 +145,7 @@ struct settings *settings_load(int argc, char *argv[])
 
 	settings->credentials_path = DEFAULT_CREDENTIALS_FILE_PATH;
 	settings->device_path = DEFAULT_DEVICE_FILE_PATH;
-	settings->rabbitmq_path = DEFAULT_AMQP_FILE_PATH;
+	settings->cloud_path = DEFAULT_AMQP_FILE_PATH;
 	settings->log_level = log_level;
 	settings->detach = detach;
 	settings->help = help;

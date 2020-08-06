@@ -100,12 +100,12 @@ To see the daemon options:
 
 Start the daemon with the options to indicate the configuration files path:
 
-`./src/thingd -n -c confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
+`./src/thingd -n -c confs/credentials.conf -d confs/device.conf -p confs/cloud.conf`
 
 ### How to check for memory leaks and open file descriptors
 
 `valgrind --leak-check=full --track-fds=yes ./src/thingd -n -c `
-`confs/credentials.conf -d confs/device.conf -r confs/rabbitmq.conf`
+`confs/credentials.conf -d confs/device.conf -p confs/cloud.conf`
 
 
 ## Automated Testing

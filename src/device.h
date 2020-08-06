@@ -24,7 +24,7 @@ struct knot_thing;
 struct device_settings {
 	char *credentials_path;
 	char *device_path;
-	char *rabbitmq_path;
+	char *cloud_path;
 };
 
 void device_set_thing_name(struct knot_thing *thing, const char *name);

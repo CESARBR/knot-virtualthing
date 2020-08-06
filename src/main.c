@@ -59,14 +59,14 @@ static void set_device_settings(struct device_settings *conf_files,
 {
 	conf_files->credentials_path = l_strdup(settings->credentials_path);
 	conf_files->device_path = l_strdup(settings->device_path);
-	conf_files->rabbitmq_path = l_strdup(settings->rabbitmq_path);
+	conf_files->cloud_path = l_strdup(settings->cloud_path);
 }
 
 static void free_device_settings(struct device_settings *conf_files)
 {
 	l_free(conf_files->credentials_path);
 	l_free(conf_files->device_path);
-	l_free(conf_files->rabbitmq_path);
+	l_free(conf_files->cloud_path);
 	l_free(conf_files);
 }
 
