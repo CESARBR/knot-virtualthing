@@ -22,7 +22,7 @@
 #define CREDENTIALS_THING_ID		"ThingId"
 #define CREDENTIALS_THING_TOKEN		"ThingToken"
 
-#define RABBIT_MQ_GROUP			"RabbitMQ"
+#define CLOUD_GROUP			"Cloud"
 #define RABBIT_URL			"Url"
 
 #define DATA_ITEM_GROUP			"DataItem_"
