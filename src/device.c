@@ -194,6 +194,7 @@ static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
 		else
 			sm_input_event(EVT_SCH_OK, NULL);
 		break;
+	case LIST_MSG:
 	case MSG_TYPES_LENGTH:
 	default:
 		return true;
