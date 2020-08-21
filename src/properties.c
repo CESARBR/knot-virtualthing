@@ -435,6 +435,11 @@ static int set_data_items(struct knot_thing *thing, int fd)
 
 	data_item_group = get_data_item_groups(fd);
 
+	if (!data_item_group) {
+		l_error("Failed to read DataItem groups");
+		goto error;
+	}
+
 	for (i = 0; data_item_group[i] != NULL ; i++) {
 		rc = set_sensor_id(thing, fd, data_item_group[i], &sensor_id);
 		if (rc < 0) {

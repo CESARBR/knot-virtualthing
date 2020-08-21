@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <regex.h>
 
 #include <ell/ell.h>
 
@@ -100,6 +101,32 @@ failure:
 	l_free(res);
 
 	return err;
+}
+
+static int check_valid_groups(char **all_groups, int index)
+{
+	int repeated_check;
+	regex_t preg;
+	int i;
+
+	regcomp(&preg, "^DataItem_[0-9]+$", REG_EXTENDED);
+
+	if (!regexec(&preg, all_groups[index], 0, (regmatch_t *)NULL, 0) == 0) {
+		l_error("Invalid DataItem group: %s", all_groups[index]);
+		regfree(&preg);
+		return -EINVAL;
+	}
+
+	for (i = index + 1; all_groups[i] != NULL; i++) {
+		repeated_check = strcmp(all_groups[i], all_groups[index]);
+		if (repeated_check == 0) {
+			l_error("Repeated DataItem group: %s", all_groups[i]);
+			regfree(&preg);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
 }
 
 int storage_open(const char *pathname)
@@ -367,7 +394,10 @@ char **get_data_item_groups(int fd)
 	struct l_settings *settings;
 	char **all_groups;
 	int group_index;
-	int aux;
+	int data_item_check;
+	int err;
+
+	err = 0;
 
 	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
 
@@ -377,14 +407,18 @@ char **get_data_item_groups(int fd)
 	all_groups = l_settings_get_groups(settings);
 
 	for (group_index = 0; all_groups[group_index] != NULL; group_index++) {
-		aux = strncmp(all_groups[group_index], DATA_ITEM_GROUP,
+		data_item_check = strncmp(all_groups[group_index],
+						DATA_ITEM_GROUP,
 						strlen(DATA_ITEM_GROUP));
-		if (aux)
+		if (data_item_check)
 			l_settings_remove_group(settings,
 						all_groups[group_index]);
+		else
+			err = check_valid_groups(all_groups, group_index);
+
 	}
 
 	l_strfreev(all_groups);
 
-	return l_settings_get_groups(settings);
+	return err < 0 ? NULL : l_settings_get_groups(settings);
 }
