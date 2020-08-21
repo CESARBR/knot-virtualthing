@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	}
 
 	log_ell_enable(settings->log_level);
-
+	knot_cloud_set_log_priority("error");
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);
 
