@@ -302,6 +302,11 @@ static int create_data_item_polling(void)
 	return rc;
 }
 
+void device_set_log_priority(int priority)
+{
+	knot_cloud_set_log_priority(priority);
+}
+
 char *device_get_id(void)
 {
 	return thing.id;

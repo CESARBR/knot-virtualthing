@@ -27,6 +27,7 @@ struct device_settings {
 	char *cloud_path;
 };
 
+void device_set_log_priority(int priority);
 void device_set_thing_name(struct knot_thing *thing, const char *name);
 void device_set_thing_user_token(struct knot_thing *thing, char *token);
 void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
