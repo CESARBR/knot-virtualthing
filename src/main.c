@@ -96,10 +96,12 @@ static void log_stderr_handler(int priority, const char *file, const char *line,
 	vfprintf(stderr, format, ap);
 }
 
-static void log_ell_enable(int priority)
+static void log_enable(int priority)
 {
 	l_log_set_handler(log_stderr_handler);
 	log_priority = priority;
+
+	device_set_log_priority(priority);
 
 	if (log_priority == L_LOG_DEBUG)
 		l_debug_enable("*");
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	log_ell_enable(settings->log_level);
+	log_enable(settings->log_level);
 
 	conf_files = l_new(struct device_settings, 1);
 	set_device_settings(conf_files, settings);
