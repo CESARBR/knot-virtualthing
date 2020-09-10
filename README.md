@@ -44,7 +44,7 @@ KNoT Cloud SDK in C is a client-side library that provides an AMQP
 abstraction to the KNoT Cloud for C applications.
 
 1. `git clone git@github.com:CESARBR/knot-cloud-sdk-c.git`
-2. `git checkout 559e3e9` to checkout to a hash
+2. `git checkout 1bdb2dd` to checkout to a hash
 3. Follow instructions on `README.md` file
 
 ### Install KNoT Protocol
@@ -55,7 +55,7 @@ KNoT Gateway and KNoT Apps.
 To install KNoT Protocol, you have to follow the instructions below:
 
 1. `git clone git@github.com:CESARBR/knot-protocol-source.git`
-2. `git checkout 891d01d ` to checkout to a hash on devel branch.
+2. `git checkout ead9e66 ` to checkout to a hash on devel branch.
 3. Follow instructions on `README` file
 
 ### Install libmodbus

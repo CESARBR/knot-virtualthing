@@ -33,7 +33,7 @@ void device_set_thing_user_token(struct knot_thing *thing, char *token);
 void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 				   char *url);
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
-			      knot_schema schema, knot_config config,
+			      knot_schema schema, knot_event event,
 			      int reg_addr, int bit_offset);
 void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
 void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
@@ -52,7 +52,7 @@ int device_check_schema_change(void);
 
 int device_send_register_request(void);
 int device_send_auth_request(void);
-int device_send_schema(void);
+int device_send_config(void);
 void device_publish_data_list(struct l_queue *sensor_id_list);
 void device_publish_data_all(void);
 

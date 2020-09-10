@@ -309,15 +309,15 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 }
 
 static int set_config(struct knot_thing *thing, int fd, char *group_id,
-		      knot_schema schema, knot_config *config)
+		      knot_schema schema, knot_event *config)
 {
 	int rc;
 	int aux;
 	int value_type_aux;
 	knot_value_type tmp_value_type;
-	knot_config config_aux;
+	knot_event config_aux;
 
-	memset(&config_aux, 0, sizeof(knot_config));
+	memset(&config_aux, 0, sizeof(knot_event));
 
 	value_type_aux = schema.value_type;
 
@@ -347,11 +347,11 @@ static int set_config(struct knot_thing *thing, int fd, char *group_id,
 	if (rc > 0)
 		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
-	rc = knot_config_is_valid(config_aux.event_flags,
-				  schema.value_type,
-				  config_aux.time_sec,
-				  &config_aux.lower_limit,
-				  &config_aux.upper_limit);
+	rc = knot_event_is_valid(config_aux.event_flags,
+				 schema.value_type,
+				 config_aux.time_sec,
+				 &config_aux.lower_limit,
+				 &config_aux.upper_limit);
 	if (rc)
 		return -EINVAL;
 
@@ -431,7 +431,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 	int reg_addr;
 	int bit_offset;
 	knot_schema schema;
-	knot_config config;
+	knot_event config;
 
 	data_item_group = get_data_item_groups(fd);
 

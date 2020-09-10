@@ -312,7 +312,7 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 		next_state = ST_UNREGISTER;
 		break;
 	case EVT_TIMEOUT:
-		if (device_send_schema() < 0)
+		if (device_send_config() < 0)
 			l_error("Couldn't send schema message");
 
 		device_msg_timeout_modify(DEFAULT_MSG_TIMEOUT);
@@ -340,7 +340,7 @@ static void enter_schema(void)
 {
 	int rc;
 
-	rc = device_send_schema();
+	rc = device_send_config();
 
 	if(rc < 0)
 		l_error("Failure sending schema");

@@ -59,8 +59,8 @@ struct modbus_source {
 
 struct knot_data_item {
 	int sensor_id;
-	knot_config config;
 	knot_schema schema;
+	knot_event event;
 	knot_value_type current_val;
 	knot_value_type sent_val;
 	struct modbus_source modbus_source;
@@ -96,16 +96,17 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_hashmap_destroy(thing->data_items, l_free);
 }
 
-static void foreach_send_schema(const void *key, void *value, void *user_data)
+static void foreach_send_config(const void *key, void *value, void *user_data)
 {
 	struct knot_data_item *data_item = value;
-	struct l_queue *schema_queue = user_data;
-	knot_msg_schema schema_aux;
+	struct l_queue *config_queue = user_data;
+	knot_msg_config config_aux;
 
-	schema_aux.sensor_id = data_item->sensor_id;
-	schema_aux.values = data_item->schema;
-	l_queue_push_head(schema_queue, l_memdup(&schema_aux,
-						 sizeof(knot_msg_schema)));
+	config_aux.sensor_id = data_item->sensor_id;
+	config_aux.schema = data_item->schema;
+	config_aux.event = data_item->event;
+	l_queue_push_head(config_queue, l_memdup(&config_aux,
+						 sizeof(knot_msg_config)));
 }
 
 static void on_publish_data(void *data, void *user_data)
@@ -146,7 +147,7 @@ static void foreach_config_add_data_item(const void *key, void *value,
 {
 	struct knot_data_item *data_item = value;
 
-	config_add_data_item(data_item->sensor_id, data_item->config);
+	config_add_data_item(data_item->sensor_id, data_item->event);
 }
 
 static void on_config_timeout(int id)
@@ -188,7 +189,7 @@ static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
 		else
 			sm_input_event(EVT_AUTH_OK, NULL);
 		break;
-	case SCHEMA_MSG:
+	case CONFIG_MSG:
 		if (msg->error)
 			sm_input_event(EVT_SCH_NOT_OK, NULL);
 		else
@@ -260,7 +261,7 @@ static int on_modbus_poll_receive(int id)
 	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
 				    data_item->modbus_source.bit_offset,
 				    &data_item->current_val);
-	if (config_check_value(data_item->config,
+	if (config_check_value(data_item->event,
 			       data_item->current_val,
 			       data_item->sent_val,
 			       data_item->schema.value_type) > 0) {
@@ -330,7 +331,7 @@ void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 }
 
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
-			      knot_schema schema, knot_config config,
+			      knot_schema schema, knot_event event,
 			      int reg_addr, int bit_offset)
 {
 	struct knot_data_item *data_item_aux;
@@ -338,7 +339,7 @@ void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 	data_item_aux = l_new(struct knot_data_item, 1);
 	data_item_aux->sensor_id = sensor_id;
 	data_item_aux->schema = schema;
-	data_item_aux->config = config;
+	data_item_aux->event = event;
 	data_item_aux->modbus_source.reg_addr = reg_addr;
 	data_item_aux->modbus_source.bit_offset = bit_offset;
 
@@ -428,18 +429,18 @@ int device_send_auth_request(void)
 	return knot_cloud_auth_device(thing.id, thing.token);
 }
 
-int device_send_schema(void)
+int device_send_config(void)
 {
-	struct l_queue *schema_queue;
+	struct l_queue *config_queue;
 	int rc;
 
-	schema_queue = l_queue_new();
+	config_queue = l_queue_new();
 
-	l_hashmap_foreach(thing.data_items, foreach_send_schema, schema_queue);
+	l_hashmap_foreach(thing.data_items, foreach_send_config, config_queue);
 
-	rc = knot_cloud_update_schema(thing.id, schema_queue);
+	rc = knot_cloud_update_config(thing.id, config_queue);
 
-	l_queue_destroy(schema_queue, l_free);
+	l_queue_destroy(config_queue, l_free);
 
 	return rc;
 }
