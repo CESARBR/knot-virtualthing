@@ -25,7 +25,7 @@ enum STATES {
 	ST_DISCONNECTED,
 	ST_AUTH,
 	ST_REGISTER,
-	ST_SCHEMA,
+	ST_CONFIG,
 	ST_ONLINE,
 	ST_UNREGISTER,
 	ST_ERROR,
@@ -35,7 +35,7 @@ enum STATES {
 enum STATES get_next_disconnected(enum EVENTS event, void *user_data);
 enum STATES get_next_auth(enum EVENTS event, void *user_data);
 enum STATES get_next_register(enum EVENTS event, void *user_data);
-enum STATES get_next_schema(enum EVENTS event, void *user_data);
+enum STATES get_next_config(enum EVENTS event, void *user_data);
 enum STATES get_next_online(enum EVENTS event, void *user_data);
 enum STATES get_next_unregister(enum EVENTS event, void *user_data);
 enum STATES get_next_error(enum EVENTS event, void *user_data);

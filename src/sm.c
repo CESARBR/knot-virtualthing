@@ -60,11 +60,11 @@ static char *event_to_str(enum EVENTS event)
 	case EVT_TIMEOUT:
 		evt_str = "EVT_TIMEOUT";
 		break;
-	case EVT_SCH_OK:
-		evt_str = "EVT_SCH_OK";
+	case EVT_CFG_OK:
+		evt_str = "EVT_CFG_OK";
 		break;
-	case EVT_SCH_NOT_OK:
-		evt_str = "EVT_SCH_NOT_OK";
+	case EVT_CFG_NOT_OK:
+		evt_str = "EVT_CFG_NOT_OK";
 		break;
 	case EVT_UNREG_REQ:
 		evt_str = "EVT_UNREG_REQ";
@@ -105,8 +105,8 @@ static char *state_to_str(enum STATES state)
 	case ST_REGISTER:
 		state_str = "ST_REGISTER";
 		break;
-	case ST_SCHEMA:
-		state_str = "ST_SCHEMA";
+	case ST_CONFIG:
+		state_str = "ST_CONFIG";
 		break;
 	case ST_ONLINE:
 		state_str = "ST_ONLINE";
@@ -148,8 +148,8 @@ enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 	case EVT_AUTH_NOT_OK:
 	case EVT_REG_OK:
 	case EVT_REG_NOT_OK:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
@@ -181,7 +181,7 @@ enum STATES get_next_auth(enum EVENTS event, void *user_data)
 	case EVT_AUTH_OK:
 		device_msg_timeout_remove();
 		next_state =
-			device_check_schema_change() ? ST_SCHEMA : ST_ONLINE;
+			device_check_schema_change() ? ST_CONFIG : ST_ONLINE;
 		break;
 	case EVT_AUTH_NOT_OK:
 	case EVT_UNREG_REQ:
@@ -198,8 +198,8 @@ enum STATES get_next_auth(enum EVENTS event, void *user_data)
 	case EVT_READY:
 	case EVT_REG_OK:
 	case EVT_REG_NOT_OK:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
@@ -264,8 +264,8 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
@@ -289,8 +289,8 @@ static void enter_register(void)
 	device_msg_timeout_create(DEFAULT_MSG_TIMEOUT);
 }
 
-/* SCHEMA */
-enum STATES get_next_schema(enum EVENTS event, void *user_data)
+/* CONFIG */
+enum STATES get_next_config(enum EVENTS event, void *user_data)
 {
 	int next_state;
 
@@ -299,11 +299,11 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 		device_msg_timeout_remove();
 		next_state = ST_DISCONNECTED;
 		break;
-	case EVT_SCH_OK:
+	case EVT_CFG_OK:
 		device_msg_timeout_remove();
 		next_state = ST_ONLINE;
 		break;
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_NOT_OK:
 		device_msg_timeout_remove();
 		next_state = ST_ERROR;
 		break;
@@ -313,10 +313,10 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 		break;
 	case EVT_TIMEOUT:
 		if (device_send_config() < 0)
-			l_error("Couldn't send schema message");
+			l_error("Couldn't send config message");
 
 		device_msg_timeout_modify(DEFAULT_MSG_TIMEOUT);
-		next_state = ST_SCHEMA;
+		next_state = ST_CONFIG;
 		break;
 	case EVT_READY:
 	case EVT_AUTH_OK:
@@ -326,7 +326,7 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
-		next_state = ST_SCHEMA;
+		next_state = ST_CONFIG;
 		break;
 	default:
 		next_state = ST_ERROR;
@@ -336,14 +336,14 @@ enum STATES get_next_schema(enum EVENTS event, void *user_data)
 	return next_state;
 }
 
-static void enter_schema(void)
+static void enter_config(void)
 {
 	int rc;
 
 	rc = device_send_config();
 
 	if(rc < 0)
-		l_error("Failure sending schema");
+		l_error("Failure sending config");
 
 	device_msg_timeout_create(DEFAULT_MSG_TIMEOUT);
 }
@@ -370,8 +370,8 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 		next_state = ST_UNREGISTER;
 		break;
 	case EVT_TIMEOUT:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
@@ -416,8 +416,8 @@ enum STATES get_next_unregister(enum EVENTS event, void *user_data)
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
 	case EVT_TIMEOUT:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_READY:
 	case EVT_AUTH_OK:
@@ -453,8 +453,8 @@ enum STATES get_next_error(enum EVENTS event, void *user_data)
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
 	case EVT_TIMEOUT:
-	case EVT_SCH_OK:
-	case EVT_SCH_NOT_OK:
+	case EVT_CFG_OK:
+	case EVT_CFG_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_READY:
 	case EVT_AUTH_OK:
@@ -510,7 +510,7 @@ void sm_start(void)
 	states[ST_AUTH] = sm_create_state(enter_auth, get_next_auth);
 	states[ST_REGISTER] = sm_create_state(enter_register,
 					      get_next_register);
-	states[ST_SCHEMA] = sm_create_state(enter_schema, get_next_schema);
+	states[ST_CONFIG] = sm_create_state(enter_config, get_next_config);
 	states[ST_ONLINE] = sm_create_state(enter_online, get_next_online);
 	states[ST_UNREGISTER] = sm_create_state(enter_unregister,
 						get_next_unregister);
