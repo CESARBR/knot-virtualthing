@@ -35,7 +35,7 @@ void device_stop_config(void)
 	/* purposely left empty as no behaviour expected/required */
 }
 
-int device_send_schema(void)
+int device_send_config(void)
 {
 	return 0;
 }

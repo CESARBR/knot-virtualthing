@@ -136,7 +136,7 @@ static void timeout_destroy(void *data)
 	l_timeout_remove(to);
 }
 
-int config_check_value(knot_config config, knot_value_type current_val,
+int config_check_value(knot_event config, knot_value_type current_val,
 		       knot_value_type sent_val, int value_type)
 {
 	int rc;
@@ -165,7 +165,7 @@ int config_check_value(knot_config config, knot_value_type current_val,
 	return rc;
 }
 
-void config_add_data_item(int id, knot_config config)
+void config_add_data_item(int id, knot_event config)
 {
 	struct data_item_timeout *data = l_new(struct data_item_timeout, 1);
 
