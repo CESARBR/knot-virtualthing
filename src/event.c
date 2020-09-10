@@ -23,7 +23,7 @@
 #include <ell/queue.h>
 #include <ell/timeout.h>
 
-#include "knot-config.h"
+#include "event.h"
 
 #define is_timeout_flag_set(a) ((a) & KNOT_EVT_FLAG_TIME)
 #define is_change_flag_set(a) ((a) & KNOT_EVT_FLAG_CHANGE)
@@ -136,8 +136,8 @@ static void timeout_destroy(void *data)
 	l_timeout_remove(to);
 }
 
-int config_check_value(knot_event config, knot_value_type current_val,
-		       knot_value_type sent_val, int value_type)
+int event_check_value(knot_event event, knot_value_type current_val,
+		      knot_value_type sent_val, int value_type)
 {
 	int rc;
 
@@ -148,16 +148,16 @@ int config_check_value(knot_event config, knot_value_type current_val,
 			value_type > KNOT_VALUE_TYPE_MAX)
 		return -EINVAL;
 
-	if (is_change_flag_set(config.event_flags) &&
+	if (is_change_flag_set(event.event_flags) &&
 			!is_value_equal(current_val, sent_val, value_type))
 		rc = 1;
-	else if (is_lower_flag_set(config.event_flags) &&
+	else if (is_lower_flag_set(event.event_flags) &&
 			is_lower_than_threshold(current_val,
-				config.lower_limit, value_type))
+				event.lower_limit, value_type))
 		rc = 1;
-	else if (is_upper_flag_set(config.event_flags) &&
+	else if (is_upper_flag_set(event.event_flags) &&
 			is_higher_than_threshold(current_val,
-				config.upper_limit, value_type))
+				event.upper_limit, value_type))
 		rc = 1;
 	else
 		rc = 0;
@@ -165,15 +165,15 @@ int config_check_value(knot_event config, knot_value_type current_val,
 	return rc;
 }
 
-void config_add_data_item(int id, knot_event config)
+void event_add_data_item(int id, knot_event event)
 {
 	struct data_item_timeout *data = l_new(struct data_item_timeout, 1);
 
 	data->id = id;
-	data->timeout_sec = config.time_sec;
+	data->timeout_sec = event.time_sec;
 
-	if (is_timeout_flag_set(config.event_flags)) {
-		struct l_timeout *to = l_timeout_create(config.time_sec,
+	if (is_timeout_flag_set(event.event_flags)) {
+		struct l_timeout *to = l_timeout_create(event.time_sec,
 							on_sensor_to,
 							data,
 							l_free);
@@ -181,7 +181,7 @@ void config_add_data_item(int id, knot_event config)
 	}
 }
 
-int config_start(timeout_cb_t cb)
+int event_start(timeout_cb_t cb)
 {
 	sensor_timeouts = l_queue_new();
 	if (!sensor_timeouts)
@@ -192,7 +192,7 @@ int config_start(timeout_cb_t cb)
 	return 0;
 }
 
-void config_stop(void)
+void event_stop(void)
 {
 	active = false;
 	if (sensor_timeouts) {

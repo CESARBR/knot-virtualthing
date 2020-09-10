@@ -17,7 +17,7 @@ src_thingd_SOURCES = src/main.c \
 			src/storage.c src/storage.h \
 			src/iface-modbus.c src/iface-modbus.h \
 			src/settings.c src/settings.h \
-			src/knot-config.c src/knot-config.h \
+			src/event.c src/event.h \
 			src/poll.c src/poll.h \
 			src/properties.c src/properties.h
 
@@ -53,7 +53,7 @@ tests_device_tests_SOURCES = tests/device-tests.c \
 			src/modbus-tcp.c src/modbus-rtu.c \
 			src/modbus-driver.h \
 			src/settings.c src/settings.h \
-			src/knot_config.c src/knot_config.h \
+			src/event.c src/event.h \
 			src/poll.c src/poll.h
 
 tests_device_tests_CFLAGS = $(tests_cflags)
