@@ -41,10 +41,10 @@
 #define SCHEMA_UNIT			"SchemaUnit"
 #define SCHEMA_TYPE_ID			"SchemaTypeId"
 
-#define CONFIG_LOWER_THRESHOLD		"ConfigLowerThreshold"
-#define CONFIG_UPPER_THRESHOLD		"ConfigUpperThreshold"
-#define CONFIG_TIME_SEC			"ConfigTimeSec"
-#define CONFIG_CHANGE			"ConfigChange"
+#define EVENT_LOWER_THRESHOLD		"ConfigLowerThreshold"
+#define EVENT_UPPER_THRESHOLD		"ConfigUpperThreshold"
+#define EVENT_TIME_SEC			"ConfigTimeSec"
+#define EVENT_CHANGE			"ConfigChange"
 
 #define MODBUS_REG_ADDRESS		"ModbusRegisterAddress"
 #define MODBUS_BIT_OFFSET		"ModbusBitOffset"

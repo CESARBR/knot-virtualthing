@@ -213,35 +213,35 @@ static int get_upper_limit(int fd, char *group_id, int value_type,
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
-		rc = storage_read_key_int(fd, group_id, CONFIG_UPPER_THRESHOLD,
+		rc = storage_read_key_int(fd, group_id, EVENT_UPPER_THRESHOLD,
 					  &val_i);
 		temp->val_i = val_i;
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
 		rc = storage_read_key_float(fd, group_id,
-					    CONFIG_UPPER_THRESHOLD,
+					    EVENT_UPPER_THRESHOLD,
 					    &val_f);
 		temp->val_f = val_f;
 		break;
 	case KNOT_VALUE_TYPE_BOOL:
-		rc = storage_read_key_bool(fd, group_id, CONFIG_UPPER_THRESHOLD,
+		rc = storage_read_key_bool(fd, group_id, EVENT_UPPER_THRESHOLD,
 					   &val_b);
 		temp->val_b = val_b;
 		break;
 	case KNOT_VALUE_TYPE_INT64:
 		rc = storage_read_key_int64(fd, group_id,
-					    CONFIG_UPPER_THRESHOLD,
+					    EVENT_UPPER_THRESHOLD,
 					    &val_i64);
 		temp->val_i64 = val_i64;
 		break;
 	case KNOT_VALUE_TYPE_UINT:
-		rc = storage_read_key_uint(fd, group_id, CONFIG_UPPER_THRESHOLD,
+		rc = storage_read_key_uint(fd, group_id, EVENT_UPPER_THRESHOLD,
 					   &val_u);
 		temp->val_u = val_u;
 		break;
 	case KNOT_VALUE_TYPE_UINT64:
 		rc = storage_read_key_uint64(fd, group_id,
-					     CONFIG_UPPER_THRESHOLD,
+					     EVENT_UPPER_THRESHOLD,
 					     &val_u64);
 		temp->val_u64 = val_u64;
 		break;
@@ -267,35 +267,35 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
-		rc = storage_read_key_int(fd, group_id, CONFIG_LOWER_THRESHOLD,
+		rc = storage_read_key_int(fd, group_id, EVENT_LOWER_THRESHOLD,
 					  &val_i);
 		temp->val_i = val_i;
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
 		rc = storage_read_key_float(fd, group_id,
-					    CONFIG_LOWER_THRESHOLD,
+					    EVENT_LOWER_THRESHOLD,
 					    &val_f);
 		temp->val_f = val_f;
 		break;
 	case KNOT_VALUE_TYPE_BOOL:
-		rc = storage_read_key_bool(fd, group_id, CONFIG_LOWER_THRESHOLD,
+		rc = storage_read_key_bool(fd, group_id, EVENT_LOWER_THRESHOLD,
 					   &val_b);
 		temp->val_b = val_b;
 		break;
 	case KNOT_VALUE_TYPE_INT64:
 		rc = storage_read_key_int64(fd, group_id,
-					    CONFIG_LOWER_THRESHOLD,
+					    EVENT_LOWER_THRESHOLD,
 					    &val_i64);
 		temp->val_i64 = val_i64;
 		break;
 	case KNOT_VALUE_TYPE_UINT:
-		rc = storage_read_key_uint(fd, group_id, CONFIG_LOWER_THRESHOLD,
+		rc = storage_read_key_uint(fd, group_id, EVENT_LOWER_THRESHOLD,
 					   &val_u);
 		temp->val_u = val_u;
 		break;
 	case KNOT_VALUE_TYPE_UINT64:
 		rc = storage_read_key_uint64(fd, group_id,
-					     CONFIG_LOWER_THRESHOLD,
+					     EVENT_LOWER_THRESHOLD,
 					     &val_u64);
 		temp->val_u64 = val_u64;
 		break;
@@ -308,54 +308,54 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 	return rc;
 }
 
-static int set_config(struct knot_thing *thing, int fd, char *group_id,
-		      knot_schema schema, knot_event *config)
+static int set_event(struct knot_thing *thing, int fd, char *group_id,
+		     knot_schema schema, knot_event *event)
 {
 	int rc;
 	int aux;
 	int value_type_aux;
 	knot_value_type tmp_value_type;
-	knot_event config_aux;
+	knot_event event_aux;
 
-	memset(&config_aux, 0, sizeof(knot_event));
+	memset(&event_aux, 0, sizeof(knot_event));
 
 	value_type_aux = schema.value_type;
 
 	rc = get_lower_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
 	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
+		event_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
 		assign_limit(value_type_aux, tmp_value_type,
-			     &config_aux.lower_limit);
+			     &event_aux.lower_limit);
 	}
 
 	rc = get_upper_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
 	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
+		event_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
 		assign_limit(value_type_aux, tmp_value_type,
-			     &config_aux.upper_limit);
+			     &event_aux.upper_limit);
 	}
 
-	rc = storage_read_key_int(fd, group_id, CONFIG_TIME_SEC, &aux);
+	rc = storage_read_key_int(fd, group_id, EVENT_TIME_SEC, &aux);
 	if (rc > 0) {
-		config_aux.event_flags |= KNOT_EVT_FLAG_TIME;
-		config_aux.time_sec = aux;
+		event_aux.event_flags |= KNOT_EVT_FLAG_TIME;
+		event_aux.time_sec = aux;
 	}
 
-	rc = storage_read_key_int(fd, group_id, CONFIG_CHANGE, &aux);
+	rc = storage_read_key_int(fd, group_id, EVENT_CHANGE, &aux);
 	if (rc > 0)
-		config_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
+		event_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
-	rc = knot_event_is_valid(config_aux.event_flags,
+	rc = knot_event_is_valid(event_aux.event_flags,
 				 schema.value_type,
-				 config_aux.time_sec,
-				 &config_aux.lower_limit,
-				 &config_aux.upper_limit);
+				 event_aux.time_sec,
+				 &event_aux.lower_limit,
+				 &event_aux.upper_limit);
 	if (rc)
 		return -EINVAL;
 
-	*config = config_aux;
+	*event = event_aux;
 
 	return 0;
 }
@@ -431,7 +431,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 	int reg_addr;
 	int bit_offset;
 	knot_schema schema;
-	knot_event config;
+	knot_event event;
 
 	data_item_group = get_data_item_groups(fd);
 
@@ -455,9 +455,9 @@ static int set_data_items(struct knot_thing *thing, int fd)
 			goto error;
 		}
 
-		rc = set_config(thing, fd, data_item_group[i], schema, &config);
+		rc = set_event(thing, fd, data_item_group[i], schema, &event);
 		if (rc < 0) {
-			l_error("Failed to set Config on %s",
+			l_error("Failed to set event on %s",
 				data_item_group[i]);
 			goto error;
 		}
@@ -471,7 +471,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 			goto error;
 		}
 
-		device_set_new_data_item(thing, sensor_id, schema, config,
+		device_set_new_data_item(thing, sensor_id, schema, event,
 					 reg_addr, bit_offset);
 	}
 

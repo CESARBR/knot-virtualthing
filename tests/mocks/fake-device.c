@@ -20,17 +20,17 @@
 #include "src/device.h"
 #include "fake-device.h"
 
-int start_config_rc;
+int start_event_rc;
 int schema_change_rc;
 int cred_rc;
 int store_cred_rc;
 
-int device_start_config(void)
+int device_start_event(void)
 {
-	return start_config_rc;
+	return start_event_rc;
 }
 
-void device_stop_config(void)
+void device_stop_event(void)
 {
 	/* purposely left empty as no behaviour expected/required */
 }
@@ -90,9 +90,9 @@ void device_set_schema_change_rc(int rc)
 	schema_change_rc = rc;
 }
 
-void device_set_start_config_rc(int rc)
+void device_set_start_event_rc(int rc)
 {
-	start_config_rc = rc;
+	start_event_rc = rc;
 }
 
 void device_set_has_cred_rc(int rc)

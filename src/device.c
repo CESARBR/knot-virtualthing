@@ -34,7 +34,7 @@
 #include "device-pvt.h"
 #include "iface-modbus.h"
 #include "sm.h"
-#include "knot-config.h"
+#include "event.h"
 #include "poll.h"
 #include "properties.h"
 
@@ -142,15 +142,15 @@ static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
 	sm_input_event(EVT_TIMEOUT, user_data);
 }
 
-static void foreach_config_add_data_item(const void *key, void *value,
-					 void *user_data)
+static void foreach_event_add_data_item(const void *key, void *value,
+					void *user_data)
 {
 	struct knot_data_item *data_item = value;
 
-	config_add_data_item(data_item->sensor_id, data_item->event);
+	event_add_data_item(data_item->sensor_id, data_item->event);
 }
 
-static void on_config_timeout(int id)
+static void on_event_timeout(int id)
 {
 	struct l_queue *list;
 
@@ -261,10 +261,10 @@ static int on_modbus_poll_receive(int id)
 	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
 				    data_item->modbus_source.bit_offset,
 				    &data_item->current_val);
-	if (config_check_value(data_item->event,
-			       data_item->current_val,
-			       data_item->sent_val,
-			       data_item->schema.value_type) > 0) {
+	if (event_check_value(data_item->event,
+			      data_item->current_val,
+			      data_item->sent_val,
+			      data_item->schema.value_type) > 0) {
 		data_item->sent_val = data_item->current_val;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
@@ -474,24 +474,24 @@ void device_msg_timeout_remove(void)
 	thing.msg_to = NULL;
 }
 
-int device_start_config(void)
+int device_start_event(void)
 {
 	int rc;
 
-	rc = config_start(on_config_timeout);
+	rc = event_start(on_event_timeout);
 	if (rc < 0) {
-		l_error("Failed to start config");
+		l_error("Failed to start event");
 		return rc;
 	}
 
-	l_hashmap_foreach(thing.data_items, foreach_config_add_data_item, NULL);
+	l_hashmap_foreach(thing.data_items, foreach_event_add_data_item, NULL);
 
 	return 0;
 }
 
-void device_stop_config(void)
+void device_stop_event(void)
 {
-	config_stop();
+	event_stop();
 }
 
 int device_start_read_cloud(void)
@@ -545,7 +545,7 @@ int device_start(struct device_settings *conf_files)
 
 void device_destroy(void)
 {
-	config_stop();
+	event_stop();
 
 	poll_destroy();
 	knot_cloud_stop();
