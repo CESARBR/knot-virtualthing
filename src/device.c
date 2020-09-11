@@ -74,7 +74,7 @@ struct knot_thing {
 
 	struct modbus_slave modbus_slave;
 	char *rabbitmq_url;
-	char *credentials_path;
+	struct device_settings conf_files;
 
 	struct l_hashmap *data_items;
 
@@ -91,7 +91,9 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_free(thing->user_token);
 	l_free(thing->rabbitmq_url);
 	l_free(thing->modbus_slave.url);
-	l_free(thing->credentials_path);
+	l_free(thing->conf_files.credentials_path);
+	l_free(thing->conf_files.device_path);
+	l_free(thing->conf_files.cloud_path);
 
 	l_hashmap_destroy(thing->data_items, l_free);
 }
@@ -365,12 +367,6 @@ void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 	strncpy(thing->token, token, KNOT_PROTOCOL_TOKEN_LEN);
 }
 
-void device_set_thing_credentials_path(struct knot_thing *thing,
-				       const char *path)
-{
-	thing->credentials_path = l_strdup(path);
-}
-
 void device_generate_thing_id(void)
 {
 	uint64_t id; /* knot id uses 16 characters which fits inside a uint64 */
@@ -398,7 +394,8 @@ int device_store_credentials_on_file(char *token)
 {
 	int rc;
 
-	rc = properties_store_credentials(&thing, thing.credentials_path,
+	rc = properties_store_credentials(&thing,
+					  thing.conf_files.credentials_path,
 					  thing.id, token);
 	if (rc < 0)
 		return -1;
@@ -410,7 +407,8 @@ int device_store_credentials_on_file(char *token)
 
 int device_clear_credentials_on_file(void)
 {
-	return properties_clear_credentials(&thing, thing.credentials_path);
+	return properties_clear_credentials(&thing,
+					    thing.conf_files.credentials_path);
 }
 
 int device_update_config(struct l_queue *config_list)
@@ -546,6 +544,11 @@ int device_start(struct device_settings *conf_files)
 	}
 
 	l_info("Device \"%s\" has started successfully", thing.name);
+
+	thing.conf_files.credentials_path =
+					l_strdup(conf_files->credentials_path);
+	thing.conf_files.device_path = l_strdup(conf_files->device_path);
+	thing.conf_files.cloud_path = l_strdup(conf_files->cloud_path);
 
 	return 0;
 }

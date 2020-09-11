@@ -39,8 +39,6 @@ void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
 void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
 void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 				  const char *token);
-void device_set_thing_credentials_path(struct knot_thing *thing,
-				       const char *path);
 void device_generate_thing_id(void);
 void device_clear_thing_id(struct knot_thing *thing);
 void device_clear_thing_token(struct knot_thing *thing);
