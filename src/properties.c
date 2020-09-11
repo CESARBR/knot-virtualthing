@@ -632,8 +632,6 @@ int properties_create_device(struct knot_thing *thing,
 		return rc;
 	}
 
-	device_set_thing_credentials_path(thing, conf_files->credentials_path);
-
 	return 0;
 }
 
