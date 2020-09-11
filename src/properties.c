@@ -169,37 +169,6 @@ static int set_modbus_source_properties(struct knot_thing *thing,
 	return 0;
 }
 
-static int assign_limit(int value_type, knot_value_type value,
-			knot_value_type *limit)
-{
-	switch (value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		limit->val_i = value.val_i;
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-		limit->val_f = value.val_f;
-		break;
-	case KNOT_VALUE_TYPE_BOOL:
-		limit->val_b = value.val_b;
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		limit->val_i64 = value.val_i64;
-		break;
-	case KNOT_VALUE_TYPE_UINT:
-		limit->val_u = value.val_u;
-		break;
-	case KNOT_VALUE_TYPE_UINT64:
-		limit->val_u64 = value.val_u64;
-		break;
-	case KNOT_VALUE_TYPE_RAW:
-		/* Storage doesn't give support to raw */
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int get_upper_limit(int fd, char *group_id, int value_type,
 			   knot_value_type *temp)
 {
@@ -325,16 +294,16 @@ static int set_event(struct knot_thing *thing, int fd, char *group_id,
 
 	if (rc > 0) {
 		event_aux.event_flags |= KNOT_EVT_FLAG_LOWER_THRESHOLD;
-		assign_limit(value_type_aux, tmp_value_type,
-			     &event_aux.lower_limit);
+		knot_value_assign_limit(value_type_aux, tmp_value_type,
+					&event_aux.lower_limit);
 	}
 
 	rc = get_upper_limit(fd, group_id, value_type_aux, &tmp_value_type);
 
 	if (rc > 0) {
 		event_aux.event_flags |= KNOT_EVT_FLAG_UPPER_THRESHOLD;
-		assign_limit(value_type_aux, tmp_value_type,
-			     &event_aux.upper_limit);
+		knot_value_assign_limit(value_type_aux, tmp_value_type,
+					&event_aux.upper_limit);
 	}
 
 	rc = storage_read_key_int(fd, group_id, EVENT_TIME_SEC, &aux);
