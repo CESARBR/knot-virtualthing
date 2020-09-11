@@ -48,6 +48,8 @@ int device_has_thing_token(void);
 int device_store_credentials_on_file(char *token);
 int device_clear_credentials_on_file(void);
 
+int device_update_config(struct l_queue *config_list);
+
 int device_check_schema_change(void);
 
 int device_send_register_request(void);

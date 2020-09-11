@@ -60,11 +60,11 @@ static char *event_to_str(enum EVENTS event)
 	case EVT_TIMEOUT:
 		evt_str = "EVT_TIMEOUT";
 		break;
-	case EVT_CFG_OK:
-		evt_str = "EVT_CFG_OK";
+	case EVT_CFG_UPT_OK:
+		evt_str = "EVT_CFG_UPT_OK";
 		break;
-	case EVT_CFG_NOT_OK:
-		evt_str = "EVT_CFG_NOT_OK";
+	case EVT_CFG_UPT_NOT_OK:
+		evt_str = "EVT_CFG_UPT_NOT_OK";
 		break;
 	case EVT_UNREG_REQ:
 		evt_str = "EVT_UNREG_REQ";
@@ -148,8 +148,8 @@ enum STATES get_next_disconnected(enum EVENTS event, void *user_data)
 	case EVT_AUTH_NOT_OK:
 	case EVT_REG_OK:
 	case EVT_REG_NOT_OK:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
@@ -198,8 +198,8 @@ enum STATES get_next_auth(enum EVENTS event, void *user_data)
 	case EVT_READY:
 	case EVT_REG_OK:
 	case EVT_REG_NOT_OK:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
@@ -264,8 +264,8 @@ enum STATES get_next_register(enum EVENTS event, void *user_data)
 	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_REG_PERM:
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
@@ -299,11 +299,11 @@ enum STATES get_next_config(enum EVENTS event, void *user_data)
 		device_msg_timeout_remove();
 		next_state = ST_DISCONNECTED;
 		break;
-	case EVT_CFG_OK:
+	case EVT_CFG_UPT_OK:
 		device_msg_timeout_remove();
 		next_state = ST_ONLINE;
 		break;
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 		device_msg_timeout_remove();
 		next_state = ST_ERROR;
 		break;
@@ -369,9 +369,16 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 	case EVT_UNREG_REQ:
 		next_state = ST_UNREGISTER;
 		break;
+	case EVT_CFG_UPT_OK:
+		next_state = ST_ONLINE;
+
+		if (device_update_config(user_data)) {
+			l_error("Couldn't update config");
+			next_state = ST_CONFIG;
+		}
+		break;
 	case EVT_TIMEOUT:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_READY:
 	case EVT_AUTH_OK:
 	case EVT_AUTH_NOT_OK:
@@ -416,8 +423,8 @@ enum STATES get_next_unregister(enum EVENTS event, void *user_data)
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
 	case EVT_TIMEOUT:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_READY:
 	case EVT_AUTH_OK:
@@ -453,8 +460,8 @@ enum STATES get_next_error(enum EVENTS event, void *user_data)
 	case EVT_PUB_DATA:
 	case EVT_DATA_UPDT:
 	case EVT_TIMEOUT:
-	case EVT_CFG_OK:
-	case EVT_CFG_NOT_OK:
+	case EVT_CFG_UPT_OK:
+	case EVT_CFG_UPT_NOT_OK:
 	case EVT_UNREG_REQ:
 	case EVT_READY:
 	case EVT_AUTH_OK:
