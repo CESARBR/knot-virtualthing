@@ -191,9 +191,9 @@ static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
 		break;
 	case CONFIG_MSG:
 		if (msg->error)
-			sm_input_event(EVT_CFG_NOT_OK, NULL);
+			sm_input_event(EVT_CFG_UPT_NOT_OK, NULL);
 		else
-			sm_input_event(EVT_CFG_OK, NULL);
+			sm_input_event(EVT_CFG_UPT_OK, msg->list);
 		break;
 	case LIST_MSG:
 	case MSG_TYPES_LENGTH:
@@ -411,6 +411,13 @@ int device_store_credentials_on_file(char *token)
 int device_clear_credentials_on_file(void)
 {
 	return properties_clear_credentials(&thing, thing.credentials_path);
+}
+
+int device_update_config(struct l_queue *config_list)
+{
+	// TODO: Write on conf file
+	// TODO: Change on knot_thing struct
+	return 0;
 }
 
 int device_check_schema_change(void)
