@@ -35,6 +35,8 @@ void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
 			      int reg_addr, int bit_offset);
+void device_update_config_data_item(struct knot_thing *thing,
+				    knot_msg_config *config);
 void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
 void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
 void device_set_thing_credentials(struct knot_thing *thing, const char *id,
@@ -45,6 +47,9 @@ void device_clear_thing_token(struct knot_thing *thing);
 int device_has_thing_token(void);
 int device_store_credentials_on_file(char *token);
 int device_clear_credentials_on_file(void);
+
+int device_start_event(void);
+void device_stop_event(void);
 
 int device_update_config(struct l_queue *config_list);
 
@@ -59,9 +64,6 @@ void device_publish_data_all(void);
 void device_msg_timeout_create(int seconds);
 void device_msg_timeout_modify(int seconds);
 void device_msg_timeout_remove(void);
-
-int device_start_event(void);
-void device_stop_event(void);
 
 int device_start_read_cloud(void);
 

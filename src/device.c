@@ -98,6 +98,22 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_hashmap_destroy(thing->data_items, l_free);
 }
 
+static void foreach_event_add_data_item(const void *key, void *value,
+					void *user_data)
+{
+	struct knot_data_item *data_item = value;
+
+	event_add_data_item(data_item->sensor_id, data_item->event);
+}
+
+static void foreach_update_config(void *data, void *user_data)
+{
+	knot_msg_config *config = data;
+
+	properties_update_data_item(&thing, thing.conf_files.device_path,
+				    config);
+}
+
 static void foreach_send_config(const void *key, void *value, void *user_data)
 {
 	struct knot_data_item *data_item = value;
@@ -142,14 +158,6 @@ static void foreach_publish_all_data(const void *key, void *value,
 static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
 {
 	sm_input_event(EVT_TIMEOUT, user_data);
-}
-
-static void foreach_event_add_data_item(const void *key, void *value,
-					void *user_data)
-{
-	struct knot_data_item *data_item = value;
-
-	event_add_data_item(data_item->sensor_id, data_item->event);
 }
 
 static void on_event_timeout(int id)
@@ -350,6 +358,34 @@ void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			 data_item_aux);
 }
 
+void device_update_config_data_item(struct knot_thing *thing,
+				    knot_msg_config *config)
+{
+	struct knot_data_item *data_item;
+
+	data_item = l_hashmap_lookup(thing->data_items,
+				     L_INT_TO_PTR(config->sensor_id));
+	if (!data_item)
+		return;
+
+	data_item->schema.type_id = config->schema.type_id;
+	data_item->schema.unit = config->schema.unit;
+	data_item->schema.value_type = config->schema.value_type;
+	strncpy(data_item->schema.name, config->schema.name,
+		KNOT_PROTOCOL_DATA_NAME_LEN);
+
+	if (!(config->event.event_flags & KNOT_EVT_FLAG_UNREGISTERED)) {
+		data_item->event.event_flags = config->event.event_flags;
+		data_item->event.time_sec = config->event.time_sec;
+		knot_value_assign_limit(config->schema.value_type,
+					config->event.lower_limit,
+					&data_item->event.lower_limit);
+		knot_value_assign_limit(config->schema.value_type,
+					config->event.upper_limit,
+					&data_item->event.upper_limit);
+	}
+}
+
 void *device_data_item_lookup(struct knot_thing *thing, int sensor_id)
 {
 	return l_hashmap_lookup(thing->data_items, L_INT_TO_PTR(sensor_id));
@@ -411,10 +447,34 @@ int device_clear_credentials_on_file(void)
 					    thing.conf_files.credentials_path);
 }
 
+int device_start_event(void)
+{
+	int rc;
+
+	rc = event_start(on_event_timeout);
+	if (rc < 0) {
+		l_error("Failed to start event");
+		return rc;
+	}
+
+	l_hashmap_foreach(thing.data_items, foreach_event_add_data_item, NULL);
+
+	return 0;
+}
+
+void device_stop_event(void)
+{
+	event_stop();
+}
+
 int device_update_config(struct l_queue *config_list)
 {
-	// TODO: Write on conf file
-	// TODO: Change on knot_thing struct
+	device_stop_event();
+
+	l_queue_foreach(config_list, foreach_update_config, NULL);
+
+	device_start_event();
+
 	return 0;
 }
 
@@ -477,26 +537,6 @@ void device_msg_timeout_remove(void)
 {
 	l_timeout_remove(thing.msg_to);
 	thing.msg_to = NULL;
-}
-
-int device_start_event(void)
-{
-	int rc;
-
-	rc = event_start(on_event_timeout);
-	if (rc < 0) {
-		l_error("Failed to start event");
-		return rc;
-	}
-
-	l_hashmap_foreach(thing.data_items, foreach_event_add_data_item, NULL);
-
-	return 0;
-}
-
-void device_stop_event(void)
-{
-	event_stop();
 }
 
 int device_start_read_cloud(void)

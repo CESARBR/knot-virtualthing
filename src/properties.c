@@ -578,6 +578,29 @@ static int set_cloud_properties(struct knot_thing *thing, char *filename)
 	return rc;
 }
 
+static void update_event_data_item(int fd, int value_type, knot_event *event)
+{
+	/* Write new event values */
+}
+
+static void update_schema_data_item(int fd, knot_schema *schema)
+{
+	/* Write new schema values */
+}
+
+static bool equal_sensor_id(int fd, const char *group_id, int sensor_id)
+{
+	int sensor_id_aux;
+	int rc;
+
+	rc = storage_read_key_int(fd, group_id, SCHEMA_SENSOR_ID,
+				  &sensor_id_aux);
+	if (rc <= 0)
+		return false;
+
+	return sensor_id == sensor_id_aux ? true : false;
+}
+
 int properties_create_device(struct knot_thing *thing,
 			     struct device_settings *conf_files)
 {
@@ -673,4 +696,42 @@ error:
 	storage_close(cred_fd);
 
 	return -EINVAL;
+}
+
+int properties_update_data_item(struct knot_thing *thing, char *filename,
+				knot_msg_config *config)
+{
+	char **data_item_group;
+	int device_fd;
+	int i;
+
+	device_fd = storage_open(filename);
+	if (device_fd < 0) {
+		l_error("Failed to open device file");
+		return device_fd;
+	}
+
+	/* Update values on knot_thing struct */
+	device_update_config_data_item(thing, config);
+
+	data_item_group = get_data_item_groups(device_fd);
+
+	for (i = 0; data_item_group[i] != NULL; i++) {
+		if (!equal_sensor_id(device_fd, data_item_group[i],
+				     config->sensor_id))
+			continue;
+
+		update_schema_data_item(device_fd, &config->schema);
+
+		if (!(config->event.event_flags & KNOT_EVT_FLAG_UNREGISTERED))
+			update_event_data_item(device_fd,
+					       config->schema.value_type,
+					       &config->event);
+
+		break;
+	}
+
+	storage_close(device_fd);
+
+	return 0;
 }
