@@ -45,6 +45,7 @@
 #define EVENT_UPPER_THRESHOLD		"EventUpperThreshold"
 #define EVENT_TIME_SEC			"EventTimeSec"
 #define EVENT_CHANGE			"EventChange"
+#define EVENT_CHANGE_TRUE		1
 
 #define MODBUS_REG_ADDRESS		"ModbusRegisterAddress"
 #define MODBUS_BIT_OFFSET		"ModbusBitOffset"

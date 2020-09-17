@@ -277,6 +277,39 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 	return rc;
 }
 
+static int set_limit(int fd, const char *group_id, const char *key,
+		     int value_type, knot_value_type value)
+{
+	int rc;
+
+	switch (value_type) {
+	case KNOT_VALUE_TYPE_INT:
+		rc = storage_write_key_int(fd, group_id, key, value.val_i);
+		break;
+	case KNOT_VALUE_TYPE_FLOAT:
+		rc = storage_write_key_float(fd, group_id, key, value.val_f);
+		break;
+	case KNOT_VALUE_TYPE_BOOL:
+		rc = storage_write_key_bool(fd, group_id, key, value.val_b);
+		break;
+	case KNOT_VALUE_TYPE_INT64:
+		rc = storage_write_key_int64(fd, group_id, key, value.val_i64);
+		break;
+	case KNOT_VALUE_TYPE_UINT:
+		rc = storage_write_key_uint(fd, group_id, key, value.val_u);
+		break;
+	case KNOT_VALUE_TYPE_UINT64:
+		rc = storage_write_key_uint64(fd, group_id, key, value.val_u64);
+		break;
+	case KNOT_VALUE_TYPE_RAW:
+		/* Storage doesn't give support to raw */
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
 static int set_event(struct knot_thing *thing, int fd, char *group_id,
 		     knot_schema schema, knot_event *event)
 {
@@ -578,14 +611,91 @@ static int set_cloud_properties(struct knot_thing *thing, char *filename)
 	return rc;
 }
 
-static void update_event_data_item(int fd, int value_type, knot_event *event)
+static int update_event_data_item(int fd, const char *group_id,
+				  int value_type, knot_event *event)
 {
-	/* Write new event values */
+	int rc;
+
+	if (event->event_flags & KNOT_EVT_FLAG_TIME) {
+		rc = storage_write_key_int(fd, group_id, EVENT_TIME_SEC,
+					   event->time_sec);
+		if (rc < 0) {
+			l_error("Failed to set new time sec");
+			return rc;
+		}
+	} else if (!storage_has_unit(fd, group_id, EVENT_TIME_SEC)) {
+		storage_remove_key(fd, group_id, EVENT_TIME_SEC);
+	}
+
+	if (event->event_flags & KNOT_EVT_FLAG_CHANGE) {
+		rc = storage_write_key_int(fd, group_id, EVENT_CHANGE,
+					   EVENT_CHANGE_TRUE);
+		if (rc < 0) {
+			l_error("Failed to set new change flag");
+			return rc;
+		}
+	} else if (!storage_has_unit(fd, group_id, EVENT_CHANGE)) {
+		storage_remove_key(fd, group_id, EVENT_CHANGE);
+	}
+
+	if (event->event_flags & KNOT_EVT_FLAG_LOWER_THRESHOLD) {
+		rc = set_limit(fd, group_id, EVENT_LOWER_THRESHOLD, value_type,
+			       event->lower_limit);
+		if (rc < 0) {
+			l_error("Failed to set new lower threshold");
+			return rc;
+		}
+	} else if (!storage_has_unit(fd, group_id, EVENT_LOWER_THRESHOLD)) {
+		storage_remove_key(fd, group_id, EVENT_LOWER_THRESHOLD);
+	}
+
+	if (event->event_flags & KNOT_EVT_FLAG_UPPER_THRESHOLD) {
+		rc = set_limit(fd, group_id, EVENT_UPPER_THRESHOLD, value_type,
+			       event->upper_limit);
+		if (rc < 0) {
+			l_error("Failed to set new upper threshold");
+			return rc;
+		}
+	} else if (!storage_has_unit(fd, group_id, EVENT_UPPER_THRESHOLD)) {
+		storage_remove_key(fd, group_id, EVENT_UPPER_THRESHOLD);
+	}
+
+	return 0;
 }
 
-static void update_schema_data_item(int fd, knot_schema *schema)
+static int update_schema_data_item(int fd, const char *group_id,
+				   knot_schema *schema)
 {
-	/* Write new schema values */
+	int rc;
+
+	rc = storage_write_key_int(fd, group_id, SCHEMA_TYPE_ID,
+				   schema->type_id);
+	if (rc < 0) {
+		l_error("Failed to set new type id");
+		return rc;
+	}
+
+	rc = storage_write_key_int(fd, group_id, SCHEMA_UNIT, schema->unit);
+	if (rc < 0) {
+		l_error("Failed to set new unit");
+		return rc;
+	}
+
+	rc = storage_write_key_int(fd, group_id, SCHEMA_VALUE_TYPE,
+				   schema->value_type);
+	if (rc < 0) {
+		l_error("Failed to set new value_type");
+		return rc;
+	}
+
+	rc = storage_write_key_string(fd, group_id, SCHEMA_SENSOR_NAME,
+				      schema->name);
+	if (rc < 0) {
+		l_error("Failed to set new name");
+		return rc;
+	}
+
+	return rc;
 }
 
 static bool equal_sensor_id(int fd, const char *group_id, int sensor_id)
@@ -704,6 +814,7 @@ int properties_update_data_item(struct knot_thing *thing, char *filename,
 	char **data_item_group;
 	int device_fd;
 	int i;
+	bool has_err;
 
 	device_fd = storage_open(filename);
 	if (device_fd < 0) {
@@ -714,6 +825,7 @@ int properties_update_data_item(struct knot_thing *thing, char *filename,
 	/* Update values on knot_thing struct */
 	device_update_config_data_item(thing, config);
 
+	has_err = false;
 	data_item_group = get_data_item_groups(device_fd);
 
 	for (i = 0; data_item_group[i] != NULL; i++) {
@@ -721,17 +833,28 @@ int properties_update_data_item(struct knot_thing *thing, char *filename,
 				     config->sensor_id))
 			continue;
 
-		update_schema_data_item(device_fd, &config->schema);
+		if (update_schema_data_item(device_fd, data_item_group[i],
+					    &config->schema) < 0) {
+			has_err = true;
+			l_error("Error on set schema property");
+		}
 
-		if (!(config->event.event_flags & KNOT_EVT_FLAG_UNREGISTERED))
-			update_event_data_item(device_fd,
-					       config->schema.value_type,
-					       &config->event);
-
+		if (!(config->event.event_flags & KNOT_EVT_FLAG_UNREGISTERED)) {
+			if (update_event_data_item(device_fd,
+						   data_item_group[i],
+						   config->schema.value_type,
+						   &config->event) < 0) {
+				has_err = true;
+				l_error("Error on set event property");
+			}
+		}
 		break;
 	}
 
 	storage_close(device_fd);
+
+	if (has_err)
+		return -1;
 
 	return 0;
 }
