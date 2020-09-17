@@ -247,21 +247,6 @@ void storage_foreach_source(int fd, storage_foreach_source_t func,
 	l_strfreev(groups);
 }
 
-int storage_write_key_string(int fd, const char *group,
-			     const char *key, const char *value)
-{
-	struct l_settings *settings;
-
-	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
-	if (!settings)
-		return -EIO;
-
-	if (l_settings_set_string(settings, group, key, value) == false)
-		return -EINVAL;
-
-	return save_settings(fd, settings);
-}
-
 char *storage_read_key_string(int fd, const char *group, const char *key)
 {
 	struct l_settings *settings;
@@ -273,15 +258,16 @@ char *storage_read_key_string(int fd, const char *group, const char *key)
 	return l_settings_get_string(settings, group, key);
 }
 
-int storage_write_key_int(int fd, const char *group, const char *key, int value)
+int storage_write_key_string(int fd, const char *group,
+			     const char *key, const char *value)
 {
 	struct l_settings *settings;
 
 	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
 	if (!settings)
-		return -EINVAL;
+		return -EIO;
 
-	if (l_settings_set_int(settings, group, key, value) == false)
+	if (l_settings_set_string(settings, group, key, value) == false)
 		return -EINVAL;
 
 	return save_settings(fd, settings);
@@ -298,6 +284,20 @@ int storage_read_key_int(int fd, const char *group, const char *key, int *value)
 	return l_settings_get_int(settings, group, key, value);
 }
 
+int storage_write_key_int(int fd, const char *group, const char *key, int value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_int(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
 int storage_read_key_float(int fd, const char *group, const char *key,
 			   float *value)
 {
@@ -308,6 +308,21 @@ int storage_read_key_float(int fd, const char *group, const char *key,
 		return -EINVAL;
 
 	return l_settings_get_float(settings, group, key, value);
+}
+
+int storage_write_key_float(int fd, const char *group, const char *key,
+			    float value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_float(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
 }
 
 int storage_read_key_bool(int fd, const char *group, const char *key,
@@ -328,6 +343,21 @@ int storage_read_key_bool(int fd, const char *group, const char *key,
 	return 1;
 }
 
+int storage_write_key_bool(int fd, const char *group, const char *key,
+			   uint8_t value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_bool(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
 int storage_read_key_int64(int fd, const char *group, const char *key,
 			   int64_t *value)
 {
@@ -338,6 +368,21 @@ int storage_read_key_int64(int fd, const char *group, const char *key,
 		return -EINVAL;
 
 	return l_settings_get_int64(settings, group, key, value);
+}
+
+int storage_write_key_int64(int fd, const char *group, const char *key,
+			    int64_t value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_int64(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
 }
 
 int storage_read_key_uint(int fd, const char *group, const char *key,
@@ -352,6 +397,21 @@ int storage_read_key_uint(int fd, const char *group, const char *key,
 	return l_settings_get_uint(settings, group, key, value);
 }
 
+int storage_write_key_uint(int fd, const char *group, const char *key,
+			   uint32_t value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_uint(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
 int storage_read_key_uint64(int fd, const char *group, const char *key,
 			    uint64_t *value)
 {
@@ -364,6 +424,21 @@ int storage_read_key_uint64(int fd, const char *group, const char *key,
 	return l_settings_get_uint64(settings, group, key, value);
 }
 
+int storage_write_key_uint64(int fd, const char *group, const char *key,
+			     uint64_t value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_uint64(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
 int storage_remove_group(int fd, const char *group)
 {
 	struct l_settings *settings;
@@ -373,6 +448,20 @@ int storage_remove_group(int fd, const char *group)
 		return -EINVAL;
 
 	if (l_settings_remove_group(settings, group) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
+int storage_remove_key(int fd, const char *group, const char *key)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_remove_key(settings, group, key) == false)
 		return -EINVAL;
 
 	return save_settings(fd, settings);

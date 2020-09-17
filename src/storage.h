@@ -42,24 +42,42 @@ int storage_open(const char *pathname);
 int storage_close(int fd);
 
 int storage_remove_group(int fd, const char *group);
+int storage_remove_key(int fd, const char *group, const char *key);
 
+char *storage_read_key_string(int fd, const char *group, const char *key);
 int storage_write_key_string(int fd, const char *group,
 			     const char *key, const char *value);
-char *storage_read_key_string(int fd, const char *group, const char *key);
-int storage_write_key_int(int fd, const char *group,
-			  const char *key, int value);
+
 int storage_read_key_int(int fd, const char *group,
 			  const char *key, int *value);
+int storage_write_key_int(int fd, const char *group,
+			  const char *key, int value);
+
 int storage_read_key_float(int fd, const char *group, const char *key,
 			   float *value);
+int storage_write_key_float(int fd, const char *group, const char *key,
+			    float value);
+
 int storage_read_key_bool(int fd, const char *group, const char *key,
 			  uint8_t *value);
+int storage_write_key_bool(int fd, const char *group, const char *key,
+			   uint8_t value);
+
 int storage_read_key_int64(int fd, const char *group, const char *key,
 			   int64_t *value);
+int storage_write_key_int64(int fd, const char *group, const char *key,
+			    int64_t value);
+
 int storage_read_key_uint(int fd, const char *group, const char *key,
 			  uint32_t *value);
+int storage_write_key_uint(int fd, const char *group, const char *key,
+			   uint32_t value);
+
 int storage_read_key_uint64(int fd, const char *group, const char *key,
 			    uint64_t *value);
+int storage_write_key_uint64(int fd, const char *group, const char *key,
+			     uint64_t value);
+
 bool storage_has_unit(int fd, const char *group, const char *key);
 
 char **get_data_item_groups(int fd);
