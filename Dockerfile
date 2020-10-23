@@ -21,12 +21,12 @@ RUN cd ell && ./configure --prefix=/usr && make install
 # Install json-c dependency
 RUN mkdir -p /usr/local/json-c
 RUN wget -q -O- https://github.com/json-c/json-c/archive/json-c-0.14-20200419.tar.gz | tar xz -C /usr/local/json-c --strip-components=1
-RUN mkdir -p json-c/build && cd json-c/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make && make install
+RUN mkdir -p json-c/build && cd json-c/build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib .. && make && make install
 
 # Install librabbitmq-c
 RUN mkdir -p /usr/local/rabbitmq-c
 RUN wget -q -O- https://github.com/alanxz/rabbitmq-c/archive/$RABBITMQC_VERSION.tar.gz | tar xz -C /usr/local/rabbitmq-c --strip-components=1
-RUN cd rabbitmq-c && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make install
+RUN cd rabbitmq-c && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib .. && make install
 
 # Install knot-protocol
 RUN mkdir -p /usr/local/knot-protocol
@@ -64,11 +64,13 @@ WORKDIR /usr/local
 
 # Copy shared files .so from builder to target image
 COPY --from=builder /usr/lib/libell.so* /usr/lib/
-COPY --from=builder /usr/lib64/libjson-c.so* /usr/lib/
-COPY --from=builder /usr/lib64/librabbitmq.so* /usr/lib/
-COPY --from=builder /usr/lib64/librabbitmq.a* /usr/lib/
+COPY --from=builder /usr/lib/libjson-c.so* /usr/lib/
+COPY --from=builder /usr/lib/librabbitmq.so* /usr/lib/
+COPY --from=builder /usr/lib/librabbitmq.a* /usr/lib/
 COPY --from=builder /usr/lib/libknotprotocol.a* /usr/lib/
 COPY --from=builder /usr/lib/libknotprotocol.so* /usr/lib/
+COPY --from=builder /usr/lib/libknotcloudsdkc.a* /usr/lib/
+COPY --from=builder /usr/lib/libknotcloudsdkc.so* /usr/lib/
 COPY --from=builder /usr/lib/libmodbus.so* /usr/lib/
 COPY --from=builder /usr/lib/libmodbus.la* /usr/lib/
 
