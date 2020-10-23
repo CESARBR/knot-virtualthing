@@ -20,7 +20,7 @@ RUN cd ell && ./configure --prefix=/usr && make install
 
 # Install json-c dependency
 RUN mkdir -p /usr/local/json-c
-RUN wget -q -O- https://github.com/json-c/json-c/archive/json-c-0.14-20200419.tar.gz | tar xz -C /usr/local/json-c --strip-components=1
+RUN wget -q -O- https://github.com/json-c/json-c/archive/json-c-$JSONC_VERSION.tar.gz | tar xz -C /usr/local/json-c --strip-components=1
 RUN mkdir -p json-c/build && cd json-c/build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib .. && make && make install
 
 # Install librabbitmq-c
