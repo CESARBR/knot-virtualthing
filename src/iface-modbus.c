@@ -218,7 +218,7 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out)
 			tmp.val_byte |= byte_tmp[i] << i;
 		break;
 	case TYPE_U16:
-		rc = modbus_read_registers(modbus_ctx, reg_addr, 2,
+		rc = modbus_read_registers(modbus_ctx, reg_addr, 1,
 					   &tmp.val_u16);
 		break;
 	case TYPE_U32:
