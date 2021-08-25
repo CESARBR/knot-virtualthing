@@ -124,11 +124,13 @@ static int valid_bit_offset(int bit_offset, int value_type)
 		/* KNoT Protocol doesn't have a matching value type */
 	case 32:
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT) |
-					(1 << KNOT_VALUE_TYPE_UINT);
+					(1 << KNOT_VALUE_TYPE_UINT) |
+					(1 << KNOT_VALUE_TYPE_FLOAT);
 		break;
 	case 64:
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT64) |
-					(1 << KNOT_VALUE_TYPE_UINT64);
+					(1 << KNOT_VALUE_TYPE_UINT64) |
+					(1 << KNOT_VALUE_TYPE_FLOAT);
 		break;
 	default:
 		return -EINVAL;
