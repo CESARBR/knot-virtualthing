@@ -54,6 +54,7 @@ enum modbus_types_offset {
 };
 
 union modbus_types {
+	float val_float;
 	uint8_t val_bool;
 	uint8_t val_byte;
 	uint16_t val_u16;
