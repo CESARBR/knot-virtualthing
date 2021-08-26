@@ -54,6 +54,7 @@ enum modbus_types_offset {
 };
 
 union modbus_types {
+	float val_float;
 	uint8_t val_bool;
 	uint8_t val_byte;
 	uint16_t val_u16;
@@ -279,7 +280,6 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
 					   (uint16_t *) &tmp.val_u32);
 		iface_modbus_config_endianness_type_recv_32_bits(&tmp.val_u32,
 						endianness_type);
-
 		break;
 
 	case TYPE_U64:
