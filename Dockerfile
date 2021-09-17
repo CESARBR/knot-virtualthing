@@ -7,11 +7,12 @@ ARG RABBITMQC_VERSION=v0.10.0
 ARG KNOT_CLOUD_SDK_VERSION=1bdb2dd
 ARG KNOT_PROTOCOL_VERSION=ead9e66
 ARG LIBMODBUS_VERSION=3.1.4
+ARG LIBPLCTAG_VERSION=v2.3.7
 
 WORKDIR /usr/local
 
 # Install dependencies
-RUN apk update && apk add --no-cache make gcc autoconf libtool automake pkgconfig wget file musl-dev linux-headers cmake openssl-dev git
+RUN apk update && apk add --no-cache make gcc g++ autoconf libtool automake pkgconfig wget file musl-dev linux-headers cmake openssl-dev git
 
 # Install libell
 RUN mkdir -p /usr/local/ell
@@ -43,6 +44,11 @@ RUN mkdir -p /usr/local/libmodbus
 RUN wget -q -O- https://libmodbus.org/releases/libmodbus-$LIBMODBUS_VERSION.tar.gz | tar xz -C /usr/local/libmodbus --strip-components=1
 RUN cd libmodbus && ./configure --prefix=/usr -q && make install
 
+# Install libplctag dependency
+RUN mkdir -p /usr/local/libplctag
+RUN wget -q -O- https://github.com/libplctag/libplctag/archive/refs/tags/$LIBPLCTAG_VERSION.tar.gz | tar xz -C /usr/local/libplctag --strip-components=1
+RUN cd libplctag && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && make install
+
 # Copy files to source
 COPY ./ ./
 
@@ -73,6 +79,8 @@ COPY --from=builder /usr/lib/libknotcloudsdkc.a* /usr/lib/
 COPY --from=builder /usr/lib/libknotcloudsdkc.so* /usr/lib/
 COPY --from=builder /usr/lib/libmodbus.so* /usr/lib/
 COPY --from=builder /usr/lib/libmodbus.la* /usr/lib/
+COPY --from=builder /usr/lib/libplctag.so* /usr/lib/
+COPY --from=builder /usr/lib/libplctag.a* /usr/lib/
 
 # Copy binary executables
 COPY --from=builder /usr/local/src/thingd /usr/bin/thingd
