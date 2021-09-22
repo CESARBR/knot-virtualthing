@@ -34,7 +34,8 @@ void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 				   char *url);
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
-			      int reg_addr, int bit_offset);
+			      int reg_addr, int bit_offset,
+			      int endianness_type);
 void device_update_config_data_item(struct knot_thing *thing,
 				    knot_msg_config *config);
 void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
