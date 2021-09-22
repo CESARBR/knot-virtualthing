@@ -49,3 +49,10 @@
 
 #define MODBUS_REG_ADDRESS		"ModbusRegisterAddress"
 #define MODBUS_BIT_OFFSET		"ModbusBitOffset"
+#define MODBUS_TYPE_ENDIANNESS		"ModbusTypeEndianness"
+
+// definition of endianness type
+#define MODBUS_ENDIANNESS_TYPE_BIG_ENDIAN		0x01
+#define MODBUS_ENDIANNESS_TYPE_MID_BIG_ENDIAN		0x02
+#define MODBUS_ENDIANNESS_TYPE_LITTLE_ENDIAN		0x03
+#define MODBUS_ENDIANNESS_TYPE_MID_LITTLE_ENDIAN	0x04

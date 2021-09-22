@@ -143,14 +143,21 @@ static int valid_bit_offset(int bit_offset, int value_type)
 static int set_modbus_source_properties(struct knot_thing *thing,
 					int fd, char *group_id,
 					knot_schema schema,
-					int *reg_addr, int *bit_offset)
+					int *reg_addr, int *bit_offset,
+					int *endianness_type)
 {
 	int rc;
 	int reg_addr_aux;
 	int bit_offset_aux;
+	int endianness_type_aux;
 
 	rc = storage_read_key_int(fd, group_id, MODBUS_REG_ADDRESS,
 				  &reg_addr_aux);
+	if (rc <= 0)
+		return -EINVAL;
+
+	rc = storage_read_key_int(fd, group_id, MODBUS_TYPE_ENDIANNESS,
+				  &endianness_type_aux);
 	if (rc <= 0)
 		return -EINVAL;
 
@@ -165,6 +172,7 @@ static int set_modbus_source_properties(struct knot_thing *thing,
 
 	*bit_offset = bit_offset_aux;
 	*reg_addr = reg_addr_aux;
+	*endianness_type = endianness_type_aux;
 
 	return 0;
 }
@@ -432,6 +440,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 	int sensor_id;
 	int reg_addr;
 	int bit_offset;
+	int endianness_type;
 	knot_schema schema;
 	knot_event event;
 
@@ -466,7 +475,8 @@ static int set_data_items(struct knot_thing *thing, int fd)
 
 		rc = set_modbus_source_properties(thing, fd, data_item_group[i],
 						  schema, &reg_addr,
-						  &bit_offset);
+						  &bit_offset,
+						  &endianness_type);
 		if (rc < 0) {
 			l_error("Failed to set Modbus Source properties on %s",
 				data_item_group[i]);
@@ -474,7 +484,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 		}
 
 		device_set_new_data_item(thing, sensor_id, schema, event,
-					 reg_addr, bit_offset);
+					 reg_addr, bit_offset, endianness_type);
 	}
 
 	l_strfreev(data_item_group);

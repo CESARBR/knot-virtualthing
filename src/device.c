@@ -55,6 +55,7 @@ struct modbus_slave {
 struct modbus_source {
 	int reg_addr;
 	int bit_offset;
+	int endianness_type_sensor;
 };
 
 struct knot_data_item {
@@ -269,8 +270,9 @@ static int on_modbus_poll_receive(int id)
 		return -EINVAL;
 
 	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
-				    data_item->modbus_source.bit_offset,
-				    &data_item->current_val);
+		data_item->modbus_source.bit_offset,
+		&data_item->current_val,
+		data_item->modbus_source.endianness_type_sensor);
 	if (event_check_value(data_item->event,
 			      data_item->current_val,
 			      data_item->sent_val,
@@ -342,7 +344,7 @@ void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
 
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
-			      int reg_addr, int bit_offset)
+			      int reg_addr, int bit_offset, int endianness_type)
 {
 	struct knot_data_item *data_item_aux;
 
@@ -352,6 +354,7 @@ void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 	data_item_aux->event = event;
 	data_item_aux->modbus_source.reg_addr = reg_addr;
 	data_item_aux->modbus_source.bit_offset = bit_offset;
+	data_item_aux->modbus_source.endianness_type_sensor = endianness_type;
 
 	l_hashmap_insert(thing->data_items,
 			 L_INT_TO_PTR(data_item_aux->sensor_id),
