@@ -153,12 +153,12 @@ static int set_modbus_source_properties(struct knot_thing *thing,
 	int bit_offset_aux;
 	int endianness_type_aux;
 
-	rc = storage_read_key_int(fd, group_id, MODBUS_REG_ADDRESS,
+	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
 	if (rc <= 0)
 		return -EINVAL;
 
-	rc = storage_read_key_int(fd, group_id, MODBUS_TYPE_ENDIANNESS,
+	rc = storage_read_key_int(fd, group_id, DATA_TYPE_ENDIANNESS,
 				  &endianness_type_aux);
 	if (rc <= 0)
 		return -EINVAL;
@@ -514,7 +514,7 @@ static int set_modbus_slave_properties(struct knot_thing *thing, int fd)
 
 	id = aux;
 
-	url = storage_read_key_string(fd, THING_GROUP, THING_MODBUS_URL);
+	url = storage_read_key_string(fd, THING_GROUP, THING_URL);
 	if (url == NULL || !strcmp(url, ""))
 		return -EINVAL;
 	/* TODO: Check if modbus url is in a valid format */
