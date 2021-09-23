@@ -69,6 +69,14 @@ Modbus protocol. To install libmodbus, you must follow the instructions:
 4. Finally, build and install libmodbus with
 	`./configure && make && sudo make install`
 
+### Install libplctag
+libplctag is an open source C library for Linux, Windows and macOS uses
+EtherNet/IP or Modbus TCP to read and write tags in PLCs.
+To install libplctag, you must follow the instructions:
+1. `git clone git@github.com:libplctag/libplctag.git`
+2. `git checkout v2.3.7` to checkout to version v2.3.7
+3. Follow instructions on `BUILD.md` file
+4. Install lib files with `sudo make install`
 
 ## Building
 
@@ -122,6 +130,7 @@ The build arguments available are:
 - RABBITMQC_VERSION (Default: v0.10.0)
 - KNOT_PROTOCOL_VERSION (Default: 891d01d)
 - LIBMODBUS_VERSION (Default: v3.1.4)
+- LIBPLCTAG_VERSION (Default: v2.3.7)
 
 ### Running
 
