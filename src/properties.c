@@ -175,6 +175,7 @@ static int set_modbus_source_properties(struct knot_thing *thing,
 	*bit_offset = bit_offset_aux;
 	*reg_addr = reg_addr_aux;
 	*endianness_type = endianness_type_aux;
+
 	return 0;
 }
 

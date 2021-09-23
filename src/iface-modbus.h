@@ -21,7 +21,7 @@ typedef void (*iface_modbus_connected_cb_t) (void *user_data);
 typedef void (*iface_modbus_disconnected_cb_t) (void *user_data);
 
 int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
-		       int endianness_type);
+			   int endianness_type);
 int iface_modbus_start(const char *url, int slave_id,
 		       iface_modbus_connected_cb_t connected_cb,
 		       iface_modbus_disconnected_cb_t disconnected_cb,
