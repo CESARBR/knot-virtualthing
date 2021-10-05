@@ -20,12 +20,12 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include <knot/knot_protocol.h>
-#include <knot/knot_types.h>
-#include <knot/knot_cloud.h>
 #include <ell/ell.h>
 #include <stdio.h>
 #include <errno.h>
+#include <knot/knot_protocol.h>
+#include <knot/knot_types.h>
+#include <knot/knot_cloud.h>
 
 #include "storage.h"
 #include "settings.h"
@@ -33,6 +33,7 @@
 #include "device.h"
 #include "device-pvt.h"
 #include "iface-modbus.h"
+#include "iface-ethernet-ip.h"
 #include "sm.h"
 #include "event.h"
 #include "poll.h"
@@ -49,13 +50,16 @@ enum CONN_TYPE {
 
 struct modbus_slave {
 	int id;
-	char *url;
 };
 
-struct modbus_source {
-	int reg_addr;
-	int bit_offset;
-	int endianness_type_sensor;
+struct ethernet_ip_settings {
+	char plc_type[THING_ETHERNET_IP_MAX_TYPE_PLC_LEN];
+};
+
+struct ethernet_ip_data_settings {
+	char tag_name[ETHERNET_IP_MAX_TYPE_TAG_LEN];
+	char path[ETHERNET_IP_MAX_TYPE_PATH_LEN];
+	int element_size;
 };
 
 struct knot_data_item {
@@ -64,7 +68,10 @@ struct knot_data_item {
 	knot_event event;
 	knot_value_type current_val;
 	knot_value_type sent_val;
-	struct modbus_source modbus_source;
+	int reg_addr;
+	int value_type_size;
+	int endianness_type_sensor;
+	struct ethernet_ip_data_settings ethernet_ip_data_settings;
 };
 
 struct knot_thing {
@@ -74,9 +81,10 @@ struct knot_thing {
 	char *user_token;
 
 	struct modbus_slave modbus_slave;
+	struct ethernet_ip_settings ethernet_ip_settings;
 	char *rabbitmq_url;
 	struct device_settings conf_files;
-
+	char geral_url[THING_MAX_URL_LEN];
 	struct l_hashmap *data_items;
 
 	struct l_timeout *msg_to;
@@ -91,7 +99,7 @@ static void knot_thing_destroy(struct knot_thing *thing)
 
 	l_free(thing->user_token);
 	l_free(thing->rabbitmq_url);
-	l_free(thing->modbus_slave.url);
+	l_free(thing->geral_url);
 	l_free(thing->conf_files.credentials_path);
 	l_free(thing->conf_files.device_path);
 	l_free(thing->conf_files.cloud_path);
@@ -253,7 +261,7 @@ static void on_modbus_disconnected(void *user_data)
 
 static void on_modbus_connected(void *user_data)
 {
-	l_info("Connected to Modbus %s", thing.modbus_slave.url);
+	l_info("Connected to Modbus %s", thing.geral_url);
 
 	poll_start();
 	conn_handler(MODBUS, true);
@@ -269,10 +277,10 @@ static int on_modbus_poll_receive(int id)
 	if (!data_item)
 		return -EINVAL;
 
-	rc = iface_modbus_read_data(data_item->modbus_source.reg_addr,
-		data_item->modbus_source.bit_offset,
-		&data_item->current_val,
-		data_item->modbus_source.endianness_type_sensor);
+	rc = iface_modbus_read_data(data_item->reg_addr,
+				    data_item->value_type_size,
+				    &data_item->current_val,
+				    data_item->endianness_type_sensor);
 	if (event_check_value(data_item->event,
 			      data_item->current_val,
 			      data_item->sent_val,
@@ -330,31 +338,51 @@ void device_set_thing_name(struct knot_thing *thing, const char *name)
 	strcpy(thing->name, name);
 }
 
+void device_set_thing_ethernet_ip_slave(struct knot_thing *thing,
+					const char *type_plc)
+{
+	strcpy(thing->ethernet_ip_settings.plc_type, type_plc);
+}
+
+void device_set_thing_url(struct knot_thing *thing, const char *url)
+{
+	strcpy(thing->geral_url, url);
+}
+
 void device_set_thing_user_token(struct knot_thing *thing, char *token)
 {
 	thing->user_token = token;
 }
 
-void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
-				   char *url)
+void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id)
 {
 	thing->modbus_slave.id = slave_id;
-	thing->modbus_slave.url = url;
 }
 
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
-			      int reg_addr, int bit_offset, int endianness_type)
+			      int reg_addr, int value_type_size,
+			      int endianness_type, void *driver_buffer)
 {
 	struct knot_data_item *data_item_aux;
+#ifdef DRIVER_ETHERNET_IP
+	struct ethernet_ip_data_settings *ethernet_ip = (struct ethernet_ip_data_settings *) driver_buffer;
+#endif /*DRIVER_ETHERNET_IP*/
 
 	data_item_aux = l_new(struct knot_data_item, 1);
+#ifdef DRIVER_ETHERNET_IP
+	data_item_aux->ethernet_ip_data_settings.element_size = ethernet_ip->element_size;
+	strcpy(data_item_aux->ethernet_ip_data_settings.path,
+	       ethernet_ip->path);
+	strcpy(data_item_aux->ethernet_ip_data_settings.tag_name,
+	       ethernet_ip->tag_name);
+#endif /*DRIVER_ETHERNET_IP*/
 	data_item_aux->sensor_id = sensor_id;
 	data_item_aux->schema = schema;
 	data_item_aux->event = event;
-	data_item_aux->modbus_source.reg_addr = reg_addr;
-	data_item_aux->modbus_source.bit_offset = bit_offset;
-	data_item_aux->modbus_source.endianness_type_sensor = endianness_type;
+	data_item_aux->reg_addr = reg_addr;
+	data_item_aux->value_type_size = value_type_size;
+	data_item_aux->endianness_type_sensor = endianness_type;
 
 	l_hashmap_insert(thing->data_items,
 			 L_INT_TO_PTR(data_item_aux->sensor_id),
@@ -566,7 +594,7 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
-	err = iface_modbus_start(thing.modbus_slave.url, thing.modbus_slave.id,
+	err = iface_modbus_start(thing.geral_url, thing.modbus_slave.id,
 				 on_modbus_connected, on_modbus_disconnected,
 				 NULL);
 	if (err < 0) {

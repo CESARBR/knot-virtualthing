@@ -30,17 +30,15 @@
 #define THING_GROUP			"KNoTThing"
 #define THING_NAME			"Name"
 #define THING_USER_TOKEN		"UserToken"
+#define THING_URL			"ThingURL"
 #define THING_MODBUS_SLAVE_ID		"ModbusSlaveId"
 
-#define THING_URL			"ThingURL"
-#define THING_ETHERNET_IP_TYPE_PLC	"EthernetIpTypePLC"
+#define THING_ETHERNET_IP_PLC_TYPE		"EthernetIpPLCType"
 
-#define MODBUS_BIT_OFFSET		"ModbusBitOffset"
-#define MODBUS_MIN_SLAVE_ID		0
-#define MODBUS_MAX_SLAVE_ID		255
-
+#define ETHERNET_IP_TAG_NAME		"EthernetTagName"
 #define ETHERNET_IP_ELEMENT_SIZE	"EthernetIpElementSize"
 #define ETHERNET_IP_PATH		"EthernetIpPath"
+
 
 #define SCHEMA_SENSOR_ID		"SchemaSensorId"
 #define SCHEMA_SENSOR_NAME		"SchemaSensorName"
@@ -55,10 +53,8 @@
 #define EVENT_CHANGE_TRUE		1
 
 #define DATA_REG_ADDRESS		"RegisterAddress"
-#define DATA_TYPE_ENDIANNESS		"ModbusTypeEndianness"
+#define DATA_TYPE_ENDIANNESS		"TypeEndianness"
+#define DATA_VALUE_TYPE_SIZE		"ValueTypeSize"
 
-// definition of endianness type
-#define ENDIANNESS_TYPE_BIG_ENDIAN		0x01
-#define ENDIANNESS_TYPE_MID_BIG_ENDIAN		0x02
-#define ENDIANNESS_TYPE_LITTLE_ENDIAN		0x03
-#define ENDIANNESS_TYPE_MID_LITTLE_ENDIAN	0x04
+#define DRIVER_ETHERNET_IP		1
+#define DRIVER_MODBUS			0

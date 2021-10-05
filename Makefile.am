@@ -17,6 +17,7 @@ src_thingd_SOURCES = src/main.c \
 			src/device.c src/device.h \
 			src/storage.c src/storage.h \
 			src/iface-modbus.c src/iface-modbus.h \
+			src/iface-ethernet-ip.c src/iface-ethernet-ip.h \
 			src/settings.c src/settings.h \
 			src/event.c src/event.h \
 			src/poll.c src/poll.h \

@@ -107,14 +107,14 @@ static int set_rabbit_mq_url(struct knot_thing *thing, int rabbitmq_fd)
 	return 0;
 }
 
-static int valid_bit_offset(int bit_offset, int value_type)
+static int valid_bit_size(int bit_size, int value_type)
 {
 	int value_type_mask;
 	int valid_value_type_mask;
 
 	value_type_mask = 1 << value_type;
 
-	switch (bit_offset) {
+	switch (bit_size) {
 	case 1:
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
 		break;
@@ -142,15 +142,15 @@ static int valid_bit_offset(int bit_offset, int value_type)
 	return 0;
 }
 
-static int set_modbus_source_properties(struct knot_thing *thing,
-					int fd, char *group_id,
-					knot_schema schema,
-					int *reg_addr, int *bit_offset,
-					int *endianness_type)
+static int set_data_properties(struct knot_thing *thing,
+			       int fd, char *group_id,
+			       knot_schema schema,
+			       int *reg_addr, int *bit_size,
+			       int *endianness_type)
 {
 	int rc;
 	int reg_addr_aux;
-	int bit_offset_aux;
+	int bit_size_aux;
 	int endianness_type_aux;
 
 	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
@@ -163,18 +163,56 @@ static int set_modbus_source_properties(struct knot_thing *thing,
 	if (rc <= 0)
 		return -EINVAL;
 
-	rc = storage_read_key_int(fd, group_id, MODBUS_BIT_OFFSET,
-				  &bit_offset_aux);
+	rc = storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
+				  &bit_size_aux);
 	if (rc <= 0)
 		return -EINVAL;
 
-	rc = valid_bit_offset(bit_offset_aux, schema.value_type);
+	rc = valid_bit_size(bit_size_aux, schema.value_type);
 	if (rc < 0)
 		return -EINVAL;
 
-	*bit_offset = bit_offset_aux;
+	*bit_size = bit_size_aux;
 	*reg_addr = reg_addr_aux;
 	*endianness_type = endianness_type_aux;
+
+	return 0;
+}
+
+static int set_ethernet_ip_source_properties(struct knot_thing *thing,
+				int fd, char *group_id,
+				struct ethernet_ip_data_settings *ethernet_ip)
+{
+	int rc;
+	char *tag_name_aux;
+	char *path_aux;
+	int element_size_aux;
+	struct ethernet_ip_data_settings ethernet_ip_prop;
+
+	tag_name_aux = storage_read_key_string(fd, group_id,
+					       ETHERNET_IP_TAG_NAME);
+	if (tag_name_aux == NULL || !strcmp(tag_name_aux, "") ||
+			strlen(tag_name_aux) >= ETHERNET_IP_MAX_TYPE_TAG_LEN)
+		return -EINVAL;
+	strcpy(ethernet_ip_prop.tag_name, tag_name_aux);
+	l_free(tag_name_aux);
+
+	path_aux = storage_read_key_string(fd, group_id, ETHERNET_IP_PATH);
+	if (path_aux == NULL || !strcmp(path_aux, "") ||
+			strlen(path_aux) >= ETHERNET_IP_MAX_TYPE_PATH_LEN)
+		return -EINVAL;
+
+	strcpy(ethernet_ip_prop.path, path_aux);
+	l_free(path_aux);
+
+	rc = storage_read_key_int(fd, group_id, ETHERNET_IP_ELEMENT_SIZE,
+				  &element_size_aux);
+	if (rc <= 0)
+		return -EINVAL;
+
+	ethernet_ip_prop.element_size = element_size_aux;
+
+	*ethernet_ip = ethernet_ip_prop;
 
 	return 0;
 }
@@ -445,7 +483,7 @@ static int set_data_items(struct knot_thing *thing, int fd)
 	int endianness_type;
 	knot_schema schema;
 	knot_event event;
-
+	struct ethernet_ip_data_settings ethernet_ip;
 	data_item_group = get_data_item_groups(fd);
 
 	if (!data_item_group) {
@@ -475,18 +513,29 @@ static int set_data_items(struct knot_thing *thing, int fd)
 			goto error;
 		}
 
-		rc = set_modbus_source_properties(thing, fd, data_item_group[i],
+		rc = set_data_properties(thing, fd, data_item_group[i],
 						  schema, &reg_addr,
 						  &bit_offset,
 						  &endianness_type);
 		if (rc < 0) {
-			l_error("Failed to set Modbus Source properties on %s",
+			l_error("Failed to set Data properties on %s",
 				data_item_group[i]);
 			goto error;
 		}
+#if DRIVER_ETHERNET_IP
+		rc = set_ethernet_ip_source_properties(thing, fd,
+					data_item_group[i],
+					&ethernet_ip);
+		if (rc < 0) {
+			l_error("Failed to set Ethernet/IP Source properties on %s",
+				data_item_group[i]);
+			goto error;
+		}
+#endif
 
 		device_set_new_data_item(thing, sensor_id, schema, event,
-					 reg_addr, bit_offset, endianness_type);
+					 reg_addr, bit_offset, endianness_type,
+					 &ethernet_ip);
 	}
 
 	l_strfreev(data_item_group);
@@ -504,7 +553,6 @@ static int set_modbus_slave_properties(struct knot_thing *thing, int fd)
 	int rc;
 	int aux;
 	int id;
-	char *url;
 
 	rc = storage_read_key_int(fd, THING_GROUP, THING_MODBUS_SLAVE_ID, &aux);
 	if (rc <= 0)
@@ -515,12 +563,26 @@ static int set_modbus_slave_properties(struct knot_thing *thing, int fd)
 
 	id = aux;
 
-	url = storage_read_key_string(fd, THING_GROUP, THING_URL);
-	if (url == NULL || !strcmp(url, ""))
-		return -EINVAL;
-	/* TODO: Check if modbus url is in a valid format */
+	device_set_thing_modbus_slave(thing, id);
 
-	device_set_thing_modbus_slave(thing, id, url);
+	return 0;
+}
+
+static int set_ethernet_ip_slave_properties(struct knot_thing *thing,
+					    int fd)
+{
+	char *plc_type;
+
+	plc_type = storage_read_key_string(fd, THING_GROUP,
+					   THING_ETHERNET_IP_PLC_TYPE);
+	if (plc_type == NULL || !strcmp(plc_type, "") ||
+		strlen(plc_type) >= THING_ETHERNET_IP_MAX_TYPE_PLC_LEN) {
+		l_free(plc_type);
+		return -EINVAL;
+	}
+
+	device_set_thing_ethernet_ip_slave(thing, plc_type);
+	l_free(plc_type);
 
 	return 0;
 }
@@ -556,6 +618,21 @@ static int set_thing_name(struct knot_thing *thing, int fd)
 	return 0;
 }
 
+static int set_thing_url(struct knot_thing *thing, int fd)
+{
+	char *thing_url;
+
+	thing_url = storage_read_key_string(fd, THING_GROUP, THING_URL);
+	if (thing_url == NULL || !strcmp(thing_url, ""))
+		return -EINVAL;
+	/* TODO: Check if modbus url is in a valid format */
+
+	device_set_thing_url(thing, thing_url);
+	l_free(thing_url);
+
+	return 0;
+}
+
 static int set_thing_properties(struct knot_thing *thing, char *filename)
 {
 	int device_fd;
@@ -574,9 +651,20 @@ static int set_thing_properties(struct knot_thing *thing, char *filename)
 		return rc;
 	}
 
-	rc = set_modbus_slave_properties(thing, device_fd);
+	rc = set_thing_url(thing, device_fd);
 	if (rc < 0) {
-		l_error("Failed to set Modbus Slave properties");
+		l_error("Failed to set Thing URL");
+		storage_close(device_fd);
+		return rc;
+	}
+
+#if	DRIVER_MODBUS
+	rc = set_modbus_slave_properties(thing, device_fd);
+#elif	DRIVER_ETHERNET_IP
+	rc = set_ethernet_ip_slave_properties(thing, device_fd);
+#endif
+	if (rc < 0) {
+		l_error("Failed to set driver properties");
 		storage_close(device_fd);
 		return rc;
 	}

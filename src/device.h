@@ -29,13 +29,15 @@ struct device_settings {
 
 void device_set_log_priority(int priority);
 void device_set_thing_name(struct knot_thing *thing, const char *name);
+void device_set_thing_url(struct knot_thing *thing, const char *url);
 void device_set_thing_user_token(struct knot_thing *thing, char *token);
-void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id,
-				   char *url);
+void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id);
+void device_set_thing_ethernet_ip_slave(struct knot_thing *thing,
+					const char *type_plc);
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
-			      int reg_addr, int bit_offset,
-			      int endianness_type);
+			      int reg_addr, int value_type_size,
+			      int endianness_type, void *driver_buffer);
 void device_update_config_data_item(struct knot_thing *thing,
 				    knot_msg_config *config);
 void *device_data_item_lookup(struct knot_thing *thing, int sensor_id);
