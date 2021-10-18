@@ -32,6 +32,7 @@
 #include <asm-generic/ioctls.h>
 
 #include "conf-parameters.h"
+#include "conf-driver.h"
 #include "iface-modbus.h"
 
 #define TCP_PREFIX "tcp://"
@@ -176,7 +177,7 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 	if (!modbus_io)
 		goto connection_close;
 
-	if (!l_io_set_disconnect_handler(modbus_io, on_disconnected, NULL,
+	if (!l_io_set_disconnect_handler(modbus_io, on_disconnected, user_data,
 					 NULL)) {
 		l_error("Couldn't set Modbus disconnect handler");
 		goto io_destroy;
@@ -308,6 +309,7 @@ int iface_modbus_start(const char *url, int slave_id,
 		       iface_modbus_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
+	enum CONN_TYPE type_connect = MODBUS;
 	modbus_ctx = create_ctx(url);
 	if (!modbus_ctx)
 		return -errno;
@@ -318,7 +320,8 @@ int iface_modbus_start(const char *url, int slave_id,
 	conn_cb = connected_cb;
 	disconn_cb = disconnected_cb;
 
-	connect_to = l_timeout_create_ms(1, attempt_connect, NULL, NULL);
+	connect_to = l_timeout_create_ms(1, attempt_connect,
+					 (void *) &type_connect, NULL);
 
 	return 0;
 }
