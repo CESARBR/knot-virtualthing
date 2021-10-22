@@ -27,3 +27,4 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 		       iface_ethernet_ip_connected_cb_t connected_cb,
 		       iface_ethernet_ip_disconnected_cb_t disconnected_cb,
 		       void *user_data);
+void iface_ethernet_ip_stop(void);
