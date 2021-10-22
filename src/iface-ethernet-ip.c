@@ -30,6 +30,19 @@ static iface_ethernet_ip_disconnected_cb_t disconn_cb;
 
 struct knot_thing thing_ethernet_ip;
 
+union ethernet_ip_types {
+	float val_float;
+	uint8_t val_bool;
+	int8_t val_i8;
+	uint8_t val_u8;
+	int16_t val_i16;
+	uint16_t val_u16;
+	int32_t val_i32;
+	uint32_t val_u32;
+	int64_t val_i64;
+	uint64_t val_u64;
+};
+
 #define REQUIRED_VERSION_MAJOR 2
 #define REQUIRED_VERSION_MINOR 1
 #define REQUIRED_VERSION_PATCH 4
@@ -128,6 +141,62 @@ static void foreach_data_item_ethernet_ip(const void *key, void *value,
 	}
 }
 
+int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
+				int value_type_size,
+				knot_value_type *out)
+{
+	int rc;
+	union ethernet_ip_types tmp;
+
+	memset(&tmp, 0, sizeof(tmp));
+
+	rc = plc_tag_read(tag, 100);
+
+	if (rc == PLCTAG_STATUS_OK) {
+		switch (value_type) {
+		//TODO: Update knot_cloud to accept int16
+		case KNOT_VALUE_TYPE_BOOL:
+			tmp.val_bool = plc_tag_get_uint8(tag, reg_addr);
+			break;
+		case KNOT_VALUE_TYPE_INT:
+			if (value_type_size == 8)
+				tmp.val_i8 = plc_tag_get_int8(tag, reg_addr);
+			else if (value_type_size == 16)
+				tmp.val_i16 = plc_tag_get_int16(tag, reg_addr);
+			else if (value_type_size == 32)
+				tmp.val_i32 = plc_tag_get_int32(tag, reg_addr);
+			else
+				rc = 1;
+			break;
+		case KNOT_VALUE_TYPE_UINT:
+			if (value_type_size == 8)
+				tmp.val_u8 = plc_tag_get_uint8(tag, reg_addr);
+			if (value_type_size == 16)
+				tmp.val_u16 = plc_tag_get_uint16(tag, reg_addr);
+			else if (value_type_size == 32)
+				tmp.val_u32 = plc_tag_get_uint32(tag, reg_addr);
+			else
+				rc = 1;
+			break;
+		case KNOT_VALUE_TYPE_INT64:
+			tmp.val_i64 = plc_tag_get_int64(tag, reg_addr);
+			break;
+		case KNOT_VALUE_TYPE_UINT64:
+			tmp.val_u64 = plc_tag_get_uint64(tag, reg_addr);
+			break;
+		default:
+			rc = -EINVAL;
+		}
+
+		memcpy(out, &tmp, sizeof(tmp));
+	} else {
+		l_error("Unable to read the data! Got error code %d: %s\n",
+			rc, plc_tag_decode_error(rc));
+	}
+
+	return rc;
+}
+
 int iface_ethernet_ip_start(struct knot_thing thing,
 		       iface_ethernet_ip_connected_cb_t connected_cb,
 		       iface_ethernet_ip_disconnected_cb_t disconnected_cb,
@@ -156,7 +225,7 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 	conn_cb = connected_cb;
 	disconn_cb = disconnected_cb;
 
-	//TODO: Verify conection of ethernet/ip
+	//TODO: Verify connection of ethernet/ip
 	//connect_to = l_timeout_create_ms(1, attempt_connect, NULL, NULL);
 
 	return 0;
