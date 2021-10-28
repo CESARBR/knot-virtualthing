@@ -25,9 +25,11 @@
 #include "iface-ethernet-ip.h"
 #include "conf-driver.h"
 
+#define RECONNECT_TIMEOUT 5
+
 static iface_ethernet_ip_connected_cb_t conn_cb;
 static iface_ethernet_ip_disconnected_cb_t disconn_cb;
-
+static struct l_timeout *connect_to;
 struct knot_thing thing_ethernet_ip;
 
 union ethernet_ip_types {
@@ -47,13 +49,13 @@ union ethernet_ip_types {
 #define REQUIRED_VERSION_MINOR 1
 #define REQUIRED_VERSION_PATCH 4
 #define ETHERNET_IP_TEMPLATE_MODEL "protocol=ab-eip&gateway=%s&path=%s&cpu=%s&elem_count=%d&name=%s"
-#define DATA_TIMEOUT 500
+#define DATA_TIMEOUT 1000
 
 static void parse_tag_data_item(struct knot_data_item *data_item)
 {
-	struct knot_data_item data_item_aux;
+	char string_tag_path_aux[ETHERNET_IP_MAX_TYPE_STRING_CONNECT_LEN];
 
-	snprintf(data_item_aux.ethernet_ip_data_settings.string_tag_path,
+	snprintf(string_tag_path_aux,
 		 512, ETHERNET_IP_TEMPLATE_MODEL,
 		 thing_ethernet_ip.geral_url,
 		 data_item->ethernet_ip_data_settings.path,
@@ -61,9 +63,10 @@ static void parse_tag_data_item(struct knot_data_item *data_item)
 		 data_item->ethernet_ip_data_settings.element_size,
 		 data_item->ethernet_ip_data_settings.tag_name);
 	printf("%s\n\r",
-	       data_item_aux.ethernet_ip_data_settings.string_tag_path);
+	       string_tag_path_aux);
 
-	*data_item = data_item_aux;
+	strcpy(data_item->ethernet_ip_data_settings.string_tag_path,
+	       (const char *)string_tag_path_aux);
 }
 
 static int verify_tag_name_created(struct knot_data_item *data_item)
@@ -104,7 +107,7 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 
 	    /* everything OK? */
 	if (data_item->ethernet_ip_data_settings.tag < 0) {
-		fprintf(stderr, "ERROR %s: Could not create tag %s!\n",
+		l_error("%s: Could not create tag %s!",
 			plc_tag_decode_error(
 				data_item->ethernet_ip_data_settings.tag),
 				data_item->ethernet_ip_data_settings.tag_name);
@@ -113,7 +116,7 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 
 	rc = plc_tag_status(data_item->ethernet_ip_data_settings.tag);
 	if (rc != PLCTAG_STATUS_OK) {
-		fprintf(stderr, "Error setting up tag internal state. %s\n",
+		l_error("Error setting up tag internal state. %s",
 			plc_tag_decode_error(
 				data_item->ethernet_ip_data_settings.tag));
 		return -EINVAL;
@@ -147,9 +150,44 @@ static void foreach_stop_ethernet_ip(const void *key, void *value,
 	struct knot_data_item *data_item = value;
 	int *rc = user_data;
 
-	*rc = plc_tag_destroy(
-		data_item->ethernet_ip_data_settings.tag);
+	*rc = plc_tag_status(data_item->ethernet_ip_data_settings.tag);
+	if (rc != PLCTAG_STATUS_OK) {
+		l_error("Error setting up tag internal state. %s\n",
+			plc_tag_decode_error(*rc));
+		plc_tag_destroy(data_item->ethernet_ip_data_settings.tag);
+	}
+}
 
+static void on_disconnected(void *user_data)
+{
+	if (disconn_cb)
+		disconn_cb(user_data);
+
+	if (connect_to)
+		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
+}
+
+static void attempt_connect(struct l_timeout *to, void *user_data)
+{
+	int rc = 0;
+
+	l_debug("Trying to connect to Ethernet/Ip");
+
+	l_hashmap_foreach(thing_ethernet_ip.data_items,
+			  foreach_data_item_ethernet_ip, &rc);
+	if (rc) {
+		l_error("error connecting to Ethernet/Ip");
+		goto retry;
+	}
+
+	if (conn_cb)
+		conn_cb(user_data);
+
+	return;
+
+retry:
+	iface_ethernet_ip_stop();
+	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
 int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
@@ -158,6 +196,7 @@ int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
 {
 	int rc;
 	union ethernet_ip_types tmp;
+	enum CONN_TYPE type_connect_aux = ETHERNET_IP;
 
 	memset(&tmp, 0, sizeof(tmp));
 
@@ -203,6 +242,7 @@ int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
 	} else {
 		l_error("Unable to read the data! Got error code %d: %s\n",
 			rc, plc_tag_decode_error(rc));
+		on_disconnected((void *) &type_connect_aux);
 	}
 
 	return rc;
@@ -213,42 +253,36 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 		       iface_ethernet_ip_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	int rc = 0;
-
+	enum CONN_TYPE type_connect = ETHERNET_IP;
 	thing_ethernet_ip = thing;
 
 	if (plc_tag_check_lib_version(REQUIRED_VERSION_MAJOR,
 				      REQUIRED_VERSION_MINOR,
 				      REQUIRED_VERSION_PATCH)
 				      != PLCTAG_STATUS_OK) {
-		fprintf(stderr,
-			"Required compatible library version %d.%d.%d not available!",
+		l_debug("Required compatible library version %d.%d.%d not available!",
 			REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR,
 			REQUIRED_VERSION_PATCH);
 		return -EPERM;
 	}
 
-	l_hashmap_foreach(thing.data_items, foreach_data_item_ethernet_ip,
-			&rc);
-	if (rc)
-		return -EINVAL;
-
 	conn_cb = connected_cb;
 	disconn_cb = disconnected_cb;
 
 	//TODO: Verify connection of ethernet/ip
-	//connect_to = l_timeout_create_ms(1, attempt_connect, NULL, NULL);
+	connect_to = l_timeout_create_ms(1, attempt_connect,
+					 (void *) &type_connect, NULL);
 
 	return 0;
 }
 
 void iface_ethernet_ip_stop(void)
 {
-	//TODO: Verify connection of ethernet/ip
-	//l_timeout_remove(connect_to);
-	//connect_to = NULL;
 	int rc = 0;
 
 	l_hashmap_foreach(thing_ethernet_ip.data_items,
 			  foreach_stop_ethernet_ip, &rc);
+	if (rc)
+		l_error("error disconnect to Ethernet/Ip");
+
 }
