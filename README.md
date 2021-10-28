@@ -17,6 +17,7 @@ Build:
 - rabbitmq-c v0.10.0
 - knot-protocol 891d01d
 - libmodbus v3.1.4
+- libplctag v2.4.1
 
 Test:
 - check v0.10.0
@@ -74,7 +75,7 @@ libplctag is an open source C library for Linux, Windows and macOS uses
 EtherNet/IP or Modbus TCP to read and write tags in PLCs.
 To install libplctag, you must follow the instructions:
 1. `git clone git@github.com:libplctag/libplctag.git`
-2. `git checkout v2.3.7` to checkout to version v2.3.7
+2. `git checkout v2.4.1` to checkout to version v2.4.1
 3. Follow instructions on `BUILD.md` file
 4. Install lib files with `sudo make install`
 
@@ -130,7 +131,7 @@ The build arguments available are:
 - RABBITMQC_VERSION (Default: v0.10.0)
 - KNOT_PROTOCOL_VERSION (Default: 891d01d)
 - LIBMODBUS_VERSION (Default: v3.1.4)
-- LIBPLCTAG_VERSION (Default: v2.3.7)
+- LIBPLCTAG_VERSION (Default: v2.4.1)
 
 ### Running
 
