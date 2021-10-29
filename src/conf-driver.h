@@ -34,9 +34,8 @@
 #define ENDIANNESS_TYPE_MID_LITTLE_ENDIAN	0x04
 
 enum CONN_TYPE {
-	MODBUS = 0x00F,
-	ETHERNET_IP = 0x0F0,
-	CLOUD = 0xF00
+	DRIVER = 0x0F,
+	CLOUD = 0xF0
 };
 
 struct device_settings {
