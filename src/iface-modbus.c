@@ -31,8 +31,7 @@
 #include <linux/serial.h>
 #include <asm-generic/ioctls.h>
 
-#include "conf-parameters.h"
-#include "conf-driver.h"
+#include "conf-device.h"
 #include "iface-modbus.h"
 
 #define TCP_PREFIX "tcp://"
@@ -68,6 +67,7 @@ static struct l_io *modbus_io;
 static modbus_t *modbus_ctx;
 static iface_modbus_connected_cb_t conn_cb;
 static iface_modbus_disconnected_cb_t disconn_cb;
+struct knot_thing thing_modbus;
 
 static modbus_t *create_rtu(const char *url)
 {
@@ -248,8 +248,7 @@ static void iface_modbus_config_endianness_type_recv_64_bits(uint64_t *src,
 	}
 }
 
-int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
-			   int endianness_type)
+int iface_modbus_read_data(struct knot_data_item *data_item)
 {
 	int rc;
 	union modbus_types tmp;
@@ -258,13 +257,14 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
 
 	memset(&tmp, 0, sizeof(tmp));
 
-	switch (bit_offset) {
+	switch (data_item->value_type_size) {
 	case TYPE_BOOL:
-		rc = modbus_read_input_bits(modbus_ctx, reg_addr, 1,
+		rc = modbus_read_input_bits(modbus_ctx, data_item->reg_addr, 1,
 					    &tmp.val_bool);
 		break;
 	case TYPE_BYTE:
-		rc = modbus_read_input_bits(modbus_ctx, reg_addr, 8, byte_tmp);
+		rc = modbus_read_input_bits(modbus_ctx, data_item->reg_addr,
+					    8, byte_tmp);
 		/**
 		 * Store in tmp.val_byte the value read from a Modbus Slave
 		 * where each position of byte_tmp corresponds to a bit.
@@ -273,21 +273,21 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
 			tmp.val_byte |= byte_tmp[i] << i;
 		break;
 	case TYPE_U16:
-		rc = modbus_read_registers(modbus_ctx, reg_addr, 1,
+		rc = modbus_read_registers(modbus_ctx, data_item->reg_addr, 1,
 					   &tmp.val_u16);
 		break;
 	case TYPE_U32:
-		rc = modbus_read_registers(modbus_ctx, reg_addr, 2,
+		rc = modbus_read_registers(modbus_ctx, data_item->reg_addr, 2,
 					   (uint16_t *) &tmp.val_u32);
 		iface_modbus_config_endianness_type_recv_32_bits(&tmp.val_u32,
-						endianness_type);
+						thing_modbus.endianness_type);
 		break;
 
 	case TYPE_U64:
-		rc = modbus_read_registers(modbus_ctx, reg_addr, 4,
+		rc = modbus_read_registers(modbus_ctx, data_item->reg_addr, 4,
 					   (uint16_t *) &tmp.val_u64);
 		iface_modbus_config_endianness_type_recv_64_bits(&tmp.val_u64,
-						endianness_type);
+						thing_modbus.endianness_type);
 		break;
 	default:
 		rc = -EINVAL;
@@ -298,22 +298,24 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
 		l_error("Failed to read from Modbus: %s (%d)",
 			modbus_strerror(errno), rc);
 	} else {
-		memcpy(out, &tmp, sizeof(tmp));
+		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	}
 
 	return rc;
 }
 
-int iface_modbus_start(const char *url, int slave_id,
+int iface_modbus_start(struct knot_thing thing,
 		       iface_modbus_connected_cb_t connected_cb,
 		       iface_modbus_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	modbus_ctx = create_ctx(url);
+	thing_modbus = thing;
+
+	modbus_ctx = create_ctx(thing.geral_url);
 	if (!modbus_ctx)
 		return -errno;
 
-	if (modbus_set_slave(modbus_ctx, slave_id) < 0)
+	if (modbus_set_slave(modbus_ctx, thing.driver_id) < 0)
 		return -errno;
 
 	conn_cb = connected_cb;
@@ -336,4 +338,3 @@ void iface_modbus_stop(void)
 	modbus_close(modbus_ctx);
 	modbus_free(modbus_ctx);
 }
-

@@ -14,15 +14,10 @@
  *  Lesser General Public License for more details.
  */
 
-struct knot_thing;
-struct knot_value_type;
-
 typedef void (*iface_ethernet_ip_connected_cb_t) (void *user_data);
 typedef void (*iface_ethernet_ip_disconnected_cb_t) (void *user_data);
 
-int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
-				int value_type_size,
-				knot_value_type *out);
+int iface_ethernet_ip_read_data(struct knot_data_item *data_item);
 int iface_ethernet_ip_start(struct knot_thing thing,
 		       iface_ethernet_ip_connected_cb_t connected_cb,
 		       iface_ethernet_ip_disconnected_cb_t disconnected_cb,

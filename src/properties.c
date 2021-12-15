@@ -26,11 +26,12 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "driver.h"
 #include "device.h"
 #include "properties.h"
 #include "storage.h"
 #include "conf-parameters.h"
-#include "conf-driver.h"
+#include "conf-device.h"
 
 #define EMPTY_STRING ""
 
@@ -146,23 +147,44 @@ static int valid_bit_size(int bit_size, int value_type)
 static int set_data_properties(struct knot_thing *thing,
 			       int fd, char *group_id,
 			       knot_schema schema,
-			       int *reg_addr, int *bit_size,
-			       int *endianness_type)
+			       struct knot_data_item *data_item)
 {
 	int rc;
 	int reg_addr_aux;
 	int bit_size_aux;
-	int endianness_type_aux;
+	char *tag_name_aux;
+	char *path_aux;
+	int element_size_aux;
+	struct knot_data_item data_item_aux;
+
+	tag_name_aux = storage_read_key_string(fd, group_id,
+					DATA_IP_TAG_NAME);
+	if (strlen(tag_name_aux) >= DRIVER_MAX_TYPE_TAG_LEN)
+		return -EINVAL;
+
+	strcpy(data_item_aux.tag_name, tag_name_aux);
+	l_free(tag_name_aux);
+
+	path_aux = storage_read_key_string(fd, group_id, DATA_IP_PATH);
+	if (strlen(path_aux) >= DRIVER_MAX_TYPE_PATH_LEN)
+		return -EINVAL;
+
+	strcpy(data_item_aux.path, path_aux);
+	l_free(path_aux);
+
+	rc = storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
+			&element_size_aux);
+	if (rc < 0)
+		return -EINVAL;
+
+	data_item_aux.element_size = element_size_aux;
+
 
 	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
 	if (rc <= 0)
 		return -EINVAL;
-
-	rc = storage_read_key_int(fd, group_id, DATA_TYPE_ENDIANNESS,
-				  &endianness_type_aux);
-	if (rc <= 0)
-		return -EINVAL;
+	data_item_aux.reg_addr = reg_addr_aux;
 
 	rc = storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
 				  &bit_size_aux);
@@ -172,48 +194,9 @@ static int set_data_properties(struct knot_thing *thing,
 	rc = valid_bit_size(bit_size_aux, schema.value_type);
 	if (rc < 0)
 		return -EINVAL;
+	data_item_aux.value_type_size = bit_size_aux;
 
-	*bit_size = bit_size_aux;
-	*reg_addr = reg_addr_aux;
-	*endianness_type = endianness_type_aux;
-
-	return 0;
-}
-
-static int set_ethernet_ip_source_properties(struct knot_thing *thing,
-				int fd, char *group_id,
-				struct ethernet_ip_data_settings *ethernet_ip)
-{
-	int rc;
-	char *tag_name_aux;
-	char *path_aux;
-	int element_size_aux;
-	struct ethernet_ip_data_settings ethernet_ip_prop;
-
-	tag_name_aux = storage_read_key_string(fd, group_id,
-					       ETHERNET_IP_TAG_NAME);
-	if (tag_name_aux == NULL || !strcmp(tag_name_aux, "") ||
-			strlen(tag_name_aux) >= ETHERNET_IP_MAX_TYPE_TAG_LEN)
-		return -EINVAL;
-	strcpy(ethernet_ip_prop.tag_name, tag_name_aux);
-	l_free(tag_name_aux);
-
-	path_aux = storage_read_key_string(fd, group_id, ETHERNET_IP_PATH);
-	if (path_aux == NULL || !strcmp(path_aux, "") ||
-			strlen(path_aux) >= ETHERNET_IP_MAX_TYPE_PATH_LEN)
-		return -EINVAL;
-
-	strcpy(ethernet_ip_prop.path, path_aux);
-	l_free(path_aux);
-
-	rc = storage_read_key_int(fd, group_id, ETHERNET_IP_ELEMENT_SIZE,
-				  &element_size_aux);
-	if (rc <= 0)
-		return -EINVAL;
-
-	ethernet_ip_prop.element_size = element_size_aux;
-
-	*ethernet_ip = ethernet_ip_prop;
+	*data_item = data_item_aux;
 
 	return 0;
 }
@@ -472,19 +455,18 @@ static int set_sensor_id(struct knot_thing *thing, int fd, char *group_id,
 	return 0;
 }
 
-static int set_data_items(struct knot_thing *thing, int fd)
+static int set_data_items(struct knot_thing *thing,
+			  int fd)
 {
 	int rc;
 	int i;
 	char **data_item_group;
-
 	int sensor_id;
-	int reg_addr;
-	int bit_offset;
-	int endianness_type;
+
+	struct knot_data_item data_item_aux;
 	knot_schema schema;
 	knot_event event;
-	struct ethernet_ip_data_settings ethernet_ip;
+
 	data_item_group = get_data_item_groups(fd);
 
 	if (!data_item_group) {
@@ -515,28 +497,15 @@ static int set_data_items(struct knot_thing *thing, int fd)
 		}
 
 		rc = set_data_properties(thing, fd, data_item_group[i],
-						  schema, &reg_addr,
-						  &bit_offset,
-						  &endianness_type);
+					 schema, &data_item_aux);
 		if (rc < 0) {
 			l_error("Failed to set Data properties on %s",
 				data_item_group[i]);
 			goto error;
 		}
-#if DRIVER_ETHERNET_IP
-		rc = set_ethernet_ip_source_properties(thing, fd,
-					data_item_group[i],
-					&ethernet_ip);
-		if (rc < 0) {
-			l_error("Failed to set Ethernet/IP Source properties on %s",
-				data_item_group[i]);
-			goto error;
-		}
-#endif
 
 		device_set_new_data_item(thing, sensor_id, schema, event,
-					 reg_addr, bit_offset, endianness_type,
-					 &ethernet_ip);
+					 data_item_aux);
 	}
 
 	l_strfreev(data_item_group);
@@ -549,41 +518,44 @@ error:
 	return -EINVAL;
 }
 
-static int set_modbus_slave_properties(struct knot_thing *thing, int fd)
+static int set_driver_properties(struct knot_thing *thing, int fd)
 {
 	int rc;
-	int aux;
 	int id;
+	int endianness_type_aux;
+	char *protocol;
+	char *name_type;
 
-	rc = storage_read_key_int(fd, THING_GROUP, THING_MODBUS_SLAVE_ID, &aux);
-	if (rc <= 0)
-		return -EINVAL;
-
-	if (aux < MODBUS_MIN_SLAVE_ID || aux > MODBUS_MAX_SLAVE_ID)
-		return -EINVAL;
-
-	id = aux;
-
-	device_set_thing_modbus_slave(thing, id);
-
-	return 0;
-}
-
-static int set_ethernet_ip_slave_properties(struct knot_thing *thing,
-					    int fd)
-{
-	char *plc_type;
-
-	plc_type = storage_read_key_string(fd, THING_GROUP,
-					   THING_ETHERNET_IP_PLC_TYPE);
-	if (plc_type == NULL || !strcmp(plc_type, "") ||
-		strlen(plc_type) >= THING_ETHERNET_IP_MAX_TYPE_PLC_LEN) {
-		l_free(plc_type);
+	protocol = storage_read_key_string(fd, THING_GROUP,
+					   DRIVER_PROTOCOL_TYPE);
+	if (protocol == NULL || !strcmp(protocol, "") ||
+		strlen(protocol) >= DRIVER_MAX_PROTOCOL_TYPE_LEN) {
+		l_free(protocol);
 		return -EINVAL;
 	}
+	device_set_protocol_type(thing, protocol);
 
-	device_set_thing_ethernet_ip_slave(thing, plc_type);
-	l_free(plc_type);
+	name_type = storage_read_key_string(fd, THING_GROUP,
+					    DRIVER_NAME_TYPE);
+	if (strlen(name_type) >= DRIVER_MAX_NAME_TYPE_LEN) {
+		l_free(name_type);
+		return -EINVAL;
+	}
+	device_set_driver_name_type(thing, name_type);
+
+	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
+	if ((id < DRIVER_MIN_ID || id > DRIVER_MAX_ID))
+		return -EINVAL;
+	device_set_driver_id(thing, id);
+
+	rc = storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
+				&endianness_type_aux);
+	if (rc <= 0)
+		return -EINVAL;
+	device_set_endianness_type(thing, endianness_type_aux);
+
+	l_free(name_type);
+	l_free(protocol);
 
 	return 0;
 }
@@ -619,17 +591,17 @@ static int set_thing_name(struct knot_thing *thing, int fd)
 	return 0;
 }
 
-static int set_thing_url(struct knot_thing *thing, int fd)
+static int set_driver_url(struct knot_thing *thing, int fd)
 {
-	char *thing_url;
+	char *driver_url;
 
-	thing_url = storage_read_key_string(fd, THING_GROUP, THING_URL);
-	if (thing_url == NULL || !strcmp(thing_url, ""))
+	driver_url = storage_read_key_string(fd, THING_GROUP, DRIVER_URL);
+	if (driver_url == NULL || !strcmp(driver_url, ""))
 		return -EINVAL;
 	/* TODO: Check if modbus url is in a valid format */
 
-	device_set_thing_url(thing, thing_url);
-	l_free(thing_url);
+	device_set_driver_url(thing, driver_url);
+	l_free(driver_url);
 
 	return 0;
 }
@@ -652,18 +624,14 @@ static int set_thing_properties(struct knot_thing *thing, char *filename)
 		return rc;
 	}
 
-	rc = set_thing_url(thing, device_fd);
+	rc = set_driver_url(thing, device_fd);
 	if (rc < 0) {
 		l_error("Failed to set Thing URL");
 		storage_close(device_fd);
 		return rc;
 	}
 
-#if	DRIVER_MODBUS
-	rc = set_modbus_slave_properties(thing, device_fd);
-#elif	DRIVER_ETHERNET_IP
-	rc = set_ethernet_ip_slave_properties(thing, device_fd);
-#endif
+	rc = set_driver_properties(thing, device_fd);
 	if (rc < 0) {
 		l_error("Failed to set driver properties");
 		storage_close(device_fd);
@@ -813,23 +781,23 @@ static bool equal_sensor_id(int fd, const char *group_id, int sensor_id)
 }
 
 int properties_create_device(struct knot_thing *thing,
-			     struct device_settings *conf_files)
+			     struct device_settings *settings)
 {
 	int rc;
 
-	rc = set_thing_properties(thing, conf_files->device_path);
+	rc = set_thing_properties(thing, settings->device_path);
 	if (rc < 0) {
 		l_error("Failed to set Thing properties");
 		return rc;
 	}
 
-	rc = set_cloud_properties(thing, conf_files->cloud_path);
+	rc = set_cloud_properties(thing, settings->cloud_path);
 	if (rc < 0) {
 		l_error("Failed to set Cloud properties");
 		return rc;
 	}
 
-	rc = set_thing_credentials(thing, conf_files->credentials_path);
+	rc = set_thing_credentials(thing, settings->credentials_path);
 	if (rc < 0) {
 		l_error("Failed to set Thing credentials");
 		return rc;

@@ -30,21 +30,21 @@
 #include "storage.h"
 #include "settings.h"
 #include "conf-parameters.h"
+#include "conf-device.h"
 #include "device.h"
 #include "device-pvt.h"
-#include "iface-modbus.h"
-#include "iface-ethernet-ip.h"
+#include "driver.h"
 #include "sm.h"
 #include "event.h"
 #include "poll.h"
 #include "properties.h"
-#include "conf-driver.h"
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
 #define DEFAULT_POLLING_INTERVAL 1
 
 struct knot_thing thing;
+struct driver_ops *driver;
 
 static void knot_thing_destroy(struct knot_thing *thing)
 {
@@ -207,7 +207,7 @@ static void on_cloud_connected(void *user_data)
 
 static void on_driver_disconnected(void *user_data)
 {
-	l_info("Disconnected");
+	l_info("Disconnected from Driver");
 
 	poll_stop();
 	conn_handler(DRIVER, false);
@@ -215,40 +215,29 @@ static void on_driver_disconnected(void *user_data)
 
 static void on_driver_connected(void *user_data)
 {
-	l_info("Connected to %s", thing.geral_url);
+	l_info("Connected to Driver %s", thing.geral_url);
 
 	poll_start();
 	conn_handler(DRIVER, true);
 }
 
-static int on_poll_receive(int id)
+static int on_driver_poll_receive(int id)
 {
-	struct knot_data_item *data_item;
+	struct knot_data_item *data_item_aux;
 	struct l_queue *list;
 	int rc;
 
-	data_item = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
-	if (!data_item)
+	data_item_aux = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
+	if (!data_item_aux)
 		return -EINVAL;
-#if DRIVER_MODBUS
-	rc = iface_modbus_read_data(data_item->reg_addr,
-				    data_item->value_type_size,
-				    &data_item->current_val,
-				    data_item->endianness_type_sensor);
-#elif DRIVER_ETHERNET_IP
-	rc = iface_ethernet_ip_read_data(
-				    data_item->ethernet_ip_data_settings.tag,
-				    data_item->reg_addr,
-				    data_item->schema.value_type,
-				    data_item->value_type_size,
-				    &data_item->current_val);
-#endif
 
-	if (event_check_value(data_item->event,
-			      data_item->current_val,
-			      data_item->sent_val,
-			      data_item->schema.value_type) > 0) {
-		data_item->sent_val = data_item->current_val;
+	rc = driver->read(data_item_aux);
+
+	if (event_check_value(data_item_aux->event,
+			      data_item_aux->current_val,
+			      data_item_aux->sent_val,
+			      data_item_aux->schema.value_type) > 0) {
+		data_item_aux->sent_val = data_item_aux->current_val;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
 
@@ -267,7 +256,7 @@ static void foreach_data_item_polling(const void *key, void *value,
 	int *rc = user_data;
 
 	if (poll_create(DEFAULT_POLLING_INTERVAL, data_item->sensor_id,
-			on_poll_receive)) {
+			on_driver_poll_receive)) {
 		l_error("Fail on create poll to read data item with id: %d",
 			data_item->sensor_id);
 		*rc = -1;
@@ -301,13 +290,25 @@ void device_set_thing_name(struct knot_thing *thing, const char *name)
 	strcpy(thing->name, name);
 }
 
-void device_set_thing_ethernet_ip_slave(struct knot_thing *thing,
-					const char *type_plc)
+void device_set_protocol_type(struct knot_thing *thing,
+			      const char *protocol_type)
 {
-	strcpy(thing->ethernet_ip_settings.plc_type, type_plc);
+	strcpy(thing->protocol_type, protocol_type);
 }
 
-void device_set_thing_url(struct knot_thing *thing, const char *url)
+void device_set_endianness_type(struct knot_thing *thing,
+				int endianness_type)
+{
+	thing->endianness_type = endianness_type;
+}
+
+void device_set_driver_name_type(struct knot_thing *thing,
+				const char *name_type)
+{
+	strcpy(thing->name_type, name_type);
+}
+
+void device_set_driver_url(struct knot_thing *thing, const char *url)
 {
 	strcpy(thing->geral_url, url);
 }
@@ -317,36 +318,27 @@ void device_set_thing_user_token(struct knot_thing *thing, char *token)
 	thing->user_token = token;
 }
 
-void device_set_thing_modbus_slave(struct knot_thing *thing, int slave_id)
+void device_set_driver_id(struct knot_thing *thing, int slave_id)
 {
-	thing->modbus_slave.id = slave_id;
+	thing->driver_id = slave_id;
 }
 
 
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 			      knot_schema schema, knot_event event,
-			      int reg_addr, int value_type_size,
-			      int endianness_type, void *driver_buffer)
+			      struct knot_data_item data_aux)
 {
 	struct knot_data_item *data_item_aux;
-#ifdef DRIVER_ETHERNET_IP
-	struct ethernet_ip_data_settings *ethernet_ip = (struct ethernet_ip_data_settings *) driver_buffer;
-#endif /*DRIVER_ETHERNET_IP*/
 
 	data_item_aux = l_new(struct knot_data_item, 1);
 	data_item_aux->sensor_id = sensor_id;
 	data_item_aux->schema = schema;
 	data_item_aux->event = event;
-	data_item_aux->reg_addr = reg_addr;
-	data_item_aux->value_type_size = value_type_size;
-	data_item_aux->endianness_type_sensor = endianness_type;
-#ifdef DRIVER_ETHERNET_IP
-	data_item_aux->ethernet_ip_data_settings.element_size = ethernet_ip->element_size;
-	strcpy(data_item_aux->ethernet_ip_data_settings.path,
-	       ethernet_ip->path);
-	strcpy(data_item_aux->ethernet_ip_data_settings.tag_name,
-	       ethernet_ip->tag_name);
-#endif /*DRIVER_ETHERNET_IP*/
+	data_item_aux->reg_addr = data_aux.reg_addr;
+	data_item_aux->value_type_size = data_aux.value_type_size;
+	data_item_aux->element_size = data_aux.element_size;
+	strcpy(data_item_aux->path, data_aux.path);
+	strcpy(data_item_aux->tag_name, data_aux.tag_name);
 
 	l_hashmap_insert(thing->data_items,
 			 L_INT_TO_PTR(data_item_aux->sensor_id),
@@ -539,12 +531,12 @@ int device_start_read_cloud(void)
 	return knot_cloud_read_start(thing.id, on_cloud_receive, NULL);
 }
 
-int device_start(struct device_settings *conf_files)
+int device_start(struct device_settings *settings)
 {
 	int err;
 
 	thing.data_items = l_hashmap_new();
-	if (properties_create_device(&thing, conf_files)) {
+	if (properties_create_device(&thing, settings)) {
 		l_error("Failed to set device properties");
 		return -EINVAL;
 	}
@@ -558,16 +550,18 @@ int device_start(struct device_settings *conf_files)
 		return err;
 	}
 
-#if DRIVER_MODBUS
-	err = iface_modbus_start(thing.geral_url, thing.modbus_slave.id,
-				 on_driver_connected, on_driver_disconnected,
-				 NULL);
-#elif DRIVER_ETHERNET_IP
-	err = iface_ethernet_ip_start(thing,
-				 on_driver_connected, on_driver_disconnected,
-				 NULL);
-#endif
+	driver = create_driver(thing.protocol_type);
+	if (!driver) {
+		l_error("Failed to initialize Driver");
+		poll_destroy();
+		knot_thing_destroy(&thing);
+		return -1;
+	}
 
+	err = driver->start(thing,
+			    on_driver_connected,
+			    on_driver_disconnected,
+			    NULL);
 	if (err < 0) {
 		l_error("Failed to initialize Driver");
 		poll_destroy();
@@ -580,13 +574,7 @@ int device_start(struct device_settings *conf_files)
 	if (err < 0) {
 		l_error("Failed to initialize Cloud");
 		poll_destroy();
-
-#if DRIVER_MODBUS
-		iface_modbus_stop();
-#elif DRIVER_ETHERNET_IP
-		iface_ethernet_ip_stop();
-#endif
-
+		driver->stop();
 		knot_thing_destroy(&thing);
 		return err;
 	}
@@ -594,9 +582,9 @@ int device_start(struct device_settings *conf_files)
 	l_info("Device \"%s\" has started successfully", thing.name);
 
 	thing.conf_files.credentials_path =
-					l_strdup(conf_files->credentials_path);
-	thing.conf_files.device_path = l_strdup(conf_files->device_path);
-	thing.conf_files.cloud_path = l_strdup(conf_files->cloud_path);
+					l_strdup(settings->credentials_path);
+	thing.conf_files.device_path = l_strdup(settings->device_path);
+	thing.conf_files.cloud_path = l_strdup(settings->cloud_path);
 
 	return 0;
 }
@@ -607,10 +595,7 @@ void device_destroy(void)
 
 	poll_destroy();
 	knot_cloud_stop();
-#if DRIVER_MODBUS
-	iface_modbus_stop();
-#elif DRIVER_ETHERNET_IP
-	iface_ethernet_ip_stop();
-#endif
+	driver->stop();
+
 	knot_thing_destroy(&thing);
 }
