@@ -22,8 +22,8 @@
 #include <knot/knot_types.h>
 #include <knot/knot_protocol.h>
 
+#include "conf-device.h"
 #include "iface-ethernet-ip.h"
-#include "conf-driver.h"
 
 #define RECONNECT_TIMEOUT 5
 
@@ -53,19 +53,19 @@ union ethernet_ip_types {
 
 static void parse_tag_data_item(struct knot_data_item *data_item)
 {
-	char string_tag_path_aux[ETHERNET_IP_MAX_TYPE_STRING_CONNECT_LEN];
+	char string_tag_path_aux[DRIVER_MAX_TYPE_STRING_CONNECT_LEN];
 
 	snprintf(string_tag_path_aux,
 		 512, ETHERNET_IP_TEMPLATE_MODEL,
 		 thing_ethernet_ip.geral_url,
-		 data_item->ethernet_ip_data_settings.path,
-		 thing_ethernet_ip.ethernet_ip_settings.plc_type,
-		 data_item->ethernet_ip_data_settings.element_size,
-		 data_item->ethernet_ip_data_settings.tag_name);
+		 data_item->path,
+		 thing_ethernet_ip.name_type,
+		 data_item->element_size,
+		 data_item->tag_name);
 	printf("%s\n\r",
 	       string_tag_path_aux);
 
-	strcpy(data_item->ethernet_ip_data_settings.string_tag_path,
+	strcpy(data_item->string_tag_path,
 	       (const char *)string_tag_path_aux);
 }
 
@@ -84,11 +84,11 @@ static int verify_tag_name_created(struct knot_data_item *data_item)
 			rc = -EINVAL;
 
 		return_aux = strcmp(
-			data_item_aux->ethernet_ip_data_settings.tag_name,
-			data_item->ethernet_ip_data_settings.tag_name);
+			data_item_aux->tag_name,
+			data_item->tag_name);
 		if (!return_aux) {
-			data_item->ethernet_ip_data_settings.tag =
-				data_item_aux->ethernet_ip_data_settings.tag;
+			data_item->tag =
+				data_item_aux->tag;
 			rc = 0;
 			break;
 		}
@@ -101,23 +101,23 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 {
 	int rc = 0;
 
-	data_item->ethernet_ip_data_settings.tag = plc_tag_create(
-			data_item->ethernet_ip_data_settings.string_tag_path,
+	data_item->tag = plc_tag_create(
+			data_item->string_tag_path,
 			DATA_TIMEOUT);
 
-	if (data_item->ethernet_ip_data_settings.tag < 0) {
+	if (data_item->tag < 0) {
 		l_error("%s: Could not create tag %s!",
 			plc_tag_decode_error(
-				data_item->ethernet_ip_data_settings.tag),
-				data_item->ethernet_ip_data_settings.tag_name);
+				data_item->tag),
+				data_item->tag_name);
 		return -EINVAL;
 	}
 
-	rc = plc_tag_status(data_item->ethernet_ip_data_settings.tag);
+	rc = plc_tag_status(data_item->tag);
 	if (rc != PLCTAG_STATUS_OK) {
 		l_error("Error setting up tag internal state. %s",
 			plc_tag_decode_error(
-				data_item->ethernet_ip_data_settings.tag));
+				data_item->tag));
 		return -EINVAL;
 	}
 
@@ -137,7 +137,7 @@ static void foreach_data_item_ethernet_ip(const void *key, void *value,
 		return_aux = connect_ethernet_ip(data_item);
 		if (return_aux) {
 			plc_tag_destroy(
-				data_item->ethernet_ip_data_settings.tag);
+				data_item->tag);
 			*rc = -EINVAL;
 		}
 	}
@@ -149,11 +149,11 @@ static void foreach_stop_ethernet_ip(const void *key, void *value,
 	struct knot_data_item *data_item = value;
 	int *rc = user_data;
 
-	*rc = plc_tag_status(data_item->ethernet_ip_data_settings.tag);
+	*rc = plc_tag_status(data_item->tag);
 	if (rc != PLCTAG_STATUS_OK) {
 		l_error("Error setting up tag internal state. %s\n",
 			plc_tag_decode_error(*rc));
-		plc_tag_destroy(data_item->ethernet_ip_data_settings.tag);
+		plc_tag_destroy(data_item->tag);
 	}
 }
 
@@ -189,54 +189,65 @@ retry:
 	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
-int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
-				int value_type_size,
-				knot_value_type *out)
+int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 {
 	int rc;
 	union ethernet_ip_types tmp;
 
 	memset(&tmp, 0, sizeof(tmp));
 
-	rc = plc_tag_read(tag, 100);
+	rc = plc_tag_read(data_item->tag, 100);
 
 	if (rc == PLCTAG_STATUS_OK) {
-		switch (value_type) {
+		switch (data_item->schema.value_type) {
 		//TODO: Update knot_cloud to accept int16
 		case KNOT_VALUE_TYPE_BOOL:
-			tmp.val_bool = plc_tag_get_uint8(tag, reg_addr);
+			tmp.val_bool = plc_tag_get_uint8(data_item->tag,
+							 data_item->reg_addr);
+			break;
+		case KNOT_VALUE_TYPE_FLOAT:
+			tmp.val_float = plc_tag_get_float32(data_item->tag,
+							data_item->reg_addr);
 			break;
 		case KNOT_VALUE_TYPE_INT:
-			if (value_type_size == 8)
-				tmp.val_i8 = plc_tag_get_int8(tag, reg_addr);
-			else if (value_type_size == 16)
-				tmp.val_i16 = plc_tag_get_int16(tag, reg_addr);
-			else if (value_type_size == 32)
-				tmp.val_i32 = plc_tag_get_int32(tag, reg_addr);
+			if (data_item->value_type_size == 8)
+				tmp.val_i8 = plc_tag_get_int8(data_item->tag,
+							data_item->reg_addr);
+			else if (data_item->value_type_size == 16)
+				tmp.val_i16 = plc_tag_get_int16(data_item->tag,
+							data_item->reg_addr);
+			else if (data_item->value_type_size == 32)
+				tmp.val_i32 = plc_tag_get_int32(data_item->tag,
+							data_item->reg_addr);
 			else
 				rc = 1;
 			break;
 		case KNOT_VALUE_TYPE_UINT:
-			if (value_type_size == 8)
-				tmp.val_u8 = plc_tag_get_uint8(tag, reg_addr);
-			if (value_type_size == 16)
-				tmp.val_u16 = plc_tag_get_uint16(tag, reg_addr);
-			else if (value_type_size == 32)
-				tmp.val_u32 = plc_tag_get_uint32(tag, reg_addr);
+			if (data_item->value_type_size == 8)
+				tmp.val_u8 = plc_tag_get_uint8(data_item->tag,
+							data_item->reg_addr);
+			if (data_item->value_type_size == 16)
+				tmp.val_u16 = plc_tag_get_uint16(data_item->tag,
+							data_item->reg_addr);
+			else if (data_item->value_type_size == 32)
+				tmp.val_u32 = plc_tag_get_uint32(data_item->tag,
+							data_item->reg_addr);
 			else
 				rc = 1;
 			break;
 		case KNOT_VALUE_TYPE_INT64:
-			tmp.val_i64 = plc_tag_get_int64(tag, reg_addr);
+			tmp.val_i64 = plc_tag_get_int64(data_item->tag,
+						data_item->reg_addr);
 			break;
 		case KNOT_VALUE_TYPE_UINT64:
-			tmp.val_u64 = plc_tag_get_uint64(tag, reg_addr);
+			tmp.val_u64 = plc_tag_get_uint64(data_item->tag,
+						data_item->reg_addr);
 			break;
 		default:
 			rc = -EINVAL;
 		}
 
-		memcpy(out, &tmp, sizeof(tmp));
+		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	} else {
 		l_error("Unable to read the data! Got error code %d: %s\n",
 			rc, plc_tag_decode_error(rc));

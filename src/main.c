@@ -32,7 +32,7 @@
 
 #include "settings.h"
 #include "device.h"
-#include "conf-driver.h"
+#include "conf-device.h"
 
 static int log_priority;
 
@@ -55,20 +55,20 @@ static int detach_daemon(void)
 	return 0;
 }
 
-static void set_device_settings(struct device_settings *conf_files,
-				struct settings *settings)
+static void set_device_settings(struct device_settings *device_settings,
+								struct settings *settings)
 {
-	conf_files->credentials_path = l_strdup(settings->credentials_path);
-	conf_files->device_path = l_strdup(settings->device_path);
-	conf_files->cloud_path = l_strdup(settings->cloud_path);
+	device_settings->credentials_path = l_strdup(settings->credentials_path);
+	device_settings->device_path = l_strdup(settings->device_path);
+	device_settings->cloud_path = l_strdup(settings->cloud_path);
 }
 
-static void free_device_settings(struct device_settings *conf_files)
+static void free_device_settings(struct device_settings *device_settings)
 {
-	l_free(conf_files->credentials_path);
-	l_free(conf_files->device_path);
-	l_free(conf_files->cloud_path);
-	l_free(conf_files);
+	l_free(device_settings->credentials_path);
+	l_free(device_settings->device_path);
+	l_free(device_settings->cloud_path);
+	l_free(device_settings);
 }
 
 static void log_stderr_handler(int priority, const char *file, const char *line,
@@ -111,7 +111,7 @@ static void log_enable(int priority)
 int main(int argc, char *argv[])
 {
 	struct settings *settings;
-	struct device_settings *conf_files;
+	struct device_settings *device_settings;
 	int err;
 
 	settings = settings_load(argc, argv);
@@ -130,21 +130,21 @@ int main(int argc, char *argv[])
 
 	log_enable(settings->log_level);
 
-	conf_files = l_new(struct device_settings, 1);
-	set_device_settings(conf_files, settings);
+	device_settings = l_new(struct device_settings, 1);
+	set_device_settings(device_settings, settings);
 
 	l_info("Starting KNoT VirtualThing");
 
-	err = device_start(conf_files);
+	err = device_start(device_settings);
 	if (err) {
 		l_error("Failed to start the device: %s (%d). Exiting...",
 			strerror(-err), -err);
 		l_main_exit();
 		settings_free(settings);
-		free_device_settings(conf_files);
+		free_device_settings(device_settings);
 		return EXIT_FAILURE;
 	}
-	free_device_settings(conf_files);
+	free_device_settings(device_settings);
 
 	if (settings->detach) {
 		err = detach_daemon();

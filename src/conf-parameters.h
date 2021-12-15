@@ -25,20 +25,22 @@
 #define CLOUD_GROUP			"Cloud"
 #define RABBIT_URL			"Url"
 
-#define DATA_ITEM_GROUP			"DataItem_"
-
 #define THING_GROUP			"KNoTThing"
 #define THING_NAME			"Name"
 #define THING_USER_TOKEN		"UserToken"
-#define THING_URL			"ThingURL"
-#define THING_MODBUS_SLAVE_ID		"ModbusSlaveId"
 
-#define THING_ETHERNET_IP_PLC_TYPE		"EthernetIpPLCType"
+#define DRIVER_URL			"DriverURL"
+#define DRIVER_PROTOCOL_TYPE		"DeviceProtocolType"
+#define DRIVER_ID			"DeviceId"
+#define DRIVER_NAME_TYPE		"DeviceNameType"
 
-#define ETHERNET_IP_TAG_NAME		"EthernetTagName"
-#define ETHERNET_IP_ELEMENT_SIZE	"EthernetIpElementSize"
-#define ETHERNET_IP_PATH		"EthernetIpPath"
-
+#define DATA_ITEM_GROUP			"DataItem_"
+#define DATA_IP_TAG_NAME		"DataTagName"
+#define DATA_IP_ELEMENT_SIZE		"DataIpElementSize"
+#define DATA_IP_PATH			"DataIpPath"
+#define DATA_REG_ADDRESS		"RegisterAddress"
+#define DATA_TYPE_ENDIANNESS		"TypeEndianness"
+#define DATA_VALUE_TYPE_SIZE		"ValueTypeSize"
 
 #define SCHEMA_SENSOR_ID		"SchemaSensorId"
 #define SCHEMA_SENSOR_NAME		"SchemaSensorName"
@@ -52,6 +54,3 @@
 #define EVENT_CHANGE			"EventChange"
 #define EVENT_CHANGE_TRUE		1
 
-#define DATA_REG_ADDRESS		"RegisterAddress"
-#define DATA_TYPE_ENDIANNESS		"TypeEndianness"
-#define DATA_VALUE_TYPE_SIZE		"ValueTypeSize"
