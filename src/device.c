@@ -584,7 +584,13 @@ int device_start(struct device_settings *conf_files)
 	if (err < 0) {
 		l_error("Failed to initialize Cloud");
 		poll_destroy();
+
+#if DRIVER_MODBUS
 		iface_modbus_stop();
+#elif DRIVER_ETHERNET_IP
+		iface_ethernet_ip_stop();
+#endif
+
 		knot_thing_destroy(&thing);
 		return err;
 	}
@@ -605,7 +611,10 @@ void device_destroy(void)
 
 	poll_destroy();
 	knot_cloud_stop();
+#if DRIVER_MODBUS
 	iface_modbus_stop();
-
+#elif DRIVER_ETHERNET_IP
+	iface_ethernet_ip_stop();
+#endif
 	knot_thing_destroy(&thing);
 }
