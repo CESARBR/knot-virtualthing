@@ -140,6 +140,17 @@ static void foreach_data_item_ethernet_ip(const void *key, void *value,
 	}
 }
 
+static void foreach_stop_ethernet_ip(const void *key, void *value,
+				      void *user_data)
+{
+	struct knot_data_item *data_item = value;
+	int *rc = user_data;
+
+	*rc = plc_tag_destroy(
+		data_item->ethernet_ip_data_settings.tag);
+
+}
+
 int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
 				int value_type_size,
 				knot_value_type *out)
@@ -225,4 +236,14 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 	disconn_cb = disconnected_cb;
 
 	return 0;
+}
+
+void iface_ethernet_ip_stop(void)
+{
+	//TODO: Verify connection of ethernet/ip
+
+	int rc = 0;
+
+	l_hashmap_foreach(thing_ethernet_ip.data_items,
+			  foreach_stop_ethernet_ip, &rc);
 }
