@@ -32,6 +32,7 @@
 
 #include "settings.h"
 #include "device.h"
+#include "conf-driver.h"
 
 static int log_priority;
 

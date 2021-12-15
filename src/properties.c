@@ -30,6 +30,7 @@
 #include "properties.h"
 #include "storage.h"
 #include "conf-parameters.h"
+#include "conf-driver.h"
 
 #define EMPTY_STRING ""
 

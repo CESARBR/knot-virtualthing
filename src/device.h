@@ -20,12 +20,7 @@
 
 struct knot_data_item;
 struct knot_thing;
-
-struct device_settings {
-	char *credentials_path;
-	char *device_path;
-	char *cloud_path;
-};
+struct device_settings;
 
 void device_set_log_priority(int priority);
 void device_set_thing_name(struct knot_thing *thing, const char *name);
