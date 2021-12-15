@@ -234,15 +234,19 @@ static int on_poll_receive(int id)
 	data_item = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
 	if (!data_item)
 		return -EINVAL;
-#ifdef DRIVER_MODBUS
+#if DRIVER_MODBUS
 	rc = iface_modbus_read_data(data_item->reg_addr,
 				    data_item->value_type_size,
 				    &data_item->current_val,
 				    data_item->endianness_type_sensor);
-#endif /* DRIVER_MODBUS */
-
-#ifdef DRIVER_ETHERNET_IP
-#endif /* DRIVER_ETHERNET_IP */
+#elif DRIVER_ETHERNET_IP
+	rc = iface_ethernet_ip_read_data(
+				    data_item->ethernet_ip_data_settings.tag,
+				    data_item->reg_addr,
+				    data_item->schema.value_type,
+				    data_item->value_type_size,
+				    &data_item->current_val);
+#endif
 
 	if (event_check_value(data_item->event,
 			      data_item->current_val,
