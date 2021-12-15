@@ -200,23 +200,23 @@ static void iface_modbus_config_endianness_type_recv_32_bits(uint32_t *src,
 				int endianness_type)
 {
 	switch (endianness_type) {
-	case MODBUS_ENDIANNESS_TYPE_BIG_ENDIAN:
+	case ENDIANNESS_TYPE_BIG_ENDIAN:
 		*src = ((*src & 0xffff0000u) >> 16)|
 			((*src & 0x0000ffffu) << 16);
 		break;
-	case MODBUS_ENDIANNESS_TYPE_MID_BIG_ENDIAN:
+	case ENDIANNESS_TYPE_MID_BIG_ENDIAN:
 		*src = ((((*src) & 0xff000000u) >> 24)|
 			(((*src) & 0x00ff0000u) >> 8)|
 			(((*src) & 0x0000ff00u) << 8)|
 			(((*src) & 0x000000ffu) << 24));
 		break;
-	case MODBUS_ENDIANNESS_TYPE_LITTLE_ENDIAN:
+	case ENDIANNESS_TYPE_LITTLE_ENDIAN:
 		*src = ((((*src) & 0xff000000u) >> 8)|
 			(((*src) & 0x00ff0000u) << 8)|
 			(((*src) & 0x0000ff00u) >> 8)|
 			(((*src) & 0x000000ffu) << 8));
 		break;
-	case MODBUS_ENDIANNESS_TYPE_MID_LITTLE_ENDIAN:
+	case ENDIANNESS_TYPE_MID_LITTLE_ENDIAN:
 		break;
 	default:
 		src = NULL;
@@ -227,8 +227,8 @@ static void iface_modbus_config_endianness_type_recv_32_bits(uint32_t *src,
 static void iface_modbus_config_endianness_type_recv_64_bits(uint64_t *src,
 				int endianness_type)
 {
-	if (endianness_type == MODBUS_ENDIANNESS_TYPE_MID_BIG_ENDIAN ||
-		endianness_type == MODBUS_ENDIANNESS_TYPE_LITTLE_ENDIAN){
+	if (endianness_type == ENDIANNESS_TYPE_MID_BIG_ENDIAN ||
+		endianness_type == ENDIANNESS_TYPE_LITTLE_ENDIAN){
 		*src = ((*src & 0xff00000000000000u) >> 8)|
 			((*src & 0x00ff000000000000u) << 8)|
 			((*src & 0x0000ff0000000000u) >> 8)|
@@ -238,8 +238,8 @@ static void iface_modbus_config_endianness_type_recv_64_bits(uint64_t *src,
 			((*src & 0x000000000000ff00u) >> 8)|
 			((*src & 0x00000000000000ffu) << 8);
 	}
-	if (endianness_type == MODBUS_ENDIANNESS_TYPE_MID_BIG_ENDIAN ||
-		endianness_type == MODBUS_ENDIANNESS_TYPE_BIG_ENDIAN){
+	if (endianness_type == ENDIANNESS_TYPE_MID_BIG_ENDIAN ||
+		endianness_type == ENDIANNESS_TYPE_BIG_ENDIAN){
 		*src = ((*src & 0xffff000000000000u) >> 48)|
 			((*src & 0x0000ffff00000000u) >> 16)|
 			((*src & 0x00000000ffff0000u) << 16)|
@@ -281,6 +281,7 @@ int iface_modbus_read_data(int reg_addr, int bit_offset, knot_value_type *out,
 		iface_modbus_config_endianness_type_recv_32_bits(&tmp.val_u32,
 						endianness_type);
 		break;
+
 	case TYPE_U64:
 		rc = modbus_read_registers(modbus_ctx, reg_addr, 4,
 					   (uint16_t *) &tmp.val_u64);
