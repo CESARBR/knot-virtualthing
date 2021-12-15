@@ -195,7 +195,6 @@ int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
 {
 	int rc;
 	union ethernet_ip_types tmp;
-	enum CONN_TYPE type_connect_aux = ETHERNET_IP;
 
 	memset(&tmp, 0, sizeof(tmp));
 
@@ -241,7 +240,7 @@ int iface_ethernet_ip_read_data(int tag, int reg_addr, uint8_t value_type,
 	} else {
 		l_error("Unable to read the data! Got error code %d: %s\n",
 			rc, plc_tag_decode_error(rc));
-		on_disconnected((void *) &type_connect_aux);
+		on_disconnected(NULL);
 	}
 
 	return rc;
@@ -252,7 +251,6 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 		       iface_ethernet_ip_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	enum CONN_TYPE type_connect = ETHERNET_IP;
 	thing_ethernet_ip = thing;
 
 	if (plc_tag_check_lib_version(REQUIRED_VERSION_MAJOR,
@@ -269,7 +267,7 @@ int iface_ethernet_ip_start(struct knot_thing thing,
 	disconn_cb = disconnected_cb;
 
 	connect_to = l_timeout_create_ms(1, attempt_connect,
-					 (void *) &type_connect, NULL);
+					 NULL, NULL);
 
 	return 0;
 }

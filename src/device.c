@@ -207,22 +207,18 @@ static void on_cloud_connected(void *user_data)
 
 static void on_driver_disconnected(void *user_data)
 {
-	enum CONN_TYPE *type_aux = user_data;
-
 	l_info("Disconnected");
 
 	poll_stop();
-	conn_handler(*type_aux, false);
+	conn_handler(DRIVER, false);
 }
 
 static void on_driver_connected(void *user_data)
 {
-	enum CONN_TYPE *type_aux = user_data;
-
 	l_info("Connected to %s", thing.geral_url);
 
 	poll_start();
-	conn_handler(*type_aux, true);
+	conn_handler(DRIVER, true);
 }
 
 static int on_poll_receive(int id)
