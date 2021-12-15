@@ -14,6 +14,9 @@
  *  Lesser General Public License for more details.
  */
 
+#define DRIVER_ETHERNET_IP		1
+#define DRIVER_MODBUS			0
+
 #define THING_ETHERNET_IP_MAX_TYPE_PLC_LEN	25
 #define THING_MAX_URL_LEN		50
 

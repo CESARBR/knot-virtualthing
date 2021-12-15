@@ -55,6 +55,3 @@
 #define DATA_REG_ADDRESS		"RegisterAddress"
 #define DATA_TYPE_ENDIANNESS		"TypeEndianness"
 #define DATA_VALUE_TYPE_SIZE		"ValueTypeSize"
-
-#define DRIVER_ETHERNET_IP		1
-#define DRIVER_MODBUS			0
