@@ -309,7 +309,6 @@ int iface_modbus_start(const char *url, int slave_id,
 		       iface_modbus_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	enum CONN_TYPE type_connect = MODBUS;
 	modbus_ctx = create_ctx(url);
 	if (!modbus_ctx)
 		return -errno;
@@ -321,7 +320,7 @@ int iface_modbus_start(const char *url, int slave_id,
 	disconn_cb = disconnected_cb;
 
 	connect_to = l_timeout_create_ms(1, attempt_connect,
-					 (void *) &type_connect, NULL);
+					 NULL, NULL);
 
 	return 0;
 }
