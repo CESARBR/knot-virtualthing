@@ -121,6 +121,8 @@ static int valid_bit_size(int bit_size, int value_type)
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
 		break;
 	case 8:
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
+		break;
 		/* KNoT Protocol doesn't have a matching value type */
 	case 16:
 		/* KNoT Protocol doesn't have a matching value type */
