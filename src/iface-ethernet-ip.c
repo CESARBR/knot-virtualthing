@@ -193,55 +193,71 @@ int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 {
 	int rc;
 	union ethernet_ip_types tmp;
+	int elem_size = 0;
 
 	memset(&tmp, 0, sizeof(tmp));
 
-	rc = plc_tag_read(data_item->tag, 100);
+	rc = plc_tag_read(data_item->tag, DATA_TIMEOUT);
 
 	if (rc == PLCTAG_STATUS_OK) {
+		elem_size = plc_tag_get_int_attribute(data_item->tag,
+						      "elem_size", 0);
 		switch (data_item->schema.value_type) {
 		//TODO: Update knot_cloud to accept int16
 		case KNOT_VALUE_TYPE_BOOL:
-			tmp.val_bool = plc_tag_get_uint8(data_item->tag,
-							 data_item->reg_addr);
+			if (data_item->value_type_size == 1)
+				tmp.val_bool = (uint8_t)
+					plc_tag_get_bit(data_item->tag, 0);
+			else if (data_item->value_type_size == 8)
+				tmp.val_bool =
+					plc_tag_get_uint8(data_item->tag,
+					    data_item->reg_addr * elem_size);
+			else
+				rc = 1;
 			break;
 		case KNOT_VALUE_TYPE_FLOAT:
 			tmp.val_float = plc_tag_get_float32(data_item->tag,
-							data_item->reg_addr);
+					    data_item->reg_addr * elem_size);
 			break;
 		case KNOT_VALUE_TYPE_INT:
 			if (data_item->value_type_size == 8)
-				tmp.val_i8 = plc_tag_get_int8(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_i8 =
+					plc_tag_get_int8(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			else if (data_item->value_type_size == 16)
-				tmp.val_i16 = plc_tag_get_int16(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_i16 =
+					plc_tag_get_int16(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			else if (data_item->value_type_size == 32)
-				tmp.val_i32 = plc_tag_get_int32(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_i32 =
+					plc_tag_get_int32(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			else
 				rc = 1;
 			break;
 		case KNOT_VALUE_TYPE_UINT:
 			if (data_item->value_type_size == 8)
-				tmp.val_u8 = plc_tag_get_uint8(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_u8 =
+					plc_tag_get_uint8(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			if (data_item->value_type_size == 16)
-				tmp.val_u16 = plc_tag_get_uint16(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_u16 =
+					plc_tag_get_uint16(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			else if (data_item->value_type_size == 32)
-				tmp.val_u32 = plc_tag_get_uint32(data_item->tag,
-							data_item->reg_addr);
+				tmp.val_u32 =
+					plc_tag_get_uint32(data_item->tag,
+					    data_item->reg_addr * elem_size);
 			else
 				rc = 1;
 			break;
 		case KNOT_VALUE_TYPE_INT64:
 			tmp.val_i64 = plc_tag_get_int64(data_item->tag,
-						data_item->reg_addr);
+					data_item->reg_addr * elem_size);
 			break;
 		case KNOT_VALUE_TYPE_UINT64:
 			tmp.val_u64 = plc_tag_get_uint64(data_item->tag,
-						data_item->reg_addr);
+					data_item->reg_addr * elem_size);
 			break;
 		default:
 			rc = -EINVAL;
