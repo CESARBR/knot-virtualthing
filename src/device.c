@@ -53,7 +53,6 @@ static void knot_thing_destroy(struct knot_thing *thing)
 
 	l_free(thing->user_token);
 	l_free(thing->rabbitmq_url);
-	l_free(thing->geral_url);
 	l_free(thing->conf_files.credentials_path);
 	l_free(thing->conf_files.device_path);
 	l_free(thing->conf_files.cloud_path);
