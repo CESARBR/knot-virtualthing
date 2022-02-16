@@ -197,7 +197,11 @@ int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 
 	memset(&tmp, 0, sizeof(tmp));
 
-	rc = plc_tag_read(data_item->tag, DATA_TIMEOUT);
+
+	do {
+		rc = plc_tag_read(data_item->tag, DATA_TIMEOUT);
+	} while (rc == PLCTAG_STATUS_PENDING);
+
 
 	if (rc == PLCTAG_STATUS_OK) {
 		elem_size = plc_tag_get_int_attribute(data_item->tag,
