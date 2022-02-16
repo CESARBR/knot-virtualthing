@@ -509,7 +509,7 @@ static int set_data_items(struct knot_thing *thing,
 		device_set_new_data_item(thing, sensor_id, schema, event,
 					 data_item_aux);
 	}
-
+	thing->number_sensor = i;
 	l_strfreev(data_item_group);
 
 	return 0;
