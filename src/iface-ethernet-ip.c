@@ -89,6 +89,8 @@ static int verify_tag_name_created(struct knot_data_item *data_item)
 		if (!return_aux) {
 			data_item->tag =
 				data_item_aux->tag;
+			strcpy(data_item->string_tag_path,
+			       (const char *)data_item_aux->string_tag_path);
 			rc = 0;
 			break;
 		}
