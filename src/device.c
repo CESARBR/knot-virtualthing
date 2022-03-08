@@ -155,7 +155,7 @@ static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
 		break;
 	case UNREGISTER_MSG:
 		if (!msg->error)
-			sm_input_event(EVT_UNREG_REQ, NULL);
+			sm_input_event(EVT_UNREG_REQ, (char *) msg->id);
 		break;
 	case AUTH_MSG:
 		if (msg->error)
@@ -539,6 +539,14 @@ void device_msg_timeout_remove(void)
 {
 	l_timeout_remove(thing.msg_to);
 	thing.msg_to = NULL;
+}
+
+bool device_verify_id_unregister(const char *id)
+{
+	if (strcmp(id, (const char *) thing.id))
+		return false;
+
+	return true;
 }
 
 int device_start_read_cloud(void)

@@ -43,6 +43,7 @@ void device_set_thing_rabbitmq_url(struct knot_thing *thing, char *url);
 void device_set_thing_credentials(struct knot_thing *thing, const char *id,
 				  const char *token);
 void device_generate_thing_id(void);
+bool device_verify_id_unregister(const char *id);
 void device_clear_thing_id(struct knot_thing *thing);
 void device_clear_thing_token(struct knot_thing *thing);
 int device_has_thing_token(void);

@@ -185,8 +185,11 @@ enum STATES get_next_auth(enum EVENTS event, void *user_data)
 		break;
 	case EVT_AUTH_NOT_OK:
 	case EVT_UNREG_REQ:
-		device_msg_timeout_remove();
-		next_state = ST_UNREGISTER;
+		if (device_verify_id_unregister((const char *)user_data)) {
+			device_msg_timeout_remove();
+			next_state = ST_UNREGISTER;
+		} else
+			next_state = ST_AUTH;
 		break;
 	case EVT_TIMEOUT:
 		if (device_send_auth_request() < 0)
@@ -308,8 +311,11 @@ enum STATES get_next_config(enum EVENTS event, void *user_data)
 		next_state = ST_ERROR;
 		break;
 	case EVT_UNREG_REQ:
-		device_msg_timeout_remove();
-		next_state = ST_UNREGISTER;
+		if (device_verify_id_unregister((const char *)user_data)) {
+			device_msg_timeout_remove();
+			next_state = ST_UNREGISTER;
+		} else
+			next_state = ST_CONFIG;
 		break;
 	case EVT_TIMEOUT:
 		if (device_send_config() < 0)
@@ -367,7 +373,10 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 		next_state = ST_ONLINE;
 		break;
 	case EVT_UNREG_REQ:
-		next_state = ST_UNREGISTER;
+		if (device_verify_id_unregister((const char *)user_data))
+			next_state = ST_UNREGISTER;
+		else
+			next_state = ST_ONLINE;
 		break;
 	case EVT_CFG_UPT_OK:
 		next_state = ST_ONLINE;
