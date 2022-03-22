@@ -55,6 +55,7 @@ struct knot_data_item {
 	char path[DRIVER_MAX_TYPE_PATH_LEN];
 	int element_size;
 	char string_tag_path[DRIVER_MAX_TYPE_STRING_CONNECT_LEN];
+	struct tm *timestamp;
 };
 
 struct knot_thing {
