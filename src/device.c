@@ -26,6 +26,7 @@
 #include <knot/knot_protocol.h>
 #include <knot/knot_types.h>
 #include <knot/knot_cloud.h>
+#include <time.h>
 
 #include "storage.h"
 #include "settings.h"
@@ -103,7 +104,8 @@ static void on_publish_data(void *data, void *user_data)
 	rc = knot_cloud_publish_data(thing.id, data_item->sensor_id,
 				     data_item->schema.value_type,
 				     &data_item->current_val,
-				     sizeof(data_item->schema.value_type));
+				     sizeof(data_item->schema.value_type),
+				     data_item->timestamp);
 	if (rc < 0)
 		l_error("Couldn't send data_update for data_item #%d",
 			*sensor_id);
@@ -225,12 +227,26 @@ static int on_driver_poll_receive(int id)
 	struct knot_data_item *data_item_aux;
 	struct l_queue *list;
 	int rc;
+	time_t rawtime = time(NULL);
 
 	data_item_aux = l_hashmap_lookup(thing.data_items, L_INT_TO_PTR(id));
 	if (!data_item_aux)
 		return -EINVAL;
 
 	rc = driver->read(data_item_aux);
+	if (rawtime == -1) {
+		puts("The time() function failed");
+		return -EINVAL;
+	} else {
+		struct tm *ptm = localtime(&rawtime);
+
+		data_item_aux->timestamp = ptm;
+
+		if (ptm == NULL) {
+			puts("The localtime() function failed");
+			return -EINVAL;
+		}
+	}
 
 	if (event_check_value(data_item_aux->event,
 			      data_item_aux->current_val,
