@@ -37,8 +37,9 @@
 #include "driver.h"
 #include "sm.h"
 #include "event.h"
-#include "poll.h"
 #include "properties.h"
+
+static int on_driver_poll_receive(int id);
 
 #define CONNECTED_MASK		0xFF
 #define set_conn_bitmask(a, b1, b2) (a) ? (b1) | (b2) : (b1) & ~(b2)
@@ -96,6 +97,10 @@ static void on_publish_data(void *data, void *user_data)
 	int *sensor_id = data;
 	int rc;
 
+	rc = on_driver_poll_receive(*sensor_id);
+	if (rc < 0)
+		return;
+
 	data_item = l_hashmap_lookup(thing.data_items,
 				     L_INT_TO_PTR(*sensor_id));
 	if (!data_item)
@@ -115,7 +120,6 @@ static void foreach_publish_all_data(const void *key, void *value,
 				     void *user_data)
 {
 	struct knot_data_item *data_item = value;
-
 	on_publish_data(&data_item->sensor_id, NULL);
 }
 
@@ -210,7 +214,6 @@ static void on_driver_disconnected(void *user_data)
 {
 	l_info("Disconnected from Driver");
 
-	poll_stop();
 	conn_handler(DRIVER, false);
 }
 
@@ -218,7 +221,6 @@ static void on_driver_connected(void *user_data)
 {
 	l_info("Connected to Driver %s", thing.geral_url);
 
-	poll_start();
 	conn_handler(DRIVER, true);
 }
 
@@ -255,41 +257,12 @@ static int on_driver_poll_receive(int id)
 		data_item_aux->sent_val = data_item_aux->current_val;
 		list = l_queue_new();
 		l_queue_push_head(list, &id);
-
 		sm_input_event(EVT_PUB_DATA, list);
-
 		l_queue_destroy(list, NULL);
 	}
 
 	return rc;
 }
-
-static void foreach_data_item_polling(const void *key, void *value,
-				      void *user_data)
-{
-	struct knot_data_item *data_item = value;
-	int *rc = user_data;
-
-	if (poll_create(DEFAULT_POLLING_INTERVAL, data_item->sensor_id,
-			on_driver_poll_receive)) {
-		l_error("Fail on create poll to read data item with id: %d",
-			data_item->sensor_id);
-		*rc = -1;
-	}
-}
-
-static int create_data_item_polling(void)
-{
-	int rc = 0;
-
-	l_hashmap_foreach(thing.data_items, foreach_data_item_polling,
-			  &rc);
-	if (rc)
-		poll_destroy();
-
-	return rc;
-}
-
 void device_set_log_priority(int priority)
 {
 	knot_cloud_set_log_priority(priority);
@@ -566,17 +539,9 @@ int device_start(struct device_settings *settings)
 
 	sm_start();
 
-	err = create_data_item_polling();
-	if (err < 0) {
-		l_error("Failed to create the device polling");
-		knot_thing_destroy(&thing);
-		return err;
-	}
-
 	driver = create_driver(thing.protocol_type);
 	if (!driver) {
 		l_error("Failed to initialize Driver");
-		poll_destroy();
 		knot_thing_destroy(&thing);
 		return -1;
 	}
@@ -587,7 +552,6 @@ int device_start(struct device_settings *settings)
 			    NULL);
 	if (err < 0) {
 		l_error("Failed to initialize Driver");
-		poll_destroy();
 		knot_thing_destroy(&thing);
 		return err;
 	}
@@ -596,7 +560,6 @@ int device_start(struct device_settings *settings)
 			       on_cloud_connected, on_cloud_disconnected, NULL);
 	if (err < 0) {
 		l_error("Failed to initialize Cloud");
-		poll_destroy();
 		driver->stop();
 		knot_thing_destroy(&thing);
 		return err;
@@ -615,10 +578,7 @@ int device_start(struct device_settings *settings)
 void device_destroy(void)
 {
 	event_stop();
-
-	poll_destroy();
 	knot_cloud_stop();
 	driver->stop();
-
 	knot_thing_destroy(&thing);
 }

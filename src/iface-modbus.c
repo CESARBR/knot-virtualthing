@@ -297,6 +297,8 @@ int iface_modbus_read_data(struct knot_data_item *data_item)
 		rc = -errno;
 		l_error("Failed to read from Modbus: %s (%d)",
 			modbus_strerror(errno), rc);
+		l_io_destroy(modbus_io);
+		modbus_io = NULL;
 	} else {
 		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	}
