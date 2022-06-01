@@ -31,6 +31,7 @@ static iface_ethernet_ip_connected_cb_t conn_cb;
 static iface_ethernet_ip_disconnected_cb_t disconn_cb;
 static struct l_timeout *connect_to;
 struct knot_thing thing_ethernet_ip;
+static struct l_io *ethernet_op_io;
 
 union ethernet_ip_types {
 	float val_float;
@@ -99,39 +100,28 @@ static int verify_tag_name_created(struct knot_data_item *data_item)
 	return rc;
 }
 
-static int put_tag_name_created(struct knot_data_item *data_item)
+static void on_disconnected(struct l_io *io, void *user_data)
 {
-	struct knot_data_item *data_item_aux;
-	int i;
-	int rc = -1;
+	if (disconn_cb)
+		disconn_cb(user_data);
 
-	for (i = 0; i < thing_ethernet_ip.number_sensor; i++) {
-		int return_aux;
-
-		data_item_aux = l_hashmap_lookup(thing_ethernet_ip.data_items,
-						 L_INT_TO_PTR(i));
-		if (!data_item_aux) {
-			rc = -EINVAL;
-			break;
-		}
-
-		if (!strcmp(data_item_aux->tag_name, data_item->tag_name)) {
-			data_item_aux->tag = data_item->tag;
-			rc = 0;
-			break;
-		}
-	}
-
-	return rc;
+	if (connect_to)
+		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
 }
 
 static int connect_ethernet_ip(struct knot_data_item *data_item)
 {
 	int rc = 0;
 
-	data_item->tag = plc_tag_create(
-			data_item->string_tag_path,
-			DATA_TIMEOUT);
+	/* Check and destroy if an IO is already allocated */
+	if (ethernet_op_io) {
+		l_io_destroy(ethernet_op_io);
+		ethernet_op_io = NULL;
+	}
+
+	plc_tag_destroy(data_item->tag);
+	data_item->tag = plc_tag_create(data_item->string_tag_path,
+					DATA_TIMEOUT);
 
 	if (data_item->tag < 0) {
 		l_error("%s: Could not create tag %s!",
@@ -141,11 +131,17 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 		return -EINVAL;
 	}
 
-	rc = plc_tag_status(data_item->tag);
-	if (rc != PLCTAG_STATUS_OK) {
+	ethernet_op_io = l_io_new(plc_tag_status(data_item->tag));
+	if (!ethernet_op_io) {
 		l_error("Error setting up tag internal state. %s",
 			plc_tag_decode_error(
 				data_item->tag));
+		return -EIO;
+	}
+
+	if (!l_io_set_disconnect_handler(ethernet_op_io, on_disconnected, NULL,
+					 NULL)) {
+		l_error("Couldn't set Ethernet/IP disconnect handler");
 		return -EINVAL;
 	}
 
@@ -183,15 +179,7 @@ static void foreach_stop_ethernet_ip(const void *key, void *value,
 			plc_tag_decode_error(*rc));
 		plc_tag_destroy(data_item->tag);
 	}
-}
 
-static void on_disconnected(void *user_data)
-{
-	if (disconn_cb)
-		disconn_cb(user_data);
-
-	if (connect_to)
-		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
 }
 
 static void attempt_connect(struct l_timeout *to, void *user_data)
@@ -213,7 +201,8 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 	return;
 
 retry:
-	on_disconnected(NULL);
+	l_io_destroy(ethernet_op_io);
+	ethernet_op_io = NULL;
 	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
@@ -295,11 +284,8 @@ int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 	} else {
 		l_error("Unable to read the data! Got error code %d: %s\n",
 			rc, plc_tag_decode_error(rc));
-		plc_tag_destroy(data_item->tag);
-		data_item->tag = plc_tag_create(data_item->string_tag_path,
-						DATA_TIMEOUT);
-		put_tag_name_created(data_item);
-
+		l_io_destroy(ethernet_op_io);
+		ethernet_op_io = NULL;
 	}
 
 	return rc;
@@ -335,9 +321,14 @@ void iface_ethernet_ip_stop(void)
 {
 	int rc = 0;
 
+	l_timeout_remove(connect_to);
+	connect_to = NULL;
+
 	l_hashmap_foreach(thing_ethernet_ip.data_items,
 			  foreach_stop_ethernet_ip, &rc);
 	if (rc)
 		l_error("error disconnect to Ethernet/Ip");
 
+	l_io_destroy(ethernet_op_io);
+	ethernet_op_io = NULL;
 }
