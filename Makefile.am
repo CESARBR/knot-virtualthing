@@ -21,7 +21,6 @@ src_thingd_SOURCES = src/main.c \
 			src/driver.c src/driver.h \
 			src/settings.c src/settings.h \
 			src/event.c src/event.h \
-			src/poll.c src/poll.h \
 			src/properties.c src/properties.h
 
 src_thingd_LDADD = $(modules_ldadd) -lm
