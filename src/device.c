@@ -340,8 +340,11 @@ void device_set_new_data_item(struct knot_thing *thing, int sensor_id,
 	data_item_aux->reg_addr = data_aux.reg_addr;
 	data_item_aux->value_type_size = data_aux.value_type_size;
 	data_item_aux->element_size = data_aux.element_size;
+	data_item_aux->namespace = data_aux.namespace;
 	strcpy(data_item_aux->path, data_aux.path);
 	strcpy(data_item_aux->tag_name, data_aux.tag_name);
+	strcpy(data_item_aux->identifier_type, data_aux.identifier_type);
+	strcpy(data_item_aux->identifier, data_aux.identifier);
 
 	l_hashmap_insert(thing->data_items,
 			 L_INT_TO_PTR(data_item_aux->sensor_id),
