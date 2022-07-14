@@ -3,9 +3,9 @@ AM_MAKEFLAGS = --no-print-directory
 ACLOCAL_AMFLAGS = -I m4
 
 modules_ldadd = @ELL_LIBS@ @KNOTCLOUDSDK_LIBS@ @KNOTPROTO_LIBS@ @MODBUS_LIBS@ \
-		@PLCTAG_LIBS@
+		 @OPEN62541_LIBS@ @PLCTAG_LIBS@
 modules_cflags = @ELL_CFLAGS@ @KNOTCLOUDSDK_CFLAGS@ @KNOTPROTO_CFLAGS@ \
-		@MODBUS_CFLAGS@ @PLCTAG_CFLAGS@
+		@OPEN62541_CFLAGS@ @MODBUS_CFLAGS@
 
 AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS)
 AM_LDFLAGS = $(BUILD_LDFLAGS)
@@ -18,6 +18,7 @@ src_thingd_SOURCES = src/main.c \
 			src/storage.c src/storage.h \
 			src/iface-modbus.c src/iface-modbus.h \
 			src/iface-ethernet-ip.c src/iface-ethernet-ip.h \
+			src/iface-opc-ua.c src/iface-opc-ua.h \
 			src/driver.c src/driver.h \
 			src/settings.c src/settings.h \
 			src/event.c src/event.h \
