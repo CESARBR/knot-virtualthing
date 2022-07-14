@@ -32,15 +32,37 @@
 #define DRIVER_URL			"DriverURL"
 #define DRIVER_PROTOCOL_TYPE		"DeviceProtocolType"
 #define DRIVER_ID			"DeviceId"
+
+// ATTENTION: Name Type ONLY used for Ethernet/IP communication.
 #define DRIVER_NAME_TYPE		"DeviceNameType"
 
+// ATTENTION: Login, Password and Security ONLY used for OPC UA communication.
+#define DRIVER_LOGIN			"DeviceLogin"
+#define DRIVER_PASSWORD			"DevicePassword"
+#define DRIVER_SECURITY			"DeviceSecurity"
+
 #define DATA_ITEM_GROUP			"DataItem_"
-#define DATA_IP_TAG_NAME		"DataTagName"
-#define DATA_IP_ELEMENT_SIZE		"DataIpElementSize"
-#define DATA_IP_PATH			"DataIpPath"
 #define DATA_REG_ADDRESS		"RegisterAddress"
 #define DATA_TYPE_ENDIANNESS		"TypeEndianness"
 #define DATA_VALUE_TYPE_SIZE		"ValueTypeSize"
+
+// ---------------------------------------------- //
+
+/**
+ * ATTENTION: Tag name, path and element size ONLY used for
+ * Ethernet/IP communication.
+ */
+#define DATA_IP_TAG_NAME		"DataTagName"
+#define DATA_IP_ELEMENT_SIZE		"DataIpElementSize"
+#define DATA_IP_PATH			"DataIpPath"
+
+/**
+ * ATTENTION: Namespace, Identifier Type and Identifier ONLY
+ * used for OPC UA communication.
+ */
+#define DATA_NAME_SPACE_INDEX		"DataNameSpaceIndex"
+#define DATA_IND_TYPE			"DataIdentifierType"
+#define DATA_IDENTIFIER			"DataIdentifier"
 
 #define SCHEMA_SENSOR_ID		"SchemaSensorId"
 #define SCHEMA_SENSOR_NAME		"SchemaSensorName"

@@ -22,6 +22,14 @@
 #define DRIVER_MAX_TYPE_PATH_LEN		5
 #define DRIVER_MAX_TYPE_STRING_CONNECT_LEN	512
 
+#define DRIVER_MAX_PASSWORD_LEN			25
+#define DRIVER_MAX_LOGIN_LEN			25
+#define DRIVER_MAX_SECURITY_LEN			256
+
+#define DRIVER_MAX_NAMESPACE_LEN		25
+#define DRIVER_MAX_IND_TYPE_LEN			25
+#define DRIVER_MAX_IDENTIFIER_LEN		256
+
 #define DRIVER_MIN_ID		0
 #define DRIVER_MAX_ID		255
 
@@ -56,6 +64,9 @@ struct knot_data_item {
 	int element_size;
 	char string_tag_path[DRIVER_MAX_TYPE_STRING_CONNECT_LEN];
 	struct tm *timestamp;
+	int namespace;
+	char identifier_type[DRIVER_MAX_IND_TYPE_LEN];
+	char identifier[DRIVER_MAX_IDENTIFIER_LEN];
 };
 
 struct knot_thing {
@@ -73,6 +84,10 @@ struct knot_thing {
 	struct device_settings conf_files;
 	char geral_url[DRIVER_MAX_URL_LEN];
 	struct l_hashmap *data_items;
+
+	char driver_login[DRIVER_MAX_LOGIN_LEN];
+	char driver_password[DRIVER_MAX_PASSWORD_LEN];
+	char driver_security[DRIVER_MAX_SECURITY_LEN];
 
 	struct l_timeout *msg_to;
 };
