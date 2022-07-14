@@ -156,19 +156,18 @@ static int set_data_properties(struct knot_thing *thing,
 	int bit_size_aux;
 	char *tag_name_aux;
 	char *path_aux;
-	char *namespace_aux;
+	int namespace_aux;
 	char *identifier_type_aux;
 	char *identifier_aux;
 	int element_size_aux;
 	struct knot_data_item data_item_aux;
 
-	namespace_aux = storage_read_key_string(fd, group_id,
-					DATA_NAME_SPACE_INDEX);
-	if (strlen(namespace_aux) >= DRIVER_MAX_TYPE_TAG_LEN)
+	rc = storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
+		&namespace_aux);
+	if (rc < 0)
 		return -EINVAL;
 
-	strcpy(data_item_aux.namespace, namespace_aux);
-	l_free(namespace_aux);
+	data_item_aux.namespace = namespace_aux;
 
 	identifier_type_aux = storage_read_key_string(fd, group_id,
 					DATA_IND_TYPE);
