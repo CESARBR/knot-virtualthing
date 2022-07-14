@@ -22,6 +22,7 @@
 #include "conf-device.h"
 #include "iface-modbus.h"
 #include "iface-ethernet-ip.h"
+#include "iface-opc-ua.h"
 
 static driver_protocols_type map_settings_protocols(char *protocol)
 {
@@ -29,6 +30,8 @@ static driver_protocols_type map_settings_protocols(char *protocol)
 		return MODBUS;
 	else if (!strcmp(protocol, "ETHERNET/IP"))
 		return ETHERNET_IP;
+	else if (!strcmp(protocol, "OPC_UA"))
+		return OPC_UA;
 	return -1;
 }
 
@@ -56,6 +59,18 @@ static struct driver_ops *create_modbus_driver(void)
 	return modbus_ops;
 }
 
+static struct driver_ops *create_opc_ua_driver(void)
+{
+	struct driver_ops *opc_ua_ops = l_new(struct driver_ops, 1);
+
+	opc_ua_ops->type = OPC_UA;
+	opc_ua_ops->start = iface_opc_ua_start;
+	opc_ua_ops->stop = iface_opc_ua_stop;
+	opc_ua_ops->read = iface_opc_ua_read_data;
+
+	return opc_ua_ops;
+}
+
 struct driver_ops *create_driver(char *protocol)
 {
 	driver_protocols_type protocol_aux;
@@ -67,6 +82,8 @@ struct driver_ops *create_driver(char *protocol)
 		return create_modbus_driver();
 	case ETHERNET_IP:
 		return create_ethernet_ip_driver();
+	case OPC_UA:
+		return create_opc_ua_driver();
 	default:
 		return NULL;
 	}

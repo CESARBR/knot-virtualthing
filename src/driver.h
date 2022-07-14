@@ -33,7 +33,8 @@ typedef void (*driver_disconnected_cb_t) (void *user_data);
 
 typedef enum DRIVER_PROTOCOLS {
 	MODBUS,
-	ETHERNET_IP
+	ETHERNET_IP,
+	OPC_UA
 } driver_protocols_type;
 
 struct driver_ops {

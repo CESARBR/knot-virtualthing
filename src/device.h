@@ -31,6 +31,9 @@ void device_set_protocol_type(struct knot_thing *thing,
 void device_set_endianness_type(struct knot_thing *thing,
 				int endianness_type);
 void device_set_driver_id(struct knot_thing *thing, int slave_id);
+void device_set_driver_password(struct knot_thing *thing, const char *password);
+void device_set_driver_login(struct knot_thing *thing, const char *login);
+void device_set_driver_security(struct knot_thing *thing, const char *security);
 void device_set_driver_name_type(struct knot_thing *thing,
 				const char *name_type);
 void device_set_new_data_item(struct knot_thing *thing, int sensor_id,

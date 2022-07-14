@@ -156,8 +156,35 @@ static int set_data_properties(struct knot_thing *thing,
 	int bit_size_aux;
 	char *tag_name_aux;
 	char *path_aux;
+	char *namespace_aux;
+	char *identifier_type_aux;
+	char *identifier_aux;
 	int element_size_aux;
 	struct knot_data_item data_item_aux;
+
+	namespace_aux = storage_read_key_string(fd, group_id,
+					DATA_NAME_SPACE_INDEX);
+	if (strlen(namespace_aux) >= DRIVER_MAX_TYPE_TAG_LEN)
+		return -EINVAL;
+
+	strcpy(data_item_aux.namespace, namespace_aux);
+	l_free(namespace_aux);
+
+	identifier_type_aux = storage_read_key_string(fd, group_id,
+					DATA_IND_TYPE);
+	if (strlen(identifier_type_aux) >= DRIVER_MAX_IND_TYPE_LEN)
+		return -EINVAL;
+
+	strcpy(data_item_aux.identifier_type, identifier_type_aux);
+	l_free(identifier_type_aux);
+
+	identifier_aux = storage_read_key_string(fd, group_id,
+					DATA_IDENTIFIER);
+	if (strlen(identifier_aux) >= DRIVER_MAX_IDENTIFIER_LEN)
+		return -EINVAL;
+
+	strcpy(data_item_aux.identifier, identifier_aux);
+	l_free(identifier_aux);
 
 	tag_name_aux = storage_read_key_string(fd, group_id,
 					DATA_IP_TAG_NAME);
@@ -527,6 +554,9 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 	int endianness_type_aux;
 	char *protocol;
 	char *name_type;
+	char *login;
+	char *password;
+	char *security;
 
 	protocol = storage_read_key_string(fd, THING_GROUP,
 					   DRIVER_PROTOCOL_TYPE);
@@ -545,6 +575,30 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 	}
 	device_set_driver_name_type(thing, name_type);
 
+	login = storage_read_key_string(fd, THING_GROUP,
+					    DRIVER_LOGIN);
+	if (strlen(login) >= DRIVER_MAX_LOGIN_LEN) {
+		l_free(login);
+		return -EINVAL;
+	}
+	device_set_driver_login(thing, login);
+
+	password = storage_read_key_string(fd, THING_GROUP,
+					    DRIVER_PASSWORD);
+	if (strlen(password) >= DRIVER_MAX_PASSWORD_LEN) {
+		l_free(password);
+		return -EINVAL;
+	}
+	device_set_driver_password(thing, password);
+
+	security = storage_read_key_string(fd, THING_GROUP,
+					    DRIVER_SECURITY);
+	if (strlen(password) >= DRIVER_MAX_SECURITY_LEN) {
+		l_free(password);
+		return -EINVAL;
+	}
+	device_set_driver_security(thing, security);
+
 	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
 	if ((id < DRIVER_MIN_ID || id > DRIVER_MAX_ID))
 		return -EINVAL;
@@ -557,6 +611,9 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 	device_set_endianness_type(thing, endianness_type_aux);
 
 	l_free(name_type);
+	l_free(login);
+	l_free(password);
+	l_free(security);
 	l_free(protocol);
 
 	return 0;
