@@ -207,7 +207,6 @@ static int set_data_properties(struct knot_thing *thing,
 
 	data_item_aux.element_size = element_size_aux;
 
-
 	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
 	if (rc <= 0)
