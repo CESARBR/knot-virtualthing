@@ -1,7 +1,7 @@
 /**
  * This file is part of the KNOT Project
  *
- * Copyright (c) 2020, CESAR. All rights reserved.
+ * Copyright (c) 2022, CESAR. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -31,12 +31,19 @@
 #include "conf-device.h"
 #include "iface-opc-ua.h"
 
-#define RECONNECT_TIMEOUT 5
+#define RECONNECT_TIMEOUT_IN_SECONDS 5
 
-#define NODEIDTYPE_NUMERIC    "NUMERIC"
-#define NODEIDTYPE_STRING     "STRING"
-#define NODEIDTYPE_GUID       "GUID"
-#define NODEIDTYPE_BYTESTRING "BYTESTRING"
+#define STRING_EMPTY_LEN 0
+
+#define NODEIDTYPE_NUMERIC		"NUMERIC"
+#define NODEIDTYPE_STRING		"STRING"
+#define NODEIDTYPE_GUID			"GUID"
+#define NODEIDTYPE_BYTESTRING		"BYTESTRING"
+
+#define ENCPT_URL_BASIC128RSA15		"http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15"
+#define ENCPT_URL_BASIC256		"http://opcfoundation.org/UA/SecurityPolicy#Basic256"
+#define ENCPT_URL_NONE			"http://opcfoundation.org/UA/SecurityPolicy#None"
+#define ENCPT_URL_BASIC256SHA256	"http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256"
 
 static struct l_timeout *connect_to;
 static struct l_io *opc_ua_io;
@@ -44,7 +51,6 @@ static iface_opc_ua_connected_cb_t conn_cb;
 static iface_opc_ua_disconnected_cb_t disconn_cb;
 struct knot_thing thing_opc_ua;
 static UA_Client *opc_ua_client;
-
 
 union opc_ua_types {
 	float val_float;
@@ -58,6 +64,34 @@ union opc_ua_types {
 	int64_t val_i64;
 	uint64_t val_u64;
 };
+
+static UA_ByteString load_cert_file(const char *const path)
+{
+	UA_ByteString fileContents = UA_STRING_NULL;
+	size_t read;
+
+	FILE *fp = fopen(path, "rb");
+
+	if (!fp)
+		return fileContents;
+
+	fseek(fp, 0, SEEK_END);
+	fileContents.length = (size_t)ftell(fp);
+	fileContents.data =
+		(UA_Byte *)UA_malloc(fileContents.length * sizeof(UA_Byte));
+	if (fileContents.data) {
+		fseek(fp, 0, SEEK_SET);
+		read = fread(fileContents.data, sizeof(UA_Byte),
+			     fileContents.length, fp);
+	if (read != fileContents.length)
+		UA_ByteString_clear(&fileContents);
+	} else {
+		fileContents.length = STRING_EMPTY_LEN;
+	}
+	fclose(fp);
+
+	return fileContents;
+}
 
 static UA_StatusCode get_node_id(UA_NodeId *parent, int namespace_index,
 			      char *identifier_type,
@@ -111,6 +145,58 @@ static UA_StatusCode setup_read_data(UA_Variant *value,
 	return rc;
 }
 
+static UA_StatusCode get_type_int(union opc_ua_types *tmp,
+				  void * data,
+				  int value_type_size)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+
+	if (value_type_size == 8)
+		tmp->val_i8 = *(UA_Byte *)data;
+	else if (value_type_size == 16)
+		tmp->val_i16 = *(UA_Int16 *)data;
+	else if (value_type_size == 32)
+		tmp->val_i32 = *(UA_Int32 *)data;
+	else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
+static UA_StatusCode get_type_uint(union opc_ua_types *tmp,
+				   void * data,
+				   int value_type_size)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+
+	if (value_type_size == 8)
+		tmp->val_u8 = *(UA_SByte *)data;
+	if (value_type_size == 16)
+		tmp->val_u16 = *(UA_UInt16 *)data;
+	else if (value_type_size == 32)
+		tmp->val_u32 = *(UA_UInt32 *)data;
+	else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
+static UA_StatusCode get_type_float(union opc_ua_types *tmp,
+				    void * data,
+				    int value_type_size)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+
+	if (value_type_size == 1)
+		tmp->val_bool = *(UA_Boolean *)data;
+	else if (value_type_size == 8)
+		tmp->val_bool = *(UA_SByte *)data;
+	else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
 static UA_StatusCode get_read_value(UA_Variant *value,
 				    uint8_t value_type,
 				    int value_type_size,
@@ -120,35 +206,16 @@ static UA_StatusCode get_read_value(UA_Variant *value,
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_BOOL:
-		if (value_type_size == 1)
-			tmp->val_bool = *(UA_Boolean *)value->data;
-		else if (value_type_size == 8)
-			tmp->val_bool = *(UA_SByte *)value->data;
-		else
-			rc = UA_STATUSCODE_BAD;
+		rc = get_type_float(tmp, value->data, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
 		tmp->val_float = *(UA_Float *)value->data;
 		break;
 	case KNOT_VALUE_TYPE_INT:
-		if (value_type_size == 8)
-			tmp->val_i8 = *(UA_Byte *)value->data;
-		else if (value_type_size == 16)
-			tmp->val_i16 = *(UA_Int16 *)value->data;
-		else if (value_type_size == 32)
-			tmp->val_i32 = *(UA_Int32 *)value->data;
-		else
-			rc = UA_STATUSCODE_BAD;
+		rc = get_type_int(tmp, value->data, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_UINT:
-		if (value_type_size == 8)
-			tmp->val_u8 = *(UA_SByte *)value->data;
-		if (value_type_size == 16)
-			tmp->val_u16 = *(UA_UInt16 *)value->data;
-		else if (value_type_size == 32)
-			tmp->val_u32 = *(UA_UInt32 *)value->data;
-		else
-			rc = UA_STATUSCODE_BAD;
+		rc = get_type_uint(tmp, value->data, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_INT64:
 		tmp->val_i64 = *(UA_Int64 *)value->data;
@@ -191,7 +258,6 @@ int iface_opc_ua_read_data(struct knot_data_item *data_item)
 	} else {
 		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	}
-
 	UA_Variant_delete(value);
 	return -rc;
 }
@@ -202,12 +268,13 @@ static void on_disconnected(struct l_io *io, void *user_data)
 		disconn_cb(user_data);
 
 	if (connect_to)
-		l_timeout_modify(connect_to, RECONNECT_TIMEOUT);
+		l_timeout_modify(connect_to, RECONNECT_TIMEOUT_IN_SECONDS);
 }
 
 static void attempt_connect(struct l_timeout *to, void *user_data)
 {
-	UA_StatusCode rc = 0;
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	bool is_authenticated_connection = false;
 
 	l_debug("Trying to connect to OPC UA Server");
 
@@ -217,8 +284,21 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 		opc_ua_io = NULL;
 	}
 
-	rc = UA_Client_connect(opc_ua_client,
-				   thing_opc_ua.geral_url);
+	is_authenticated_connection =
+		((strlen(thing_opc_ua.driver_login) != STRING_EMPTY_LEN) &&
+		strlen(thing_opc_ua.driver_password) != STRING_EMPTY_LEN)
+		? true : false;
+
+	if (is_authenticated_connection) {
+		rc = UA_Client_connectUsername(opc_ua_client,
+					       thing_opc_ua.geral_url,
+					       thing_opc_ua.driver_login,
+					       thing_opc_ua.driver_password);
+	} else {
+		rc = UA_Client_connect(opc_ua_client,
+				       thing_opc_ua.geral_url);
+	}
+
 	if (rc != UA_STATUSCODE_GOOD) {
 		l_error("Error connecting to OPC UA Server: %#010x",
 			rc);
@@ -248,7 +328,80 @@ io_destroy:
 connection_close:
 	UA_Client_disconnect(opc_ua_client);
 retry:
-	l_timeout_modify(to, RECONNECT_TIMEOUT);
+	l_timeout_modify(to, RECONNECT_TIMEOUT_IN_SECONDS);
+}
+
+static UA_StatusCode set_security_mode_config(UA_ClientConfig *config)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	if (thing_opc_ua.driver_security_mode <= UA_MESSAGESECURITYMODE_NONE &&
+	    thing_opc_ua.driver_security_mode >=
+	    UA_MESSAGESECURITYMODE_SIGNANDENCRYPT)
+		config->securityMode = thing_opc_ua.driver_security_mode;
+	else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
+static UA_StatusCode set_security_policy_config(UA_ClientConfig *config)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+
+	if (strlen(thing_opc_ua.driver_security_policy) != STRING_EMPTY_LEN) {
+		char policy_axi[1028] = {};
+		sprintf(policy_axi,
+			"http://opcfoundation.org/UA/SecurityPolicy#%s",
+			thing_opc_ua.driver_security_policy);
+		config->securityPolicyUri =
+			UA_STRING_ALLOC(policy_axi);
+	} else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
+static UA_StatusCode set_security_uri_config(UA_ClientConfig *config)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+
+	if (strlen(thing_opc_ua.driver_security_policy)
+	    != STRING_EMPTY_LEN) {
+		char uri_axi[256] = {};
+		sprintf(uri_axi, "urn:%s:KNoTVirtualThing",
+			thing_opc_ua.name);
+		config-> clientDescription.applicationUri =
+			UA_STRING_ALLOC(uri_axi);
+	} else
+		rc = UA_STATUSCODE_BAD;
+
+	return rc;
+}
+
+static UA_StatusCode set_client_config(UA_Client *client)
+{
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	UA_ClientConfig *config_client = UA_Client_getConfig(client);
+
+	if (thing_opc_ua.driver_security == true) {
+		UA_ByteString certificate =
+			load_cert_file(thing_opc_ua.driver_path_certificate);
+		UA_ByteString privateKey  =
+			load_cert_file(thing_opc_ua.driver_path_private_key);
+		rc = UA_ClientConfig_setDefaultEncryption(config_client,
+						     certificate, privateKey,
+						     NULL, 0, NULL, 0);
+		UA_ByteString_clear(&certificate);
+		UA_ByteString_clear(&privateKey);
+	} else {
+		rc = UA_ClientConfig_setDefault(config_client);
+	}
+
+	rc = set_security_mode_config(config_client);
+	rc = set_security_policy_config(config_client);
+	rc = set_security_uri_config(config_client);
+
+	return rc;
 }
 
 int iface_opc_ua_start(struct knot_thing thing,
@@ -256,12 +409,12 @@ int iface_opc_ua_start(struct knot_thing thing,
 		       iface_opc_ua_disconnected_cb_t disconnected_cb,
 		       void *user_data)
 {
-	UA_StatusCode rc = 0;
+	UA_StatusCode rc = UA_STATUSCODE_GOOD;
 
 	thing_opc_ua = thing;
 
 	opc_ua_client = UA_Client_new();
-	rc = UA_ClientConfig_setDefault(UA_Client_getConfig(opc_ua_client));
+	rc = set_client_config(opc_ua_client);
 	if (rc != UA_STATUSCODE_GOOD)
 		return -(int)rc;
 

@@ -311,6 +311,12 @@ void device_set_driver_id(struct knot_thing *thing, int slave_id)
 	thing->driver_id = slave_id;
 }
 
+void device_set_driver_security_mode(struct knot_thing *thing,
+				     int slave_security_mode)
+{
+	thing->driver_security_mode = slave_security_mode;
+}
+
 void device_set_driver_password(struct knot_thing *thing, const char *password)
 {
 	strcpy(thing->driver_password, password);
@@ -321,9 +327,27 @@ void device_set_driver_login(struct knot_thing *thing, const char *login)
 	strcpy(thing->driver_login, login);
 }
 
-void device_set_driver_security(struct knot_thing *thing, const char *security)
+void device_set_driver_security(struct knot_thing *thing, int security)
 {
-	strcpy(thing->driver_security, security);
+	thing->driver_security = security;
+}
+
+void device_set_driver_path_certificate(struct knot_thing *thing,
+				 const char *path_certificate)
+{
+	strcpy(thing->driver_path_certificate, path_certificate);
+}
+
+void device_set_driver_security_policy(struct knot_thing *thing,
+				 const char *security_policy)
+{
+	strcpy(thing->driver_security_policy, security_policy);
+}
+
+void device_set_driver_path_private_key(struct knot_thing *thing,
+				 const char *path_private_key)
+{
+	strcpy(thing->driver_path_private_key, path_private_key);
 }
 
 

@@ -40,6 +40,10 @@
 #define DRIVER_LOGIN			"DeviceLogin"
 #define DRIVER_PASSWORD			"DevicePassword"
 #define DRIVER_SECURITY			"DeviceSecurity"
+#define DRIVER_PATH_CERTIFICATE		"DevicePathCertificate"
+#define DRIVER_PATH_PRIVATE_KEY		"DevicePathPrivateKey"
+#define DRIVER_SECURITY_MODE		"DeviceSecurityMode"
+#define DRIVER_SECURITY_POLICY		"DeviceSecurityPolicy"
 
 #define DATA_ITEM_GROUP			"DataItem_"
 #define DATA_REG_ADDRESS		"RegisterAddress"
