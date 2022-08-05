@@ -121,11 +121,14 @@ static int valid_bit_size(int bit_size, int value_type)
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
 		break;
 	case 8:
-		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL);
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_BOOL) |
+					(1 << KNOT_VALUE_TYPE_INT) |
+					(1 << KNOT_VALUE_TYPE_UINT);
 		break;
-		/* KNoT Protocol doesn't have a matching value type */
 	case 16:
-		/* KNoT Protocol doesn't have a matching value type */
+		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT) |
+					(1 << KNOT_VALUE_TYPE_UINT);
+		break;
 	case 32:
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT) |
 					(1 << KNOT_VALUE_TYPE_UINT) |
@@ -162,60 +165,72 @@ static int set_data_properties(struct knot_thing *thing,
 	int element_size_aux;
 	struct knot_data_item data_item_aux;
 
-	rc = storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
+	storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
 		&namespace_aux);
-	if (rc < 0)
+	if (namespace_aux < 0)
 		return -EINVAL;
-
 	data_item_aux.namespace = namespace_aux;
 
 	identifier_type_aux = storage_read_key_string(fd, group_id,
 					DATA_IND_TYPE);
-	if (strlen(identifier_type_aux) >= DRIVER_MAX_IND_TYPE_LEN)
-		return -EINVAL;
-
-	strcpy(data_item_aux.identifier_type, identifier_type_aux);
+	if (identifier_type_aux != NULL) {
+		if (strlen(identifier_type_aux) >= DRIVER_MAX_IND_TYPE_LEN) {
+			l_free(identifier_type_aux);
+			return -EINVAL;
+		} else
+			strcpy(data_item_aux.identifier_type,
+			       identifier_type_aux);
+	}
 	l_free(identifier_type_aux);
 
 	identifier_aux = storage_read_key_string(fd, group_id,
-					DATA_IDENTIFIER);
-	if (strlen(identifier_aux) >= DRIVER_MAX_IDENTIFIER_LEN)
-		return -EINVAL;
-
-	strcpy(data_item_aux.identifier, identifier_aux);
+						 DATA_IDENTIFIER);
+	if (identifier_aux != NULL) {
+		if (strlen(identifier_aux) >= DRIVER_MAX_IDENTIFIER_LEN) {
+			l_free(identifier_aux);
+			return -EINVAL;
+		} else
+			strcpy(data_item_aux.identifier, identifier_aux);
+	}
 	l_free(identifier_aux);
 
 	tag_name_aux = storage_read_key_string(fd, group_id,
 					DATA_IP_TAG_NAME);
-	if (strlen(tag_name_aux) >= DRIVER_MAX_TYPE_TAG_LEN)
-		return -EINVAL;
-
-	strcpy(data_item_aux.tag_name, tag_name_aux);
+	if (tag_name_aux != NULL) {
+		if (strlen(tag_name_aux) >= DRIVER_MAX_TYPE_TAG_LEN) {
+			l_free(tag_name_aux);
+			return -EINVAL;
+		} else
+			strcpy(data_item_aux.tag_name, tag_name_aux);
+	}
 	l_free(tag_name_aux);
 
 	path_aux = storage_read_key_string(fd, group_id, DATA_IP_PATH);
-	if (strlen(path_aux) >= DRIVER_MAX_TYPE_PATH_LEN)
-		return -EINVAL;
-
-	strcpy(data_item_aux.path, path_aux);
+	if (path_aux != NULL) {
+		if (strlen(path_aux) >= DRIVER_MAX_TYPE_PATH_LEN) {
+			l_free(path_aux);
+			return -EINVAL;
+		} else
+			strcpy(data_item_aux.path, path_aux);
+	}
 	l_free(path_aux);
 
-	rc = storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
+	storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
 			&element_size_aux);
-	if (rc < 0)
+	if (element_size_aux < 0)
 		return -EINVAL;
 
 	data_item_aux.element_size = element_size_aux;
 
-	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
+	storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
-	if (rc <= 0)
+	if (reg_addr_aux < 0)
 		return -EINVAL;
 	data_item_aux.reg_addr = reg_addr_aux;
 
-	rc = storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
+	storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
 				  &bit_size_aux);
-	if (rc <= 0)
+	if (bit_size_aux < 0)
 		return -EINVAL;
 
 	rc = valid_bit_size(bit_size_aux, schema.value_type);
@@ -547,7 +562,6 @@ error:
 
 static int set_driver_properties(struct knot_thing *thing, int fd)
 {
-	int rc;
 	int id;
 	int endianness_type_aux;
 	char *protocol;
@@ -567,44 +581,52 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 
 	name_type = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_NAME_TYPE);
-	if (strlen(name_type) >= DRIVER_MAX_NAME_TYPE_LEN) {
-		l_free(name_type);
-		return -EINVAL;
+	if (name_type != NULL) {
+		if (strlen(name_type) >= DRIVER_MAX_NAME_TYPE_LEN) {
+			l_free(name_type);
+			return -EINVAL;
+		} else
+			device_set_driver_name_type(thing, name_type);
 	}
-	device_set_driver_name_type(thing, name_type);
 
 	login = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_LOGIN);
-	if (strlen(login) >= DRIVER_MAX_LOGIN_LEN) {
-		l_free(login);
-		return -EINVAL;
+	if (login != NULL) {
+		if (strlen(login) >= DRIVER_MAX_LOGIN_LEN) {
+			l_free(login);
+			return -EINVAL;
+		} else
+			device_set_driver_login(thing, login);
 	}
-	device_set_driver_login(thing, login);
 
 	password = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_PASSWORD);
-	if (strlen(password) >= DRIVER_MAX_PASSWORD_LEN) {
-		l_free(password);
-		return -EINVAL;
+	if (password != NULL) {
+		if (strlen(password) >= DRIVER_MAX_PASSWORD_LEN) {
+			l_free(password);
+			return -EINVAL;
+		} else
+			device_set_driver_password(thing, password);
 	}
-	device_set_driver_password(thing, password);
 
 	security = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_SECURITY);
-	if (strlen(password) >= DRIVER_MAX_SECURITY_LEN) {
-		l_free(password);
-		return -EINVAL;
+	if (security != NULL) {
+		if (strlen(security) >= DRIVER_MAX_PASSWORD_LEN) {
+			l_free(security);
+			return -EINVAL;
+		} else
+			device_set_driver_security(thing, security);
 	}
-	device_set_driver_security(thing, security);
 
-	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
+	storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
 	if ((id < DRIVER_MIN_ID || id > DRIVER_MAX_ID))
 		return -EINVAL;
 	device_set_driver_id(thing, id);
 
-	rc = storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
+	storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
 				&endianness_type_aux);
-	if (rc <= 0)
+	if (endianness_type_aux < 0)
 		return -EINVAL;
 	device_set_endianness_type(thing, endianness_type_aux);
 
