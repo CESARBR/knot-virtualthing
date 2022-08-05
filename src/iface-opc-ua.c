@@ -163,6 +163,12 @@ static UA_StatusCode get_read_value(UA_Variant *value,
 	return rc;
 }
 
+int iface_opc_ua_config(struct knot_data_item *data_item,
+			       struct knot_thing *thing)
+{
+	return 0;
+}
+
 int iface_opc_ua_read_data(struct knot_data_item *data_item)
 {
 	UA_StatusCode rc = UA_STATUSCODE_GOOD;

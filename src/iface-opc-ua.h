@@ -23,3 +23,5 @@ int iface_opc_ua_start(struct knot_thing thing,
 		       iface_opc_ua_disconnected_cb_t disconnected_cb,
 		       void *user_data);
 void iface_opc_ua_stop(void);
+int iface_opc_ua_config(struct knot_data_item *data_item,
+			       struct knot_thing *thing);

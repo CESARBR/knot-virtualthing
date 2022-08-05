@@ -67,6 +67,7 @@ static struct driver_ops *create_opc_ua_driver(void)
 	opc_ua_ops->start = iface_opc_ua_start;
 	opc_ua_ops->stop = iface_opc_ua_stop;
 	opc_ua_ops->read = iface_opc_ua_read_data;
+	opc_ua_ops->config = iface_opc_ua_config;
 
 	return opc_ua_ops;
 }
