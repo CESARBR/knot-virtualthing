@@ -46,6 +46,8 @@ struct driver_ops {
 		     driver_disconnected_cb_t disconnected_cb,
 		     void *user_data);
 	void (*stop)(void);
+	int (*config)(struct knot_data_item *data_item,
+		      struct knot_thing *thing_props);
 };
 
 struct driver_ops *create_driver(char *type);
