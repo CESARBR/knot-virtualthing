@@ -16,7 +16,7 @@
 
 #define DRIVER_MAX_PROTOCOL_TYPE_LEN	25
 #define DRIVER_MAX_NAME_TYPE_LEN	25
-#define DRIVER_MAX_URL_LEN		50
+#define DRIVER_MAX_URL_LEN		256
 
 #define DRIVER_MAX_TYPE_TAG_LEN			30
 #define DRIVER_MAX_TYPE_PATH_LEN		5
@@ -24,9 +24,10 @@
 
 #define DRIVER_MAX_PASSWORD_LEN			25
 #define DRIVER_MAX_LOGIN_LEN			25
-#define DRIVER_MAX_SECURITY_LEN			256
+#define DRIVER_MAX_PATH_CERTIFICATE_LEN		256
+#define DRIVER_MAX_PATH_PRIVATE_KEY_LEN		256
+#define DRIVER_MAX_POLICY_LEN			512
 
-#define DRIVER_MAX_NAMESPACE_LEN		25
 #define DRIVER_MAX_IND_TYPE_LEN			25
 #define DRIVER_MAX_IDENTIFIER_LEN		256
 
@@ -87,7 +88,11 @@ struct knot_thing {
 
 	char driver_login[DRIVER_MAX_LOGIN_LEN];
 	char driver_password[DRIVER_MAX_PASSWORD_LEN];
-	char driver_security[DRIVER_MAX_SECURITY_LEN];
+	int driver_security;
+	int driver_security_mode;
+	char driver_security_policy[DRIVER_MAX_POLICY_LEN];
+	char driver_path_certificate[DRIVER_MAX_PATH_CERTIFICATE_LEN];
+	char driver_path_private_key[DRIVER_MAX_PATH_PRIVATE_KEY_LEN];
 
 	struct l_timeout *msg_to;
 };
