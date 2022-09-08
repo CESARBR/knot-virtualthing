@@ -365,7 +365,7 @@ enum STATES get_next_online(enum EVENTS event, void *user_data)
 		next_state = ST_DISCONNECTED;
 		break;
 	case EVT_PUB_DATA:
-		device_publish_data_list(user_data);
+		device_publish_data(user_data);
 		next_state = ST_ONLINE;
 		break;
 	case EVT_DATA_UPDT:
@@ -408,7 +408,7 @@ static void enter_online(void)
 {
 	int err;
 
-	device_publish_data_all();
+	device_publish_data(NULL);
 	err = device_start_event();
 	if (err < 0)
 		l_error("Couldn't start config");

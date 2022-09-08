@@ -14,10 +14,9 @@
  *  Lesser General Public License for more details.
  */
 
-typedef void (*timeout_cb_t)(int);
+typedef void (*timeout_cb_t)();
 
 int event_check_value(knot_event event, knot_value_type current_val,
 		      knot_value_type sent_val, int value_type);
-int event_start(timeout_cb_t cb);
-void event_add_data_item(int id, knot_event event);
+int event_start(timeout_cb_t cb, int time_sec);
 void event_stop(void);

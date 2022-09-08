@@ -32,6 +32,7 @@
 #define DRIVER_URL			"DriverURL"
 #define DRIVER_PROTOCOL_TYPE		"DeviceProtocolType"
 #define DRIVER_ID			"DeviceId"
+#define DRIVER_TIME_SEC			"DeviceTimeSec"
 
 // ATTENTION: Name Type ONLY used for Ethernet/IP communication.
 #define DRIVER_NAME_TYPE		"DeviceNameType"
@@ -76,7 +77,6 @@
 
 #define EVENT_LOWER_THRESHOLD		"EventLowerThreshold"
 #define EVENT_UPPER_THRESHOLD		"EventUpperThreshold"
-#define EVENT_TIME_SEC			"EventTimeSec"
 #define EVENT_CHANGE			"EventChange"
 #define EVENT_CHANGE_TRUE		1
 

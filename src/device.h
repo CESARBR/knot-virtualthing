@@ -35,6 +35,7 @@ void device_set_driver_security_mode(struct knot_thing *thing,
 				     int slave_security_mode);
 void device_set_driver_password(struct knot_thing *thing, const char *password);
 void device_set_driver_login(struct knot_thing *thing, const char *login);
+void device_set_driver_time_sec(struct knot_thing *thing, int time_sec);
 void device_set_driver_security(struct knot_thing *thing, int security);
 void device_set_driver_path_certificate(struct knot_thing *thing,
 				 const char *path_certificate);
@@ -71,8 +72,7 @@ int device_check_schema_change(void);
 int device_send_register_request(void);
 int device_send_auth_request(void);
 int device_send_config(void);
-void device_publish_data_list(struct l_queue *sensor_id_list);
-void device_publish_data_all(void);
+void device_publish_data(struct l_queue *sensor_id_list);
 
 void device_msg_timeout_create(int seconds);
 void device_msg_timeout_modify(int seconds);

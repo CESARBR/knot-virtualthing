@@ -75,12 +75,7 @@ int device_clear_credentials_on_file(void)
 	return 0;
 }
 
-void device_publish_data_list(struct l_queue *sensor_id_list)
-{
-	/* purposely left empty as no behaviour expected/required */
-}
-
-void device_publish_data_all(void)
+void device_publish_data(void)
 {
 	/* purposely left empty as no behaviour expected/required */
 }

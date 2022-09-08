@@ -34,6 +34,7 @@
 #include "conf-device.h"
 
 #define EMPTY_STRING ""
+#define KNOT_ERR_INVALID -1
 
 static int erase_thing_id(struct knot_thing *thing, int cred_fd)
 {
@@ -154,20 +155,20 @@ static int set_data_properties(struct knot_thing *thing,
 			       knot_schema schema,
 			       struct knot_data_item *data_item)
 {
-	int rc;
-	int reg_addr_aux;
-	int bit_size_aux;
+	int rc = KNOT_ERR_INVALID;
+	int reg_addr_aux = KNOT_ERR_INVALID;
+	int bit_size_aux = KNOT_ERR_INVALID;
 	char *tag_name_aux;
 	char *path_aux;
-	int namespace_aux;
+	int namespace_aux = KNOT_ERR_INVALID;
 	char *identifier_type_aux;
 	char *identifier_aux;
-	int element_size_aux;
+	int element_size_aux = KNOT_ERR_INVALID;
 	struct knot_data_item data_item_aux;
 
 	storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
 		&namespace_aux);
-	if (namespace_aux < 0)
+	if (namespace_aux == -EINVAL)
 		return -EINVAL;
 	data_item_aux.namespace = namespace_aux;
 
@@ -217,20 +218,20 @@ static int set_data_properties(struct knot_thing *thing,
 
 	storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
 			&element_size_aux);
-	if (element_size_aux < 0)
+	if (element_size_aux == -EINVAL)
 		return -EINVAL;
 
 	data_item_aux.element_size = element_size_aux;
 
 	storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
-	if (reg_addr_aux < 0)
+	if (reg_addr_aux == -EINVAL)
 		return -EINVAL;
 	data_item_aux.reg_addr = reg_addr_aux;
 
 	storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
 				  &bit_size_aux);
-	if (bit_size_aux < 0)
+	if (bit_size_aux == -EINVAL)
 		return -EINVAL;
 
 	rc = valid_bit_size(bit_size_aux, schema.value_type);
@@ -354,7 +355,7 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 static int set_limit(int fd, const char *group_id, const char *key,
 		     int value_type, knot_value_type value)
 {
-	int rc;
+	int rc = KNOT_ERR_INVALID;
 
 	switch (value_type) {
 	case KNOT_VALUE_TYPE_INT:
@@ -413,19 +414,12 @@ static int set_event(struct knot_thing *thing, int fd, char *group_id,
 					&event_aux.upper_limit);
 	}
 
-	rc = storage_read_key_int(fd, group_id, EVENT_TIME_SEC, &aux);
-	if (rc > 0) {
-		event_aux.event_flags |= KNOT_EVT_FLAG_TIME;
-		event_aux.time_sec = aux;
-	}
-
 	rc = storage_read_key_int(fd, group_id, EVENT_CHANGE, &aux);
 	if (rc > 0)
 		event_aux.event_flags |= KNOT_EVT_FLAG_CHANGE;
 
 	rc = knot_event_is_valid(event_aux.event_flags,
 				 schema.value_type,
-				 event_aux.time_sec,
 				 &event_aux.lower_limit,
 				 &event_aux.upper_limit);
 	if (rc)
@@ -500,10 +494,10 @@ static int set_sensor_id(struct knot_thing *thing, int fd, char *group_id,
 static int set_data_items(struct knot_thing *thing,
 			  int fd)
 {
-	int rc;
-	int i;
+	int rc = KNOT_ERR_INVALID;
+	int i = KNOT_ERR_INVALID;
 	char **data_item_group;
-	int sensor_id;
+	int sensor_id = KNOT_ERR_INVALID;
 
 	struct knot_data_item data_item_aux;
 	knot_schema schema;
@@ -556,16 +550,16 @@ static int set_data_items(struct knot_thing *thing,
 
 error:
 	l_strfreev(data_item_group);
-
 	return -EINVAL;
 }
 
 static int set_driver_properties(struct knot_thing *thing, int fd)
 {
-	int id;
-	int endianness_type_aux;
-	int security;
-	int security_mode;
+	int id = KNOT_ERR_INVALID;
+	int time_sec = KNOT_ERR_INVALID;
+	int endianness_type_aux = KNOT_ERR_INVALID;
+	int security = KNOT_ERR_INVALID;
+	int security_mode = KNOT_ERR_INVALID;
 	char *protocol;
 	char *name_type;
 	char *login;
@@ -582,6 +576,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 		return -EINVAL;
 	}
 	device_set_protocol_type(thing, protocol);
+	l_free(protocol);
 
 	name_type = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_NAME_TYPE);
@@ -592,6 +587,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 		} else
 			device_set_driver_name_type(thing, name_type);
 	}
+	l_free(name_type);
 
 	login = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_LOGIN);
@@ -602,6 +598,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 		} else
 			device_set_driver_login(thing, login);
 	}
+	l_free(login);
 
 	password = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_PASSWORD);
@@ -612,6 +609,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 		} else
 			device_set_driver_password(thing, password);
 	}
+	l_free(password);
 
 	path_certificate = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_PATH_CERTIFICATE);
@@ -623,6 +621,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 			device_set_driver_path_certificate(thing,
 							   path_certificate);
 	}
+	l_free(path_certificate);
 
 	security_policy = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_SECURITY_POLICY);
@@ -634,6 +633,7 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 			device_set_driver_security_policy(thing,
 							   security_policy);
 	}
+	l_free(security_policy);
 
 	path_private_key = storage_read_key_string(fd, THING_GROUP,
 					    DRIVER_PATH_PRIVATE_KEY);
@@ -645,38 +645,36 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 			device_set_driver_path_private_key(thing,
 							   path_private_key);
 	}
+	l_free(path_private_key);
 
-	storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &security);
-	if (security < 0)
+	storage_read_key_int(fd, THING_GROUP, DRIVER_TIME_SEC, &time_sec);
+	if (time_sec == -EINVAL)
+		return -EINVAL;
+	device_set_driver_time_sec(thing, time_sec);
+
+	storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY, &security);
+	if (security == -EINVAL)
 		return -EINVAL;
 	device_set_driver_security(thing, security);
 
 	storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
-	if ((id < DRIVER_MIN_ID || id > DRIVER_MAX_ID))
+	if (id == -EINVAL)
 		return -EINVAL;
 	device_set_driver_id(thing, id);
 
 	storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY_MODE,
 			     &security_mode);
-	if (security_mode < 0)
+	if (security_mode == -EINVAL)
 		return -EINVAL;
 	device_set_driver_security_mode(thing, security_mode);
 
 	storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
 				&endianness_type_aux);
-	if (endianness_type_aux < 0)
+	if (endianness_type_aux == -EINVAL)
 		return -EINVAL;
 	device_set_endianness_type(thing, endianness_type_aux);
 
-	l_free(name_type);
-	l_free(login);
-	l_free(password);
-	l_free(protocol);
-	l_free(security_policy);
-	l_free(path_private_key);
-	l_free(path_certificate);
-
-	return 0;
+	return KNOT_STATUS_OK;
 }
 
 static int set_thing_user_token(struct knot_thing *thing, int fd)
@@ -803,17 +801,6 @@ static int update_event_data_item(int fd, const char *group_id,
 				  int value_type, knot_event *event)
 {
 	int rc;
-
-	if (event->event_flags & KNOT_EVT_FLAG_TIME) {
-		rc = storage_write_key_int(fd, group_id, EVENT_TIME_SEC,
-					   event->time_sec);
-		if (rc < 0) {
-			l_error("Failed to set new time sec");
-			return rc;
-		}
-	} else if (!storage_has_unit(fd, group_id, EVENT_TIME_SEC)) {
-		storage_remove_key(fd, group_id, EVENT_TIME_SEC);
-	}
 
 	if (event->event_flags & KNOT_EVT_FLAG_CHANGE) {
 		rc = storage_write_key_int(fd, group_id, EVENT_CHANGE,
