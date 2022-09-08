@@ -93,12 +93,10 @@ static UA_ByteString load_cert_file(const char *const path)
 	return fileContents;
 }
 
-static UA_StatusCode get_node_id(UA_NodeId *parent, int namespace_index,
+static void get_node_id(UA_NodeId *parent, int namespace_index,
 			      char *identifier_type,
 			      char *identifier)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
-
 	UA_NodeId_init(parent);
 
 	if (!strcmp(identifier_type, NODEIDTYPE_STRING)) {
@@ -119,26 +117,22 @@ static UA_StatusCode get_node_id(UA_NodeId *parent, int namespace_index,
 		*parent = UA_NODEID_BYTESTRING(namespace_index, identifier);
 	} else {
 		UA_NodeId_isNull(parent);
-		rc = UA_STATUSCODE_BAD;
 	}
-
-	return rc;
 }
 
 static UA_StatusCode setup_read_data(UA_Variant *value,
 				     struct knot_data_item *data_item)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	UA_StatusCode rc = UA_STATUSCODE_BAD;
 	UA_NodeId *parent = UA_NodeId_new();
 
 	UA_Variant_init(value);
 	UA_NodeId_init(parent);
 
-	rc = get_node_id(parent, data_item->namespace,
+	get_node_id(parent, data_item->namespace,
 			 data_item->identifier_type,
 			 data_item->identifier);
-	if (rc == UA_STATUSCODE_GOOD)
-		rc = UA_Client_readValueAttribute(opc_ua_client,
+	rc = UA_Client_readValueAttribute(opc_ua_client,
 						  *parent, value);
 
 	free(parent);
@@ -239,6 +233,7 @@ int iface_opc_ua_config(struct knot_data_item *data_item,
 int iface_opc_ua_read_data(struct knot_data_item *data_item)
 {
 	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	int rental = UA_STATUSCODE_GOOD;
 	union opc_ua_types tmp;
 	UA_Variant *value = UA_Variant_new();
 
@@ -250,16 +245,22 @@ int iface_opc_ua_read_data(struct knot_data_item *data_item)
 				    data_item->value_type_size, &tmp);
 	}
 
-	if (rc != UA_STATUSCODE_GOOD) {
+	if (rc == UA_STATUSCODE_BADCONNECTIONCLOSED) {
 		l_error("Failed to read from OPC UA: %#010x",
 			rc);
 		l_io_destroy(opc_ua_io);
 		opc_ua_io = NULL;
-	} else {
+		rental = -EINTR;
+	} else if (rc == UA_STATUSCODE_GOOD) {
 		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
+	} else {
+		l_error("Failed to read from OPC UA for Data_%d: %#010x",
+			data_item->sensor_id, rc);
+		rental = -ENXIO;
 	}
+
 	UA_Variant_delete(value);
-	return -rc;
+	return rental;
 }
 
 static void on_disconnected(struct l_io *io, void *user_data)

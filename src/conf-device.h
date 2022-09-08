@@ -76,6 +76,7 @@ struct knot_thing {
 	char name[KNOT_PROTOCOL_DEVICE_NAME_LEN];
 	char *user_token;
 
+	int time_sec;
 	int number_sensor;
 	char protocol_type[DRIVER_MAX_PROTOCOL_TYPE_LEN];
 	int endianness_type;

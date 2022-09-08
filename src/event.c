@@ -35,9 +35,9 @@ struct data_item_timeout {
 	unsigned int timeout_sec;
 };
 
-struct l_queue *sensor_timeouts;
 timeout_cb_t timeout_cb;
 static bool active;
+struct l_timeout *timeout_to;
 
 static int compare_int(int val1, int val2)
 {
@@ -123,17 +123,10 @@ static bool is_higher_than_threshold(knot_value_type value,
 
 static void on_sensor_to(struct l_timeout *to, void *data)
 {
-	struct data_item_timeout *data_item_to_info = data;
+	int *time_sec = data;
 
-	timeout_cb(data_item_to_info->id);
-	l_timeout_modify(to, data_item_to_info->timeout_sec);
-}
-
-static void timeout_destroy(void *data)
-{
-	struct l_timeout *to = data;
-
-	l_timeout_remove(to);
+	timeout_cb();
+	l_timeout_modify(to, *time_sec);
 }
 
 int event_check_value(knot_event event, knot_value_type current_val,
@@ -165,26 +158,16 @@ int event_check_value(knot_event event, knot_value_type current_val,
 	return rc;
 }
 
-void event_add_data_item(int id, knot_event event)
+int event_start(timeout_cb_t cb, int time_sec)
 {
-	struct data_item_timeout *data = l_new(struct data_item_timeout, 1);
+	int *time_sec_aux = l_new(int, 1);
 
-	data->id = id;
-	data->timeout_sec = event.time_sec;
-
-	if (is_timeout_flag_set(event.event_flags)) {
-		struct l_timeout *to = l_timeout_create(event.time_sec,
-							on_sensor_to,
-							data,
-							l_free);
-		l_queue_push_head(sensor_timeouts, to);
-	}
-}
-
-int event_start(timeout_cb_t cb)
-{
-	sensor_timeouts = l_queue_new();
-	if (!sensor_timeouts)
+	*time_sec_aux = time_sec;
+	timeout_to = l_timeout_create(time_sec,
+				      on_sensor_to,
+				      time_sec_aux,
+				      l_free);
+	if (!timeout_to)
 		return -ENOMSG;
 	timeout_cb = cb;
 	active = true;
@@ -195,8 +178,6 @@ int event_start(timeout_cb_t cb)
 void event_stop(void)
 {
 	active = false;
-	if (sensor_timeouts) {
-		l_queue_destroy(sensor_timeouts, timeout_destroy);
-		sensor_timeouts = NULL;
-	}
+	if (timeout_to)
+		l_timeout_remove(timeout_to);
 }

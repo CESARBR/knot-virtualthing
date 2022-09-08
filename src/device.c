@@ -62,14 +62,6 @@ static void knot_thing_destroy(struct knot_thing *thing)
 	l_hashmap_destroy(thing->data_items, l_free);
 }
 
-static void foreach_event_add_data_item(const void *key, void *value,
-					void *user_data)
-{
-	struct knot_data_item *data_item = value;
-
-	event_add_data_item(data_item->sensor_id, data_item->event);
-}
-
 static void foreach_update_config(void *data, void *user_data)
 {
 	knot_msg_config *config = data;
@@ -128,16 +120,9 @@ static void on_msg_timeout(struct l_timeout *timeout, void *user_data)
 	sm_input_event(EVT_TIMEOUT, user_data);
 }
 
-static void on_event_timeout(int id)
+static void on_event_timeout(void)
 {
-	struct l_queue *list;
-
-	list = l_queue_new();
-	l_queue_push_head(list, &id);
-
-	sm_input_event(EVT_PUB_DATA, list);
-
-	l_queue_destroy(list, NULL);
+	sm_input_event(EVT_PUB_DATA, NULL);
 }
 
 static bool on_cloud_receive(const struct knot_cloud_msg *msg, void *user_data)
@@ -235,7 +220,6 @@ static void on_driver_connected(void *user_data)
 static int on_driver_poll_receive(int id)
 {
 	struct knot_data_item *data_item_aux;
-	struct l_queue *list;
 	int rc;
 	time_t rawtime = time(NULL);
 
@@ -244,7 +228,10 @@ static int on_driver_poll_receive(int id)
 		return -EINVAL;
 
 	rc = driver->read(data_item_aux);
-	if (rawtime == -1) {
+	if (rc < KNOT_STATUS_OK)
+		return -EPERM;
+
+	if (rawtime == KNOT_ERR_INVALID) {
 		puts("The time() function failed");
 		return -EINVAL;
 	} else {
@@ -258,19 +245,19 @@ static int on_driver_poll_receive(int id)
 		}
 	}
 
-	if (event_check_value(data_item_aux->event,
-			      data_item_aux->current_val,
-			      data_item_aux->sent_val,
-			      data_item_aux->schema.value_type) > 0) {
-		data_item_aux->sent_val = data_item_aux->current_val;
-		list = l_queue_new();
-		l_queue_push_head(list, &id);
-		sm_input_event(EVT_PUB_DATA, list);
-		l_queue_destroy(list, NULL);
-	}
-
 	return rc;
 }
+
+static void device_publish_data_list(struct l_queue *sensor_id_list)
+{
+	l_queue_foreach(sensor_id_list, on_publish_data, NULL);
+}
+
+static void device_publish_data_all(void)
+{
+	l_hashmap_foreach(thing.data_items, foreach_publish_all_data, NULL);
+}
+
 void device_set_log_priority(int priority)
 {
 	knot_cloud_set_log_priority(priority);
@@ -333,6 +320,11 @@ void device_set_driver_password(struct knot_thing *thing, const char *password)
 void device_set_driver_login(struct knot_thing *thing, const char *login)
 {
 	strcpy(thing->driver_login, login);
+}
+
+void device_set_driver_time_sec(struct knot_thing *thing, int time_sec)
+{
+	thing->time_sec = time_sec;
 }
 
 void device_set_driver_security(struct knot_thing *thing, int security)
@@ -401,7 +393,6 @@ void device_update_config_data_item(struct knot_thing *thing,
 
 	if (!(config->event.event_flags & KNOT_EVT_FLAG_UNREGISTERED)) {
 		data_item->event.event_flags = config->event.event_flags;
-		data_item->event.time_sec = config->event.time_sec;
 		knot_value_assign_limit(config->schema.value_type,
 					config->event.lower_limit,
 					&data_item->event.lower_limit);
@@ -475,16 +466,13 @@ int device_clear_credentials_on_file(void)
 int device_start_event(void)
 {
 	int rc;
-
-	rc = event_start(on_event_timeout);
-	if (rc < 0) {
+	rc = event_start(on_event_timeout, thing.time_sec);
+	if (rc < KNOT_STATUS_OK) {
 		l_error("Failed to start event");
 		return rc;
 	}
 
-	l_hashmap_foreach(thing.data_items, foreach_event_add_data_item, NULL);
-
-	return 0;
+	return KNOT_STATUS_OK;
 }
 
 void device_stop_event(void)
@@ -535,14 +523,12 @@ int device_send_config(void)
 	return rc;
 }
 
-void device_publish_data_list(struct l_queue *sensor_id_list)
+void device_publish_data(struct l_queue *sensor_id_list)
 {
-	l_queue_foreach(sensor_id_list, on_publish_data, NULL);
-}
-
-void device_publish_data_all(void)
-{
-	l_hashmap_foreach(thing.data_items, foreach_publish_all_data, NULL);
+	if (sensor_id_list)
+		device_publish_data_list(sensor_id_list);
+	else
+		device_publish_data_all();
 }
 
 void device_msg_timeout_create(int seconds)

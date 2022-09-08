@@ -107,9 +107,12 @@ static int check_valid_groups(char **all_groups, int index)
 {
 	int repeated_check;
 	regex_t preg;
-	int i;
+	int group_number;
 
-	regcomp(&preg, "^DataItem_[0-9]+$", REG_EXTENDED);
+	if (regcomp(&preg, "^DataItem_[0-9]+$", REG_EXTENDED)) {
+		l_error("Invalid expression group: %s", all_groups[index]);
+		return -EINVAL;
+	}
 
 	if (!regexec(&preg, all_groups[index], 0, (regmatch_t *)NULL, 0) == 0) {
 		l_error("Invalid DataItem group: %s", all_groups[index]);
@@ -117,16 +120,16 @@ static int check_valid_groups(char **all_groups, int index)
 		return -EINVAL;
 	}
 
-	for (i = index + 1; all_groups[i] != NULL; i++) {
-		repeated_check = strcmp(all_groups[i], all_groups[index]);
+	for (group_number = index + 1; all_groups[group_number] != NULL; group_number++) {
+		repeated_check = strcmp(all_groups[group_number], all_groups[index]);
 		if (repeated_check == 0) {
-			l_error("Repeated DataItem group: %s", all_groups[i]);
+			l_error("Repeated DataItem group: %s", all_groups[group_number]);
 			regfree(&preg);
 			return -EINVAL;
 		}
 	}
 
-	return 0;
+	return KNOT_STATUS_OK;
 }
 
 int storage_open(const char *pathname)
