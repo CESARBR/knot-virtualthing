@@ -106,6 +106,8 @@ static void on_publish_data(void *data, void *user_data)
 	if (rc < 0)
 		l_error("Couldn't send data_update for data_item #%d",
 			*sensor_id);
+	else
+		data_item->sent_val = data_item->current_val;
 }
 
 static void foreach_publish_all_data(const void *key, void *value,
@@ -244,6 +246,12 @@ static int on_driver_poll_receive(int id)
 			return -EINVAL;
 		}
 	}
+
+	if (event_check_value(data_item_aux->event,
+			      data_item_aux->current_val,
+			      data_item_aux->sent_val,
+			      data_item_aux->schema.value_type) < 0)
+		return -EACCES;
 
 	return rc;
 }
