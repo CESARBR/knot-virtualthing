@@ -22,10 +22,8 @@
 #include <ell/util.h>
 #include <ell/queue.h>
 #include <ell/timeout.h>
-
 #include "event.h"
 
-#define is_timeout_flag_set(a) ((a) & KNOT_EVT_FLAG_TIME)
 #define is_change_flag_set(a) ((a) & KNOT_EVT_FLAG_CHANGE)
 #define is_lower_flag_set(a) ((a) & KNOT_EVT_FLAG_LOWER_THRESHOLD)
 #define is_upper_flag_set(a) ((a) & KNOT_EVT_FLAG_UPPER_THRESHOLD)
@@ -129,10 +127,73 @@ static void on_sensor_to(struct l_timeout *to, void *data)
 	l_timeout_modify(to, *time_sec);
 }
 
+static int comp_change_lower_flag(knot_value_type current_val,
+				  knot_value_type sent_val,
+				  knot_value_type lower_limit,
+				  int value_type)
+{
+	int rc = KNOT_ERR_INVALID;
+
+	if (!is_value_equal(current_val, sent_val, value_type))
+		if (is_lower_than_threshold(current_val,
+				lower_limit, value_type))
+			rc = KNOT_STATUS_OK;
+
+	return rc;
+}
+
+static int comp_change_upper_flag(knot_value_type current_val,
+				  knot_value_type sent_val,
+				  knot_value_type upper_limit,
+				  int value_type)
+{
+	int rc = KNOT_ERR_INVALID;
+
+	if (!is_value_equal(current_val, sent_val, value_type))
+		if (!is_higher_than_threshold(current_val,
+				upper_limit, value_type))
+			rc = KNOT_STATUS_OK;
+
+	return rc;
+}
+
+static int comp_upper_lower_flag(knot_value_type current_val,
+			     knot_value_type lower_limit,
+			     knot_value_type upper_limit,
+			     int value_type)
+{
+		int rc = KNOT_ERR_INVALID;
+
+	if (!is_higher_than_threshold(current_val, upper_limit, value_type))
+		if (!is_lower_than_threshold(current_val, lower_limit,
+					value_type))
+			rc = KNOT_STATUS_OK;
+
+	return rc;
+}
+
+static int comp_all_flag(knot_value_type current_val,
+			 knot_value_type lower_limit,
+			 knot_value_type upper_limit,
+			 knot_value_type sent_val,
+			 int value_type)
+{
+	int rc = KNOT_ERR_INVALID;
+
+	if (!is_value_equal(current_val, sent_val, value_type))
+		if (!is_higher_than_threshold(current_val, upper_limit,
+					value_type))
+			if (!is_lower_than_threshold(current_val, lower_limit,
+					value_type))
+				rc = KNOT_STATUS_OK;
+
+	return rc;
+}
+
 int event_check_value(knot_event event, knot_value_type current_val,
 		      knot_value_type sent_val, int value_type)
 {
-	int rc;
+	int rc = KNOT_ERR_INVALID;
 
 	if (!active)
 		return -ENOMSG;
@@ -141,19 +202,55 @@ int event_check_value(knot_event event, knot_value_type current_val,
 			value_type > KNOT_VALUE_TYPE_MAX)
 		return -EINVAL;
 
-	if (is_change_flag_set(event.event_flags) &&
-			!is_value_equal(current_val, sent_val, value_type))
-		rc = 1;
-	else if (is_lower_flag_set(event.event_flags) &&
-			is_lower_than_threshold(current_val,
+	if (event.event_flags) {
+		switch (event.event_flags) {
+		case KNOT_EVT_FLAG_CHANGE:
+			if (!is_value_equal(current_val, sent_val, value_type))
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVT_FLAG_LOWER_THRESHOLD:
+			if (!is_lower_than_threshold(current_val,
 				event.lower_limit, value_type))
-		rc = 1;
-	else if (is_upper_flag_set(event.event_flags) &&
-			is_higher_than_threshold(current_val,
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVT_FLAG_UPPER_THRESHOLD:
+			if (!is_higher_than_threshold(current_val,
 				event.upper_limit, value_type))
-		rc = 1;
-	else
-		rc = 0;
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVENT_CHANGE_UPPER_FLAG:
+			if (!comp_change_upper_flag(current_val, sent_val,
+						   event.upper_limit,
+						   value_type))
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVENT_CHANGE_LOWER_FLAG:
+			if (!comp_change_lower_flag(current_val, sent_val,
+				event.lower_limit,
+				value_type))
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVENT_UPPER_LOWER_FLAG:
+			if (!comp_upper_lower_flag(current_val,
+						event.lower_limit,
+						event.upper_limit,
+						value_type))
+				rc = KNOT_STATUS_OK;
+			break;
+		case KNOT_EVENT_FLAG_MAX:
+			if (!comp_all_flag(current_val,
+					event.lower_limit,
+					event.upper_limit,
+					sent_val,
+					value_type))
+				rc = KNOT_STATUS_OK;
+			break;
+		default:
+			rc = KNOT_ERR_INVALID;
+			break;
+		}
+	} else
+		rc = KNOT_STATUS_OK;
 
 	return rc;
 }
