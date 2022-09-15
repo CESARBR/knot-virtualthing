@@ -4,15 +4,16 @@ FROM alpine:3.10.3 AS builder
 ARG LIBELL_VERSION=0.18
 ARG JSONC_VERSION=0.14-20200419
 ARG RABBITMQC_VERSION=v0.10.0
-ARG KNOT_CLOUD_SDK_VERSION=1bdb2dd
-ARG KNOT_PROTOCOL_VERSION=ead9e66
+ARG KNOT_CLOUD_SDK_VERSION=bdc4130
+ARG KNOT_PROTOCOL_VERSION=5f4e9c6
 ARG LIBMODBUS_VERSION=3.1.4
 ARG LIBPLCTAG_VERSION=v2.5.0
+ARG LIBOPEN62541_VERSION=v1.3.2
 
 WORKDIR /usr/local
 
 # Install dependencies
-RUN apk update && apk add --no-cache make gcc g++ autoconf libtool automake pkgconfig wget file musl-dev linux-headers cmake openssl-dev git
+RUN apk update && apk add --no-cache tar make gcc g++ build-base autoconf libtool automake pkgconfig wget file musl-dev linux-headers cmake openssl-dev git python3 py3-pip musl-dev
 
 # Install libell
 RUN mkdir -p /usr/local/ell
@@ -44,6 +45,13 @@ RUN mkdir -p /usr/local/libmodbus
 RUN wget -q -O- https://libmodbus.org/releases/libmodbus-$LIBMODBUS_VERSION.tar.gz | tar xz -C /usr/local/libmodbus --strip-components=1
 RUN cd libmodbus && ./configure --prefix=/usr -q && make install
 
+# Install open62541 dependency
+RUN mkdir -p /usr/local/libplctag
+RUN git clone https://github.com/open62541/open62541.git /usr/local/open62541
+RUN cd open62541 && git checkout $LIBOPEN62541_VERSION && git submodule update --init --recursive && mkdir -p build
+RUN cd open62541/build && cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib DLIB_INSTALL_DIR=lib -DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_ENCRYPTION=OPENSSL  -DUA_ARCH_REMOVE_FLAGS="-Werror" ..
+RUN cd open62541/build && make install
+
 # Install libplctag dependency
 RUN mkdir -p /usr/local/libplctag
 RUN wget -q -O- https://github.com/libplctag/libplctag/archive/refs/tags/$LIBPLCTAG_VERSION.tar.gz | tar xz -C /usr/local/libplctag --strip-components=1
@@ -52,8 +60,9 @@ RUN cd libplctag && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release 
 # Copy files to source
 COPY ./ ./
 
+
 # Generate Makefile
-RUN PKG_CONFIG_PATH=/usr/lib64/pkgconfig ./bootstrap-configure
+RUN PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig/ ./bootstrap-configure
 
 # Build
 RUN make install
@@ -81,14 +90,12 @@ COPY --from=builder /usr/lib/libmodbus.so* /usr/lib/
 COPY --from=builder /usr/lib/libmodbus.la* /usr/lib/
 COPY --from=builder /usr/lib/libplctag.so* /usr/lib/
 COPY --from=builder /usr/lib/libplctag.a* /usr/lib/
+COPY --from=builder /usr/lib/libopen62541.so* /usr/lib/
 
 # Copy binary executables
 COPY --from=builder /usr/local/src/thingd /usr/bin/thingd
 
-# Copy configuration files
-COPY --from=builder /usr/local/confs/credentials.conf $CRED_CONF_PATH
-COPY --from=builder /usr/local/confs/device.conf $DEV_CONF_PATH
-COPY --from=builder /usr/local/confs/cloud.conf $CLOUD_CONF_PATH
+VOLUME /etc/knot/
 
 # Run
 CMD (thingd -n -c $CRED_CONF_PATH -d $DEV_CONF_PATH -p $CLOUD_CONF_PATH)

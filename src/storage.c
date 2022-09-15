@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <regex.h>
-
+#include <knot/knot_protocol.h>
 #include <ell/ell.h>
 
 #include "storage.h"

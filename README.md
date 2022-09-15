@@ -85,7 +85,7 @@ To install open62541, you must follow the instructions:
 1. `git clone git@https://github.com/open62541/open62541.git`
 2. `git submodule update --init --recursive`
 3. `mkdir build && cd build`
-3. `cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL UA_ENABLE_AMALGAMATION=ON ..`
+3. `cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_ENCRYPTION=MBEDTLS ..`
 4. Install lib files with `sudo make install`
 
 ## Building
@@ -128,7 +128,7 @@ located under the confs/ folder.
 
 To build:
 
-`docker build -t thingd .`
+`docker build --network=host -t thingd .`
 
 You can also use the options --build-arg ENV=value to install other dependencies
 versions.
@@ -146,7 +146,7 @@ The build arguments available are:
 
 To run the container:
 
-`docker run --network=host -it thingd`
+`docker run --network=host -v "config_file_path":/etc/knot/ -it thingd`
 
 #### Warning
 
