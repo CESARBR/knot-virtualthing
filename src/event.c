@@ -123,8 +123,8 @@ static void on_sensor_to(struct l_timeout *to, void *data)
 {
 	int *time_sec = data;
 
-	timeout_cb();
 	l_timeout_modify(to, *time_sec);
+	timeout_cb();
 }
 
 static int comp_change_lower_flag(knot_value_type current_val,
