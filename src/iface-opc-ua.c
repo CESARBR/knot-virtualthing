@@ -245,18 +245,18 @@ int iface_opc_ua_read_data(struct knot_data_item *data_item)
 				    data_item->value_type_size, &tmp);
 	}
 
-	if (rc == UA_STATUSCODE_BADCONNECTIONCLOSED) {
+	if (rc & UA_STATUSCODE_BAD) {
 		l_error("Failed to read from OPC UA: %#010x",
 			rc);
 		l_io_destroy(opc_ua_io);
 		opc_ua_io = NULL;
 		rental = -EINTR;
-	} else if (rc == UA_STATUSCODE_GOOD) {
-		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
-	} else {
+	} else if (rc & UA_STATUSCODE_UNCERTAIN) {
 		l_error("Failed to read from OPC UA for Data_%d: %#010x",
 			data_item->sensor_id, rc);
 		rental = -ENXIO;
+	} else {
+		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	}
 
 	UA_Variant_delete(value);
