@@ -134,94 +134,114 @@ static UA_StatusCode setup_read_data(UA_Variant *value,
 			 data_item->identifier);
 	rc = UA_Client_readValueAttribute(opc_ua_client,
 						  *parent, value);
-
 	free(parent);
 	return rc;
 }
 
-static UA_StatusCode get_type_int(union opc_ua_types *tmp,
-				  void * data,
+static void get_type_int(union opc_ua_types *tmp,
+				  UA_Variant *data,
 				  int value_type_size)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
-
-	if (value_type_size == 8)
-		tmp->val_i8 = *(UA_Byte *)data;
-	else if (value_type_size == 16)
-		tmp->val_i16 = *(UA_Int16 *)data;
-	else if (value_type_size == 32)
-		tmp->val_i32 = *(UA_Int32 *)data;
-	else
-		rc = UA_STATUSCODE_BAD;
-
-	return rc;
+	if (value_type_size == 8) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_SBYTE])) {
+			tmp->val_i8 = *(UA_SByte *)data->data;
+		}
+	} else if (value_type_size == 16) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_INT16])) {
+			tmp->val_i16 = *(UA_Int16 *)data->data;
+		}
+	} else if (value_type_size == 32) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_INT32])) {
+			tmp->val_i32 = *(UA_Int32 *)data->data;
+		}
+	} else if (value_type_size == 64) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_INT64])) {
+			tmp->val_u64 = *(UA_Int64 *)data->data;
+		}
+	}
 }
 
-static UA_StatusCode get_type_uint(union opc_ua_types *tmp,
-				   void * data,
+static void get_type_uint(union opc_ua_types *tmp,
+				   UA_Variant *data,
 				   int value_type_size)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
-
-	if (value_type_size == 8)
-		tmp->val_u8 = *(UA_SByte *)data;
-	if (value_type_size == 16)
-		tmp->val_u16 = *(UA_UInt16 *)data;
-	else if (value_type_size == 32)
-		tmp->val_u32 = *(UA_UInt32 *)data;
-	else
-		rc = UA_STATUSCODE_BAD;
-
-	return rc;
+	if (value_type_size == 8) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_BYTE])) {
+			tmp->val_u8 = *(UA_Byte *)data->data;
+		}
+	} else if (value_type_size == 16) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_UINT16])) {
+			tmp->val_u16 = *(UA_UInt16 *)data->data;
+		}
+	} else if (value_type_size == 32) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_UINT32])) {
+			tmp->val_u32 = *(UA_UInt32 *)data->data;
+		}
+	} else if (value_type_size == 64) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_UINT64])) {
+			tmp->val_u64 = *(UA_UInt64 *)data->data;
+		}
+	}
 }
 
-static UA_StatusCode get_type_float(union opc_ua_types *tmp,
-				    void * data,
+static void get_type_float(union opc_ua_types *tmp,
+				    UA_Variant *data,
 				    int value_type_size)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
-
-	if (value_type_size == 1)
-		tmp->val_bool = *(UA_Boolean *)data;
-	else if (value_type_size == 8)
-		tmp->val_bool = *(UA_SByte *)data;
-	else
-		rc = UA_STATUSCODE_BAD;
-
-	return rc;
+	if (value_type_size == 32) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_FLOAT])) {
+			tmp->val_float = *(UA_Float *)data->data;
+		}
+	}
 }
 
-static UA_StatusCode get_read_value(UA_Variant *value,
+static void get_type_bool(union opc_ua_types *tmp,
+				    UA_Variant *data,
+				    int value_type_size)
+{
+	if (value_type_size == 1) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_BOOLEAN])) {
+			tmp->val_bool = *(UA_Boolean *)data->data;
+		}
+	}
+}
+
+static void get_read_value(UA_Variant *value,
 				    uint8_t value_type,
 				    int value_type_size,
 				    union opc_ua_types *tmp)
 {
-	UA_StatusCode rc = UA_STATUSCODE_GOOD;
+	int value_new = (int)value_type;
 
-	switch (value_type) {
+	switch (value_new) {
 	case KNOT_VALUE_TYPE_BOOL:
-		rc = get_type_float(tmp, value->data, value_type_size);
+		get_type_bool(tmp, value, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_FLOAT:
-		tmp->val_float = *(UA_Float *)value->data;
+		get_type_float(tmp, value, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_INT:
-		rc = get_type_int(tmp, value->data, value_type_size);
+	case KNOT_VALUE_TYPE_INT64:
+		get_type_int(tmp, value, value_type_size);
 		break;
 	case KNOT_VALUE_TYPE_UINT:
-		rc = get_type_uint(tmp, value->data, value_type_size);
-		break;
-	case KNOT_VALUE_TYPE_INT64:
-		tmp->val_i64 = *(UA_Int64 *)value->data;
-		break;
 	case KNOT_VALUE_TYPE_UINT64:
-		tmp->val_u64 = *(UA_UInt64 *)value->data;
+		get_type_uint(tmp, value, value_type_size);
 		break;
 	default:
-		rc = UA_STATUSCODE_BAD;
+		break;
 	}
 
-	return rc;
 }
 
 int iface_opc_ua_config(struct knot_data_item *data_item,
@@ -240,21 +260,22 @@ int iface_opc_ua_read_data(struct knot_data_item *data_item)
 	rc = setup_read_data(value, data_item);
 	memset(&tmp, 0, sizeof(tmp));
 
-	if (rc == UA_STATUSCODE_GOOD) {
-		rc = get_read_value(value, data_item->schema.value_type,
+	if (!((rc & UA_STATUSCODE_BAD) || (rc & UA_STATUSCODE_UNCERTAIN))) {
+		get_read_value(value, data_item->schema.value_type,
 				    data_item->value_type_size, &tmp);
 	}
 
-	if (rc & UA_STATUSCODE_BAD) {
+	if (rc & UA_STATUSCODE_BADSERVERNOTCONNECTED) {
 		l_error("Failed to read from OPC UA: %#010x",
 			rc);
 		l_io_destroy(opc_ua_io);
 		opc_ua_io = NULL;
 		rental = -EINTR;
-	} else if (rc & UA_STATUSCODE_UNCERTAIN) {
+	} else if (((rc & UA_STATUSCODE_BAD) ||
+		   (rc & UA_STATUSCODE_UNCERTAIN))) {
 		l_error("Failed to read from OPC UA for Data_%d: %#010x",
 			data_item->sensor_id, rc);
-		rental = -ENXIO;
+		rental = -EPERM;
 	} else {
 		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	}
