@@ -61,6 +61,7 @@ static UA_Client *opc_ua_client;
 union opc_ua_types {
 	uint8_t val_raw[KNOT_DATA_RAW_SIZE];
 	float val_float;
+	double val_double;
 	uint8_t val_bool;
 	int8_t val_i8;
 	uint8_t val_u8;
@@ -211,6 +212,18 @@ static void get_type_float(union opc_ua_types *tmp,
 	}
 }
 
+static void get_type_double(union opc_ua_types *tmp,
+				    UA_Variant *data,
+				    int value_type_size)
+{
+	if (value_type_size == 64) {
+		if (UA_Variant_hasScalarType(data,
+				&UA_TYPES[UA_TYPES_DOUBLE])) {
+			tmp->val_double = *(UA_Double *)data->data;
+		}
+	}
+}
+
 static void get_type_bool(union opc_ua_types *tmp,
 				    UA_Variant *data,
 				    int value_type_size)
@@ -260,6 +273,9 @@ static void get_read_value(UA_Variant *value,
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		get_type_raw(tmp, value);
+		break;
+	case KNOT_VALUE_TYPE_DOUBLE:
+		get_type_double(tmp, value, value_type_size);
 		break;
 	default:
 		break;

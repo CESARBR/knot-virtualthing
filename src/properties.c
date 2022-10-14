@@ -138,7 +138,7 @@ static int valid_bit_size(int bit_size, int value_type)
 	case 64:
 		valid_value_type_mask = (1 << KNOT_VALUE_TYPE_INT64) |
 					(1 << KNOT_VALUE_TYPE_UINT64) |
-					(1 << KNOT_VALUE_TYPE_FLOAT);
+					(1 << KNOT_VALUE_TYPE_DOUBLE);
 		break;
 	default:
 		return -EINVAL;
@@ -245,6 +245,7 @@ static int get_upper_limit(int fd, char *group_id, int value_type,
 	int rc;
 	knot_value_type_int val_i;
 	knot_value_type_float val_f;
+	knot_value_type_double val_d;
 	knot_value_type_bool val_b;
 	knot_value_type_int64 val_i64;
 	knot_value_type_uint val_u;
@@ -286,6 +287,12 @@ static int get_upper_limit(int fd, char *group_id, int value_type,
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw */
+	case KNOT_VALUE_TYPE_DOUBLE:
+		rc = storage_read_key_double(fd, group_id,
+					    EVENT_UPPER_THRESHOLD,
+					    &val_d);
+		temp->val_d = val_d;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -299,6 +306,7 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 	int rc;
 	knot_value_type_int val_i;
 	knot_value_type_float val_f;
+	knot_value_type_double val_d;
 	knot_value_type_bool val_b;
 	knot_value_type_int64 val_i64;
 	knot_value_type_uint val_u;
@@ -340,6 +348,12 @@ static int get_lower_limit(int fd, char *group_id, int value_type,
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw */
+	case KNOT_VALUE_TYPE_DOUBLE:
+		rc = storage_read_key_double(fd, group_id,
+					    EVENT_LOWER_THRESHOLD,
+					    &val_d);
+		temp->val_d = val_d;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -373,6 +387,9 @@ static int set_limit(int fd, const char *group_id, const char *key,
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		/* Storage doesn't give support to raw */
+	case KNOT_VALUE_TYPE_DOUBLE:
+		rc = storage_write_key_double(fd, group_id, key, value.val_f);
+		break;
 	default:
 		return -EINVAL;
 	}

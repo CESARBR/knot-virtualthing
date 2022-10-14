@@ -58,6 +58,11 @@ int storage_read_key_float(int fd, const char *group, const char *key,
 int storage_write_key_float(int fd, const char *group, const char *key,
 			    float value);
 
+int storage_read_key_double(int fd, const char *group, const char *key,
+			   double *value);
+int storage_write_key_double(int fd, const char *group, const char *key,
+			    double value);
+
 int storage_read_key_bool(int fd, const char *group, const char *key,
 			  uint8_t *value);
 int storage_write_key_bool(int fd, const char *group, const char *key,

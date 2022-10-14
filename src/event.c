@@ -57,6 +57,16 @@ static int compare_float(float val1, float val2)
 	return 0;
 }
 
+static int compare_double(double val1, double val2)
+{
+	if (val1 < val2)
+		return -1;
+	if (val1 > val2)
+		return 1;
+
+	return 0;
+}
+
 static int compare_bool(bool val1, bool val2)
 {
 	if (val1 == false && val2 == true)
@@ -90,6 +100,9 @@ static int compare_knot_value(knot_value_type val1, knot_value_type val2,
 		break;
 	case KNOT_VALUE_TYPE_RAW:
 		rc = compare_raw(val1.raw, val2.raw);
+		break;
+	case KNOT_VALUE_TYPE_DOUBLE:
+		rc = compare_double(val1.val_d, val2.val_d);
 		break;
 	default:
 		rc = 1;

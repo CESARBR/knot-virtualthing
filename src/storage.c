@@ -329,6 +329,33 @@ int storage_write_key_float(int fd, const char *group, const char *key,
 	return save_settings(fd, settings);
 }
 
+int storage_read_key_double(int fd, const char *group, const char *key,
+			   double *value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	return l_settings_get_double(settings, group, key, value);
+}
+
+int storage_write_key_double(int fd, const char *group, const char *key,
+			    double value)
+{
+	struct l_settings *settings;
+
+	settings = l_hashmap_lookup(storage_list, L_INT_TO_PTR(fd));
+	if (!settings)
+		return -EINVAL;
+
+	if (l_settings_set_double(settings, group, key, value) == false)
+		return -EINVAL;
+
+	return save_settings(fd, settings);
+}
+
 int storage_read_key_bool(int fd, const char *group, const char *key,
 			  uint8_t *value)
 {
