@@ -80,13 +80,14 @@ To install libplctag, you must follow the instructions:
 4. Install lib files with `sudo make install`
 
 ### Install open62541
-open62541 (http://open62541.org) is an open source and free implementation of OPC UA (OPC Unified Architecture) written in the common subset of the C99 and C++98 languages.
+open62541 (http://open62541.org) is an open source and free implementation of OPC UA (OPC Unified Architecture) written in the common subset of the C99 and C++98 languages. While the fix for checking StatusCode is not approved, it is necessary to use a specific branch of IOTechSystems.
 To install open62541, you must follow the instructions:
-1. `git clone git@https://github.com/open62541/open62541.git`
-2. `git submodule update --init --recursive`
-3. `mkdir build && cd build`
-3. `cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_ENCRYPTION=MBEDTLS ..`
-4. Install lib files with `sudo make install`
+1. `git clone https://github.com/IOTechSystems/open62541.git`
+2. `git checkout 23c8586`
+3. `git submodule update --init --recursive`
+4. `mkdir build && cd build`
+5. `cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib DLIB_INSTALL_DIR=lib -DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_ENCRYPTION=OPENSSL  -DUA_ARCH_REMOVE_FLAGS="-Werror" ..`
+6. Install lib files with `sudo make install`
 
 ## Building
 

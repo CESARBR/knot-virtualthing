@@ -8,7 +8,7 @@ ARG KNOT_CLOUD_SDK_VERSION=bdc4130
 ARG KNOT_PROTOCOL_VERSION=5f4e9c6
 ARG LIBMODBUS_VERSION=3.1.4
 ARG LIBPLCTAG_VERSION=v2.5.0
-ARG LIBOPEN62541_VERSION=v1.3.2
+ARG LIBOPEN62541_VERSION=23c8586
 
 WORKDIR /usr/local
 
@@ -45,9 +45,9 @@ RUN mkdir -p /usr/local/libmodbus
 RUN wget -q -O- https://libmodbus.org/releases/libmodbus-$LIBMODBUS_VERSION.tar.gz | tar xz -C /usr/local/libmodbus --strip-components=1
 RUN cd libmodbus && ./configure --prefix=/usr -q && make install
 
-# Install open62541 dependency
+# Install open62541 dependency. While the fix for checking StatusCode is not approved, it is necessary to use a specific branch of IOTechSystems.
 RUN mkdir -p /usr/local/libplctag
-RUN git clone https://github.com/open62541/open62541.git /usr/local/open62541
+RUN git clone https://github.com/IOTechSystems/open62541.git /usr/local/open62541
 RUN cd open62541 && git checkout $LIBOPEN62541_VERSION && git submodule update --init --recursive && mkdir -p build
 RUN cd open62541/build && cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib DLIB_INSTALL_DIR=lib -DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_ENCRYPTION=OPENSSL  -DUA_ARCH_REMOVE_FLAGS="-Werror" ..
 RUN cd open62541/build && make install
