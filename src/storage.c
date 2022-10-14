@@ -284,7 +284,8 @@ int storage_read_key_int(int fd, const char *group, const char *key, int *value)
 	if (!settings)
 		return -EINVAL;
 
-	return l_settings_get_int(settings, group, key, value);
+	return !l_settings_get_int(settings, group, key, value) ?
+		-EINVAL : KNOT_STATUS_OK;
 }
 
 int storage_write_key_int(int fd, const char *group, const char *key, int value)

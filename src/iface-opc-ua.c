@@ -45,6 +45,12 @@
 #define ENCPT_URL_NONE			"http://opcfoundation.org/UA/SecurityPolicy#None"
 #define ENCPT_URL_BASIC256SHA256	"http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256"
 
+#define SIZE_VAL_1	1
+#define SIZE_VAL_8	8
+#define SIZE_VAL_16	16
+#define SIZE_VAL_32	32
+#define SIZE_VAL_64	64
+
 static struct l_timeout *connect_to;
 static struct l_io *opc_ua_io;
 static iface_opc_ua_connected_cb_t conn_cb;
@@ -53,6 +59,7 @@ struct knot_thing thing_opc_ua;
 static UA_Client *opc_ua_client;
 
 union opc_ua_types {
+	uint8_t val_raw[KNOT_DATA_RAW_SIZE];
 	float val_float;
 	uint8_t val_bool;
 	int8_t val_i8;
@@ -142,22 +149,22 @@ static void get_type_int(union opc_ua_types *tmp,
 				  UA_Variant *data,
 				  int value_type_size)
 {
-	if (value_type_size == 8) {
+	if (value_type_size == SIZE_VAL_8) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_SBYTE])) {
 			tmp->val_i8 = *(UA_SByte *)data->data;
 		}
-	} else if (value_type_size == 16) {
+	} else if (value_type_size == SIZE_VAL_16) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_INT16])) {
 			tmp->val_i16 = *(UA_Int16 *)data->data;
 		}
-	} else if (value_type_size == 32) {
+	} else if (value_type_size == SIZE_VAL_32) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_INT32])) {
 			tmp->val_i32 = *(UA_Int32 *)data->data;
 		}
-	} else if (value_type_size == 64) {
+	} else if (value_type_size == SIZE_VAL_64) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_INT64])) {
 			tmp->val_u64 = *(UA_Int64 *)data->data;
@@ -169,22 +176,22 @@ static void get_type_uint(union opc_ua_types *tmp,
 				   UA_Variant *data,
 				   int value_type_size)
 {
-	if (value_type_size == 8) {
+	if (value_type_size == SIZE_VAL_8) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_BYTE])) {
 			tmp->val_u8 = *(UA_Byte *)data->data;
 		}
-	} else if (value_type_size == 16) {
+	} else if (value_type_size == SIZE_VAL_16) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_UINT16])) {
 			tmp->val_u16 = *(UA_UInt16 *)data->data;
 		}
-	} else if (value_type_size == 32) {
+	} else if (value_type_size == SIZE_VAL_32) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_UINT32])) {
 			tmp->val_u32 = *(UA_UInt32 *)data->data;
 		}
-	} else if (value_type_size == 64) {
+	} else if (value_type_size == SIZE_VAL_64) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_UINT64])) {
 			tmp->val_u64 = *(UA_UInt64 *)data->data;
@@ -196,7 +203,7 @@ static void get_type_float(union opc_ua_types *tmp,
 				    UA_Variant *data,
 				    int value_type_size)
 {
-	if (value_type_size == 32) {
+	if (value_type_size == SIZE_VAL_32) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_FLOAT])) {
 			tmp->val_float = *(UA_Float *)data->data;
@@ -208,11 +215,24 @@ static void get_type_bool(union opc_ua_types *tmp,
 				    UA_Variant *data,
 				    int value_type_size)
 {
-	if (value_type_size == 1) {
+	if (value_type_size == SIZE_VAL_1) {
 		if (UA_Variant_hasScalarType(data,
 				&UA_TYPES[UA_TYPES_BOOLEAN])) {
 			tmp->val_bool = *(UA_Boolean *)data->data;
 		}
+	}
+}
+
+static void get_type_raw(union opc_ua_types *tmp,
+				    UA_Variant *data)
+{
+	if (UA_Variant_hasScalarType(data,
+		&UA_TYPES[UA_TYPES_STRING])) {
+		UA_String string_aux = *(UA_String *) data->data;
+
+		strncpy((char *)tmp->val_raw,
+			(const char *)string_aux.data,
+			string_aux.length);
 	}
 }
 
@@ -237,6 +257,9 @@ static void get_read_value(UA_Variant *value,
 	case KNOT_VALUE_TYPE_UINT:
 	case KNOT_VALUE_TYPE_UINT64:
 		get_type_uint(tmp, value, value_type_size);
+		break;
+	case KNOT_VALUE_TYPE_RAW:
+		get_type_raw(tmp, value);
 		break;
 	default:
 		break;

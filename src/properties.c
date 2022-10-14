@@ -166,11 +166,10 @@ static int set_data_properties(struct knot_thing *thing,
 	int element_size_aux = KNOT_ERR_INVALID;
 	struct knot_data_item data_item_aux;
 
-	storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
+	rc = storage_read_key_int(fd, group_id, DATA_NAME_SPACE_INDEX,
 		&namespace_aux);
-	if (namespace_aux == -EINVAL)
-		return -EINVAL;
-	data_item_aux.namespace = namespace_aux;
+	if (rc != -EINVAL)
+		data_item_aux.namespace = namespace_aux;
 
 	identifier_type_aux = storage_read_key_string(fd, group_id,
 					DATA_IND_TYPE);
@@ -216,28 +215,24 @@ static int set_data_properties(struct knot_thing *thing,
 	}
 	l_free(path_aux);
 
-	storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
+	rc = storage_read_key_int(fd, group_id, DATA_IP_ELEMENT_SIZE,
 			&element_size_aux);
-	if (element_size_aux == -EINVAL)
-		return -EINVAL;
+	if (rc != -EINVAL)
+		data_item_aux.element_size = element_size_aux;
 
-	data_item_aux.element_size = element_size_aux;
-
-	storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
+	rc = storage_read_key_int(fd, group_id, DATA_REG_ADDRESS,
 				  &reg_addr_aux);
-	if (reg_addr_aux == -EINVAL)
-		return -EINVAL;
-	data_item_aux.reg_addr = reg_addr_aux;
+	if (rc != -EINVAL)
+		data_item_aux.reg_addr = reg_addr_aux;
 
-	storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
+	rc = storage_read_key_int(fd, group_id, DATA_VALUE_TYPE_SIZE,
 				  &bit_size_aux);
-	if (bit_size_aux == -EINVAL)
-		return -EINVAL;
-
-	rc = valid_bit_size(bit_size_aux, schema.value_type);
-	if (rc < 0)
-		return -EINVAL;
-	data_item_aux.value_type_size = bit_size_aux;
+	if (rc != -EINVAL) {
+		rc = valid_bit_size(bit_size_aux, schema.value_type);
+		if (rc < 0)
+			return -EINVAL;
+		data_item_aux.value_type_size = bit_size_aux;
+	}
 
 	*data_item = data_item_aux;
 
@@ -447,17 +442,17 @@ static int set_schema(struct knot_thing *thing, int fd, char *group_id,
 	l_free(name);
 
 	rc = storage_read_key_int(fd, group_id, SCHEMA_VALUE_TYPE, &aux);
-	if (rc <= 0)
+	if (rc < 0)
 		return -EINVAL;
 	schema_aux.value_type = aux;
 
 	rc = storage_read_key_int(fd, group_id, SCHEMA_UNIT, &aux);
-	if (rc <= 0)
+	if (rc < 0)
 		return -EINVAL;
 	schema_aux.unit = aux;
 
 	rc = storage_read_key_int(fd, group_id, SCHEMA_TYPE_ID, &aux);
-	if (rc <= 0)
+	if (rc < 0)
 		return -EINVAL;
 	schema_aux.type_id = aux;
 
@@ -480,7 +475,7 @@ static int set_sensor_id(struct knot_thing *thing, int fd, char *group_id,
 
 	rc = storage_read_key_int(fd, group_id, SCHEMA_SENSOR_ID,
 				  &sensor_id_aux);
-	if (rc <= 0)
+	if (rc < 0)
 		return -EINVAL;
 
 	if (device_data_item_lookup(thing, sensor_id_aux))
@@ -555,6 +550,7 @@ error:
 
 static int set_driver_properties(struct knot_thing *thing, int fd)
 {
+	int rc = KNOT_ERR_INVALID;
 	int id = KNOT_ERR_INVALID;
 	int time_sec = KNOT_ERR_INVALID;
 	int endianness_type_aux = KNOT_ERR_INVALID;
@@ -647,32 +643,29 @@ static int set_driver_properties(struct knot_thing *thing, int fd)
 	}
 	l_free(path_private_key);
 
-	storage_read_key_int(fd, THING_GROUP, DRIVER_TIME_SEC, &time_sec);
-	if (time_sec == -EINVAL)
+	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_TIME_SEC, &time_sec);
+	if (rc < KNOT_STATUS_OK)
 		return -EINVAL;
 	device_set_driver_time_sec(thing, time_sec);
 
-	storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY, &security);
-	if (security == -EINVAL)
-		return -EINVAL;
-	device_set_driver_security(thing, security);
+	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY, &security);
+	if (rc == KNOT_STATUS_OK)
+		device_set_driver_security(thing, security);
 
-	storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
-	if (id == -EINVAL)
-		return -EINVAL;
-	device_set_driver_id(thing, id);
 
-	storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY_MODE,
+	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_ID, &id);
+	if (rc == KNOT_STATUS_OK)
+		device_set_driver_id(thing, id);
+
+	rc = storage_read_key_int(fd, THING_GROUP, DRIVER_SECURITY_MODE,
 			     &security_mode);
-	if (security_mode == -EINVAL)
-		return -EINVAL;
-	device_set_driver_security_mode(thing, security_mode);
+	if (rc == KNOT_STATUS_OK)
+		device_set_driver_security_mode(thing, security_mode);
 
-	storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
+	rc = storage_read_key_int(fd, THING_GROUP, DATA_TYPE_ENDIANNESS,
 				&endianness_type_aux);
-	if (endianness_type_aux == -EINVAL)
-		return -EINVAL;
-	device_set_endianness_type(thing, endianness_type_aux);
+	if (rc == KNOT_STATUS_OK)
+		device_set_driver_security_mode(thing, security_mode);
 
 	return KNOT_STATUS_OK;
 }
