@@ -206,6 +206,34 @@ retry:
 	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
+static int put_tag_name_created(struct knot_data_item *data_item)
+{
+	struct knot_data_item *data_item_aux;
+	int i;
+	int rc = -1;
+
+	for (i = 0; i < thing_ethernet_ip.number_sensor; i++) {
+		int return_aux;
+
+		data_item_aux = l_hashmap_lookup(thing_ethernet_ip.data_items,
+						 L_INT_TO_PTR(i));
+		if (!data_item_aux)
+			rc = -EINVAL;
+
+		return_aux = strcmp(
+			data_item_aux->tag_name,
+			data_item->tag_name);
+		if (!return_aux) {
+			data_item_aux->tag =
+				data_item->tag;
+			rc = 0;
+			break;
+		}
+	}
+
+	return rc;
+}
+
 int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 {
 	int rc;
@@ -213,6 +241,17 @@ int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 	int elem_size = 0;
 
 	memset(&tmp, 0, sizeof(tmp));
+
+	rc = plc_tag_status(data_item->tag);
+
+	if (rc == PLCTAG_ERR_NOT_FOUND || rc == PLCTAG_ERR_TIMEOUT) {
+		l_error("Unable to read the Data_%d! Got error code %d: %s\n",
+			data_item->sensor_id, rc, plc_tag_decode_error(rc));
+		plc_tag_destroy(data_item->tag);
+		data_item->tag = plc_tag_create(data_item->string_tag_path,
+						DATA_TIMEOUT);
+		put_tag_name_created(data_item);
+	}
 
 	rc = plc_tag_read(data_item->tag, DATA_TIMEOUT);
 
@@ -282,10 +321,11 @@ int iface_ethernet_ip_read_data(struct knot_data_item *data_item)
 
 		memcpy(&data_item->current_val, &tmp, sizeof(tmp));
 	} else {
-		l_error("Unable to read the data! Got error code %d: %s\n",
+		l_error("Unable to read! Got error code %d: %s\n",
 			rc, plc_tag_decode_error(rc));
 		l_io_destroy(ethernet_op_io);
 		ethernet_op_io = NULL;
+		rc = -EINTR;
 	}
 
 	return rc;
