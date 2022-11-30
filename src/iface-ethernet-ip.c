@@ -32,6 +32,7 @@ static iface_ethernet_ip_disconnected_cb_t disconn_cb;
 static struct l_timeout *connect_to;
 struct knot_thing thing_ethernet_ip;
 static struct l_io *ethernet_op_io;
+static int status_ethernet_ip;
 
 union ethernet_ip_types {
 	float val_float;
@@ -113,12 +114,6 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 {
 	int rc = 0;
 
-	/* Check and destroy if an IO is already allocated */
-	if (ethernet_op_io) {
-		l_io_destroy(ethernet_op_io);
-		ethernet_op_io = NULL;
-	}
-
 	plc_tag_destroy(data_item->tag);
 	data_item->tag = plc_tag_create(data_item->string_tag_path,
 					DATA_TIMEOUT);
@@ -128,20 +123,6 @@ static int connect_ethernet_ip(struct knot_data_item *data_item)
 			plc_tag_decode_error(
 				data_item->tag),
 				data_item->tag_name);
-		return -EINVAL;
-	}
-
-	ethernet_op_io = l_io_new(plc_tag_status(data_item->tag));
-	if (!ethernet_op_io) {
-		l_error("Error setting up tag internal state. %s",
-			plc_tag_decode_error(
-				data_item->tag));
-		return -EIO;
-	}
-
-	if (!l_io_set_disconnect_handler(ethernet_op_io, on_disconnected, NULL,
-					 NULL)) {
-		l_error("Couldn't set Ethernet/IP disconnect handler");
 		return -EINVAL;
 	}
 
@@ -188,6 +169,12 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 
 	l_debug("Trying to connect to Ethernet/Ip");
 
+	/* Check and destroy if an IO is already allocated */
+	if (ethernet_op_io) {
+		l_io_destroy(ethernet_op_io);
+		ethernet_op_io = NULL;
+	}
+
 	l_hashmap_foreach(thing_ethernet_ip.data_items,
 			  foreach_data_item_ethernet_ip, &rc);
 	if (rc) {
@@ -195,14 +182,27 @@ static void attempt_connect(struct l_timeout *to, void *user_data)
 		goto retry;
 	}
 
+	ethernet_op_io = l_io_new(status_ethernet_ip);
+	if (!ethernet_op_io) {
+		l_error("Error setting up tag internal state.");
+		goto io_destroy;
+	}
+
+	if (!l_io_set_disconnect_handler(ethernet_op_io, on_disconnected, NULL,
+					 NULL)) {
+		l_error("Couldn't set Ethernet/IP disconnect handler");
+		goto io_destroy;
+	}
+
 	if (conn_cb)
 		conn_cb(user_data);
 
 	return;
 
-retry:
+io_destroy:
 	l_io_destroy(ethernet_op_io);
 	ethernet_op_io = NULL;
+retry:
 	l_timeout_modify(to, RECONNECT_TIMEOUT);
 }
 
